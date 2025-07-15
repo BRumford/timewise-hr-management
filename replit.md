@@ -256,3 +256,11 @@ The system is designed to be scalable, maintainable, and specifically tailored f
 - Extended field labels system to leave management, time cards, and onboarding forms
 - All major forms now use customizable field labels instead of hardcoded text
 - System provides consistent labeling across employee management, leave requests, and time tracking
+
+- Fixed Leave Request Creation Error with OpenAI API Quota Handling (July 15, 2025)
+  - Resolved 400 error when creating leave requests with substitute requirements
+  - Added proper error handling for OpenAI API quota exceeded errors
+  - Implemented graceful fallback when AI substitute recommendations fail
+  - Leave requests now successfully create even when AI services are unavailable
+  - Added comprehensive logging for OpenAI API errors to help with debugging
+  - System continues to function normally with manual substitute assignment when AI fails

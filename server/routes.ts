@@ -564,19 +564,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Auto-assign substitute if required
       if (requestData.substituteRequired) {
-        const availableSubstitutes = await storage.getAvailableSubstitutes();
-        if (availableSubstitutes.length > 0) {
-          const recommendations = await generateSubstituteRecommendations(leaveRequest, availableSubstitutes);
-          if (recommendations.recommendations.length > 0) {
-            const bestMatch = recommendations.recommendations[0];
-            await storage.createSubstituteAssignment({
-              leaveRequestId: leaveRequest.id,
-              substituteEmployeeId: bestMatch.substituteId,
-              assignedDate: new Date(),
-              status: "assigned",
-              notes: `Auto-assigned based on AI recommendation (${bestMatch.matchScore} match score)`,
-            });
+        try {
+          const availableSubstitutes = await storage.getAvailableSubstitutes();
+          if (availableSubstitutes.length > 0) {
+            const recommendations = await generateSubstituteRecommendations(leaveRequest, availableSubstitutes);
+            if (recommendations.recommendations.length > 0) {
+              const bestMatch = recommendations.recommendations[0];
+              await storage.createSubstituteAssignment({
+                leaveRequestId: leaveRequest.id,
+                substituteEmployeeId: bestMatch.substituteId,
+                assignedDate: new Date(),
+                status: "assigned",
+                notes: `Auto-assigned based on AI recommendation (${bestMatch.matchScore} match score)`,
+              });
+            }
           }
+        } catch (aiError) {
+          // If AI recommendation fails, create a note about it but don't fail the entire request
+          console.warn("AI substitute recommendation failed:", aiError);
+          // Leave request will still be created without auto-assignment
         }
       }
 
@@ -602,19 +608,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Auto-assign substitute if required
       if (requestData.substituteRequired) {
-        const availableSubstitutes = await storage.getAvailableSubstitutes();
-        if (availableSubstitutes.length > 0) {
-          const recommendations = await generateSubstituteRecommendations(leaveRequest, availableSubstitutes);
-          if (recommendations.recommendations.length > 0) {
-            const bestMatch = recommendations.recommendations[0];
-            await storage.createSubstituteAssignment({
-              leaveRequestId: leaveRequest.id,
-              substituteEmployeeId: bestMatch.substituteId,
-              assignedDate: new Date(),
-              status: "assigned",
-              notes: `Auto-assigned based on AI recommendation (${bestMatch.matchScore} match score)`,
-            });
+        try {
+          const availableSubstitutes = await storage.getAvailableSubstitutes();
+          if (availableSubstitutes.length > 0) {
+            const recommendations = await generateSubstituteRecommendations(leaveRequest, availableSubstitutes);
+            if (recommendations.recommendations.length > 0) {
+              const bestMatch = recommendations.recommendations[0];
+              await storage.createSubstituteAssignment({
+                leaveRequestId: leaveRequest.id,
+                substituteEmployeeId: bestMatch.substituteId,
+                assignedDate: new Date(),
+                status: "assigned",
+                notes: `Auto-assigned based on AI recommendation (${bestMatch.matchScore} match score)`,
+              });
+            }
           }
+        } catch (aiError) {
+          // If AI recommendation fails, create a note about it but don't fail the entire request
+          console.warn("AI substitute recommendation failed:", aiError);
+          // Leave request will still be created without auto-assignment
         }
       }
 

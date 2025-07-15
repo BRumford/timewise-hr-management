@@ -123,7 +123,12 @@ export async function generateSubstituteRecommendations(
     });
 
     return JSON.parse(response.choices[0].message.content);
-  } catch (error) {
-    throw new Error("Failed to generate substitute recommendations: " + error.message);
+  } catch (error: any) {
+    // Check if this is an OpenAI quota error
+    if (error.message && error.message.includes('429')) {
+      throw new Error("Failed to generate substitute recommendations: OpenAI API quota exceeded. Please check your plan and billing details.");
+    }
+    // Re-throw other errors
+    throw new Error(`Failed to generate substitute recommendations: ${error.message}`);
   }
 }
