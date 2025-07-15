@@ -14,6 +14,7 @@ import Documents from "@/pages/documents";
 import Onboarding from "@/pages/onboarding";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
+import ExtraPayActivities from "@/pages/extra-pay-activities";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -33,6 +34,7 @@ function Router() {
             <Route path="/payroll" component={Payroll} />
             <Route path="/documents" component={Documents} />
             <Route path="/onboarding" component={Onboarding} />
+            <Route path="/extra-pay-activities" component={ExtraPayActivities} />
             <Route path="/reports" component={Reports} />
             <Route path="/settings" component={Settings} />
             <Route component={NotFound} />

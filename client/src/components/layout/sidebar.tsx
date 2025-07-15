@@ -10,7 +10,8 @@ import {
   BarChart3, 
   Settings,
   Clock,
-  UserCheck
+  UserCheck,
+  DollarSign
 } from "lucide-react";
 
 const menuItems = [
@@ -20,6 +21,7 @@ const menuItems = [
   { path: "/time-cards", icon: Clock, label: "Time Cards" },
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards" },
   { path: "/payroll", icon: Calculator, label: "Payroll" },
+  { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities" },
   { path: "/documents", icon: FileText, label: "Documents" },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding" },
   { path: "/reports", icon: BarChart3, label: "Reports" },

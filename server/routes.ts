@@ -26,7 +26,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getDashboardStats();
       res.json(stats);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch dashboard stats", error: error.message });
+      res.status(500).json({ message: "Failed to fetch dashboard stats", error: (error as Error).message });
     }
   });
 
@@ -35,7 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activity = await storage.getRecentActivityLogs();
       res.json(activity);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch recent activity", error: error.message });
+      res.status(500).json({ message: "Failed to fetch recent activity", error: (error as Error).message });
     }
   });
 
@@ -45,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const employees = await storage.getEmployees();
       res.json(employees);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch employees", error: error.message });
+      res.status(500).json({ message: "Failed to fetch employees", error: (error as Error).message });
     }
   });
 
@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(employee);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch employee", error: error.message });
+      res.status(500).json({ message: "Failed to fetch employee", error: (error as Error).message });
     }
   });
 
@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(employee);
     } catch (error) {
-      res.status(400).json({ message: "Failed to create employee", error: error.message });
+      res.status(400).json({ message: "Failed to create employee", error: (error as Error).message });
     }
   });
 
@@ -96,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(employee);
     } catch (error) {
-      res.status(400).json({ message: "Failed to update employee", error: error.message });
+      res.status(400).json({ message: "Failed to update employee", error: (error as Error).message });
     }
   });
 
@@ -114,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete employee", error: error.message });
+      res.status(500).json({ message: "Failed to delete employee", error: (error as Error).message });
     }
   });
 
@@ -124,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leaveTypes = await storage.getLeaveTypes();
       res.json(leaveTypes);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch leave types", error: error.message });
+      res.status(500).json({ message: "Failed to fetch leave types", error: (error as Error).message });
     }
   });
 
@@ -133,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leaveRequests = await storage.getLeaveRequests();
       res.json(leaveRequests);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch leave requests", error: error.message });
+      res.status(500).json({ message: "Failed to fetch leave requests", error: (error as Error).message });
     }
   });
 
@@ -142,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingRequests = await storage.getPendingLeaveRequests();
       res.json(pendingRequests);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch pending leave requests", error: error.message });
+      res.status(500).json({ message: "Failed to fetch pending leave requests", error: (error as Error).message });
     }
   });
 
@@ -179,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(leaveRequest);
     } catch (error) {
-      res.status(400).json({ message: "Failed to create leave request", error: error.message });
+      res.status(400).json({ message: "Failed to create leave request", error: (error as Error).message });
     }
   });
 
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(leaveRequest);
     } catch (error) {
-      res.status(400).json({ message: "Failed to update leave request", error: error.message });
+      res.status(400).json({ message: "Failed to update leave request", error: (error as Error).message });
     }
   });
 
@@ -208,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payrollRecords = await storage.getPayrollRecords();
       res.json(payrollRecords);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch payroll records", error: error.message });
+      res.status(500).json({ message: "Failed to fetch payroll records", error: (error as Error).message });
     }
   });
 
@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const summary = await storage.getCurrentPayrollSummary();
       res.json(summary);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch payroll summary", error: error.message });
+      res.status(500).json({ message: "Failed to fetch payroll summary", error: (error as Error).message });
     }
   });
 
@@ -236,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(payrollRecord);
     } catch (error) {
-      res.status(400).json({ message: "Failed to create payroll record", error: error.message });
+      res.status(400).json({ message: "Failed to create payroll record", error: (error as Error).message });
     }
   });
 
@@ -246,7 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analysis = await analyzePayrollAnomalies(payrollRecords);
       res.json(analysis);
     } catch (error) {
-      res.status(500).json({ message: "Failed to analyze payroll data", error: error.message });
+      res.status(500).json({ message: "Failed to analyze payroll data", error: (error as Error).message });
     }
   });
 
@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const documents = await storage.getDocuments();
       res.json(documents);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch documents", error: error.message });
+      res.status(500).json({ message: "Failed to fetch documents", error: (error as Error).message });
     }
   });
 
@@ -265,7 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingDocuments = await storage.getPendingDocuments();
       res.json(pendingDocuments);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch pending documents", error: error.message });
+      res.status(500).json({ message: "Failed to fetch pending documents", error: (error as Error).message });
     }
   });
 
@@ -294,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(document);
     } catch (error) {
-      res.status(400).json({ message: "Failed to create document", error: error.message });
+      res.status(400).json({ message: "Failed to create document", error: (error as Error).message });
     }
   });
 
@@ -313,7 +313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(document);
     } catch (error) {
-      res.status(400).json({ message: "Failed to update document", error: error.message });
+      res.status(400).json({ message: "Failed to update document", error: (error as Error).message });
     }
   });
 
@@ -323,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workflows = await storage.getOnboardingWorkflows();
       res.json(workflows);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch onboarding workflows", error: error.message });
+      res.status(500).json({ message: "Failed to fetch onboarding workflows", error: (error as Error).message });
     }
   });
 
@@ -351,7 +351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(workflow);
     } catch (error) {
-      res.status(400).json({ message: "Failed to create onboarding workflow", error: error.message });
+      res.status(400).json({ message: "Failed to create onboarding workflow", error: (error as Error).message });
     }
   });
 
@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(workflow);
     } catch (error) {
-      res.status(400).json({ message: "Failed to update onboarding workflow", error: error.message });
+      res.status(400).json({ message: "Failed to update onboarding workflow", error: (error as Error).message });
     }
   });
 
@@ -380,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assignments = await storage.getSubstituteAssignments();
       res.json(assignments);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch substitute assignments", error: error.message });
+      res.status(500).json({ message: "Failed to fetch substitute assignments", error: (error as Error).message });
     }
   });
 
@@ -389,7 +389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const substitutes = await storage.getAvailableSubstitutes();
       res.json(substitutes);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch available substitutes", error: error.message });
+      res.status(500).json({ message: "Failed to fetch available substitutes", error: (error as Error).message });
     }
   });
 
@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCards = await storage.getTimeCards();
       res.json(timeCards);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch time cards", error: error.message });
+      res.status(500).json({ message: "Failed to fetch time cards", error: (error as Error).message });
     }
   });
 
@@ -431,8 +431,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exportData = filteredCards.map(card => {
         const employee = employeeMap.get(card.employeeId);
         const hourlyRate = employee?.salary ? (parseFloat(employee.salary) / 2080) : 0;
-        const regularPay = card.totalHours ? (card.totalHours * hourlyRate) : 0;
-        const overtimePay = card.overtimeHours ? (card.overtimeHours * hourlyRate * 1.5) : 0;
+        const regularPay = card.totalHours ? (Number(card.totalHours) * hourlyRate) : 0;
+        const overtimePay = card.overtimeHours ? (Number(card.overtimeHours) * hourlyRate * 1.5) : 0;
         
         return {
           TimeCardID: card.id,
@@ -469,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: exportData
       });
     } catch (error) {
-      res.status(500).json({ message: "Failed to export time cards", error: error.message });
+      res.status(500).json({ message: "Failed to export time cards", error: (error as Error).message });
     }
   });
 
@@ -481,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(timeCard);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch time card", error: error.message });
+      res.status(500).json({ message: "Failed to fetch time card", error: (error as Error).message });
     }
   });
 
@@ -491,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCard = await storage.createTimeCard(data);
       res.status(201).json(timeCard);
     } catch (error) {
-      res.status(400).json({ message: "Failed to create time card", error: error.message });
+      res.status(400).json({ message: "Failed to create time card", error: (error as Error).message });
     }
   });
 
@@ -501,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCard = await storage.updateTimeCard(parseInt(req.params.id), data);
       res.json(timeCard);
     } catch (error) {
-      res.status(400).json({ message: "Failed to update time card", error: error.message });
+      res.status(400).json({ message: "Failed to update time card", error: (error as Error).message });
     }
   });
 
@@ -510,7 +510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteTimeCard(parseInt(req.params.id));
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete time card", error: error.message });
+      res.status(500).json({ message: "Failed to delete time card", error: (error as Error).message });
     }
   });
 
@@ -519,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCards = await storage.getTimeCardsByEmployee(parseInt(req.params.id));
       res.json(timeCards);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch employee time cards", error: error.message });
+      res.status(500).json({ message: "Failed to fetch employee time cards", error: (error as Error).message });
     }
   });
 
@@ -528,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCards = await storage.getPendingTimeCards();
       res.json(timeCards);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch pending time cards", error: error.message });
+      res.status(500).json({ message: "Failed to fetch pending time cards", error: (error as Error).message });
     }
   });
 
@@ -545,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json(timeCards);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch time cards by date range", error: error.message });
+      res.status(500).json({ message: "Failed to fetch time cards by date range", error: (error as Error).message });
     }
   });
 
@@ -554,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCards = await storage.getTimeCardsByApprovalStage(req.params.stage);
       res.json(timeCards);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch time cards by approval stage", error: error.message });
+      res.status(500).json({ message: "Failed to fetch time cards by approval stage", error: (error as Error).message });
     }
   });
 
@@ -564,7 +564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCard = await storage.submitTimeCardForApproval(parseInt(req.params.id), submittedBy);
       res.json(timeCard);
     } catch (error) {
-      res.status(500).json({ message: "Failed to submit time card for approval", error: error.message });
+      res.status(500).json({ message: "Failed to submit time card for approval", error: (error as Error).message });
     }
   });
 
@@ -574,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCard = await storage.approveTimeCardByEmployee(parseInt(req.params.id), employeeId, notes);
       res.json(timeCard);
     } catch (error) {
-      res.status(500).json({ message: "Failed to approve time card by employee", error: error.message });
+      res.status(500).json({ message: "Failed to approve time card by employee", error: (error as Error).message });
     }
   });
 
@@ -584,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCard = await storage.approveTimeCardByAdmin(parseInt(req.params.id), adminId, notes);
       res.json(timeCard);
     } catch (error) {
-      res.status(500).json({ message: "Failed to approve time card by admin", error: error.message });
+      res.status(500).json({ message: "Failed to approve time card by admin", error: (error as Error).message });
     }
   });
 
@@ -594,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCard = await storage.processTimeCardByPayroll(parseInt(req.params.id), payrollId, notes);
       res.json(timeCard);
     } catch (error) {
-      res.status(500).json({ message: "Failed to process time card by payroll", error: error.message });
+      res.status(500).json({ message: "Failed to process time card by payroll", error: (error as Error).message });
     }
   });
 
@@ -604,7 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeCard = await storage.rejectTimeCard(parseInt(req.params.id), rejectedBy, notes);
       res.json(timeCard);
     } catch (error) {
-      res.status(500).json({ message: "Failed to reject time card", error: error.message });
+      res.status(500).json({ message: "Failed to reject time card", error: (error as Error).message });
     }
   });
 
@@ -647,7 +647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exportData = filteredCards.map(card => {
         const employee = employeeMap.get(card.substituteId);
         const dailyRate = card.dailyRate || 150; // Default daily rate
-        const totalPay = card.totalPay || (card.totalHours * dailyRate / 8); // Calculate based on hours
+        const totalPay = card.totalPay || (Number(card.totalHours || 0) * Number(dailyRate) / 8); // Calculate based on hours
         
         return {
           TimeCardID: card.id,
