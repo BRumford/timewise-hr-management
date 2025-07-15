@@ -381,6 +381,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/leave-requests/:id/approve", async (req, res) => {
+    try {
+      const leaveRequestId = parseInt(req.params.id);
+      const leaveRequests = await storage.getLeaveRequests();
+      const leaveRequest = leaveRequests.find(lr => lr.id === leaveRequestId);
+      
+      if (!leaveRequest) {
+        return res.status(404).json({ message: "Leave request not found" });
+      }
+      
+      if (leaveRequest.status !== 'pending') {
+        return res.status(400).json({ message: "Leave request is not in pending status" });
+      }
+
+      // Update leave request status to approved
+      const approvedRequest = await storage.updateLeaveRequest(leaveRequestId, {
+        status: 'approved',
+        approvedBy: req.body.approvedBy || 1, // Default to admin user
+        approvedAt: new Date(),
+      });
+
+      // Get leave type information
+      const leaveTypes = await storage.getLeaveTypes();
+      const leaveType = leaveTypes.find(lt => lt.id === leaveRequest.leaveTypeId);
+      
+      // Generate timecard entries for each day of leave
+      const startDate = new Date(leaveRequest.startDate);
+      const endDate = new Date(leaveRequest.endDate);
+      const timecards = [];
+      
+      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        // Skip weekends for most leave types
+        if (date.getDay() === 0 || date.getDay() === 6) {
+          continue;
+        }
+        
+        const timecard = await storage.createTimeCard({
+          employeeId: leaveRequest.employeeId,
+          date: new Date(date),
+          leaveRequestId: leaveRequestId,
+          leaveType: leaveType?.name || 'Leave',
+          isPaidLeave: leaveType?.isPaid || false,
+          totalHours: "8", // Standard work day as string
+          status: 'secretary_submitted',
+          currentApprovalStage: 'employee',
+          notes: `Auto-generated for approved leave request - ${leaveRequest.reason}`,
+          customFieldsData: {
+            leave_reason: leaveRequest.reason,
+            leave_type: leaveType?.name || 'Leave',
+            auto_generated: true,
+          },
+        });
+        
+        timecards.push(timecard);
+      }
+
+      await storage.createActivityLog({
+        userId: req.body.userId || "system",
+        action: "approve_leave_request",
+        entityType: "leave_request",
+        entityId: leaveRequestId,
+        description: `Approved leave request and generated ${timecards.length} timecard entries`,
+      });
+
+      res.json({
+        message: "Leave request approved and timecards generated",
+        leaveRequest: approvedRequest,
+        timecardsGenerated: timecards.length,
+        timecards: timecards,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve leave request", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/leave-requests/:id/reject", async (req, res) => {
+    try {
+      const leaveRequestId = parseInt(req.params.id);
+      const leaveRequests = await storage.getLeaveRequests();
+      const leaveRequest = leaveRequests.find(lr => lr.id === leaveRequestId);
+      
+      if (!leaveRequest) {
+        return res.status(404).json({ message: "Leave request not found" });
+      }
+      
+      if (leaveRequest.status !== 'pending') {
+        return res.status(400).json({ message: "Leave request is not in pending status" });
+      }
+
+      // Update leave request status to rejected
+      const rejectedRequest = await storage.updateLeaveRequest(leaveRequestId, {
+        status: 'rejected',
+        approvedBy: req.body.approvedBy || 1, // Default to admin user
+        approvedAt: new Date(),
+      });
+
+      await storage.createActivityLog({
+        userId: req.body.userId || "system",
+        action: "reject_leave_request",
+        entityType: "leave_request",
+        entityId: leaveRequestId,
+        description: `Rejected leave request`,
+      });
+
+      res.json({
+        message: "Leave request rejected",
+        leaveRequest: rejectedRequest,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject leave request", error: (error as Error).message });
+    }
+  });
+
   // Payroll routes
   app.get("/api/payroll", async (req, res) => {
     try {

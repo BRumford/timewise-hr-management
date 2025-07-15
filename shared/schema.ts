@@ -165,6 +165,9 @@ export const timeCards = pgTable("time_cards", {
   breakEnd: timestamp("break_end"),
   totalHours: decimal("total_hours", { precision: 5, scale: 2 }),
   overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
+  leaveRequestId: integer("leave_request_id"), // Reference to approved leave request
+  leaveType: varchar("leave_type"), // Type of leave (sick, vacation, personal, etc.)
+  isPaidLeave: boolean("is_paid_leave").default(false), // Whether this is paid leave
   customFieldsData: jsonb("custom_fields_data").default({}), // Store custom field values
   status: varchar("status").notNull().default("draft"), // draft, secretary_submitted, employee_approved, admin_approved, payroll_processed, rejected
   currentApprovalStage: varchar("current_approval_stage").default("secretary"), // secretary, employee, administrator, payroll
