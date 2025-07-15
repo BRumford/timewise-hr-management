@@ -1030,6 +1030,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export endpoints for payroll reports
+  app.get("/api/payroll/reports/summary/export", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getPayrollSummaryReport(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      const csvContent = `Payroll Summary Report\n` +
+        `Period: ${startDate} to ${endDate}\n\n` +
+        `Total Employees,${report.summary.totalEmployees}\n` +
+        `Total Records,${report.summary.totalRecords}\n` +
+        `Total Gross Pay,$${report.summary.totalGrossPay.toFixed(2)}\n` +
+        `Total Net Pay,$${report.summary.totalNetPay.toFixed(2)}\n` +
+        `Total Taxes,$${report.summary.totalTaxes.toFixed(2)}\n` +
+        `Total Deductions,$${report.summary.totalDeductions.toFixed(2)}\n`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="payroll-summary.csv"');
+      res.send(csvContent);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export payroll summary", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/payroll/reports/tax-liability/export", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getTaxLiabilityReport(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      const csvContent = `Tax Liability Report\n` +
+        `Period: ${startDate} to ${endDate}\n\n` +
+        `Federal Tax,$${report.federalTax.toFixed(2)}\n` +
+        `State Tax,$${report.stateTax.toFixed(2)}\n` +
+        `Social Security Tax,$${report.socialSecurityTax.toFixed(2)}\n` +
+        `Medicare Tax,$${report.medicareTax.toFixed(2)}\n` +
+        `Unemployment Tax,$${report.unemploymentTax.toFixed(2)}\n` +
+        `Disability Tax,$${report.disabilityTax.toFixed(2)}\n` +
+        `Total Tax Liability,$${report.totalTaxLiability.toFixed(2)}\n`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="tax-liability.csv"');
+      res.send(csvContent);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export tax liability report", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/payroll/reports/benefits/export", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getBenefitsReport(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      const csvContent = `Benefits Report\n` +
+        `Period: ${startDate} to ${endDate}\n\n` +
+        `Total Employees,${report.totalEmployees}\n` +
+        `Total Benefit Deductions,$${report.totalBenefitDeductions.toFixed(2)}\n`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="benefits-report.csv"');
+      res.send(csvContent);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export benefits report", error: (error as Error).message });
+    }
+  });
+
   app.get("/api/payroll/reports/employee/:employeeId", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { employeeId } = req.params;

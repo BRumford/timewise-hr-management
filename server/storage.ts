@@ -535,78 +535,164 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+
+
   async getPayrollSummaryReport(startDate: Date, endDate: Date): Promise<any> {
-    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    const records = await db.select()
+      .from(payrollRecords)
+      .where(
+        and(
+          gte(payrollRecords.payPeriodStart, startDate),
+          lte(payrollRecords.payPeriodEnd, endDate)
+        )
+      );
+
+    if (records.length === 0) {
+      return {
+        period: { startDate, endDate },
+        summary: {
+          totalEmployees: 0,
+          totalRecords: 0,
+          totalGrossPay: 0,
+          totalNetPay: 0,
+          totalTaxes: 0,
+          totalDeductions: 0
+        },
+        detailedRecords: []
+      };
+    }
+
     const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
-    
-    // Get employee details
-    const employeeData = await db.select().from(employees).where(
-      inArray(employees.id, employeeIds)
-    );
-    const employeeMap = new Map(employeeData.map(emp => [emp.id, emp]));
-    
-    // Calculate totals
     const totalGrossPay = records.reduce((sum, record) => sum + parseFloat(record.grossPay || '0'), 0);
     const totalNetPay = records.reduce((sum, record) => sum + parseFloat(record.netPay || '0'), 0);
-    const totalDeductions = records.reduce((sum, record) => sum + parseFloat(record.totalDeductions || '0'), 0);
-    const totalTaxes = records.reduce((sum, record) => {
-      const federal = parseFloat(record.federalTax || '0');
-      const state = parseFloat(record.stateTax || '0');
-      const social = parseFloat(record.socialSecurityTax || '0');
-      const medicare = parseFloat(record.medicareTax || '0');
-      const unemployment = parseFloat(record.unemploymentTax || '0');
-      return sum + federal + state + social + medicare + unemployment;
-    }, 0);
+    const totalDeductions = records.reduce((sum, record) => sum + parseFloat(record.deductions || '0'), 0);
     
+    // Calculate taxes from payroll_details JSON
+    const totalTaxes = records.reduce((sum, record) => {
+      const details = record.payrollDetails as any;
+      if (details) {
+        const federal = parseFloat(details.federalTax || '0');
+        const state = parseFloat(details.stateTax || '0');
+        const social = parseFloat(details.socialSecurityTax || '0');
+        const medicare = parseFloat(details.medicareTax || '0');
+        const unemployment = parseFloat(details.unemploymentTax || '0');
+        const disability = parseFloat(details.stateDisabilityTax || '0');
+        return sum + federal + state + social + medicare + unemployment + disability;
+      }
+      return sum;
+    }, 0);
+
     return {
       period: { startDate, endDate },
       summary: {
         totalEmployees: employeeIds.length,
+        totalRecords: records.length,
         totalGrossPay,
         totalNetPay,
-        totalDeductions,
         totalTaxes,
-        totalRecords: records.length
+        totalDeductions
       },
-      detailedRecords: records.map(record => ({
-        ...record,
-        employee: employeeMap.get(record.employeeId)
-      }))
+      detailedRecords: records
     };
   }
 
   async getTaxLiabilityReport(startDate: Date, endDate: Date): Promise<any> {
-    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    const records = await db.select()
+      .from(payrollRecords)
+      .where(
+        and(
+          gte(payrollRecords.payPeriodStart, startDate),
+          lte(payrollRecords.payPeriodEnd, endDate)
+        )
+      );
+
+    if (records.length === 0) {
+      return {
+        period: { startDate, endDate },
+        federalTax: 0,
+        stateTax: 0,
+        socialSecurityTax: 0,
+        medicareTax: 0,
+        unemploymentTax: 0,
+        disabilityTax: 0,
+        totalTaxLiability: 0
+      };
+    }
+
+    // Calculate taxes from payroll_details JSON
+    const federalTax = records.reduce((sum, r) => {
+      const details = r.payrollDetails as any;
+      return sum + parseFloat(details?.federalTax || '0');
+    }, 0);
     
-    // Calculate tax liabilities by type
-    const taxLiabilities = records.reduce((acc, record) => {
-      const federalTax = parseFloat(record.federalTax || '0');
-      const stateTax = parseFloat(record.stateTax || '0');
-      const socialSecurity = parseFloat(record.socialSecurityTax || '0');
-      const medicare = parseFloat(record.medicareTax || '0');
-      const unemployment = parseFloat(record.unemploymentTax || '0');
-      
-      acc.federal += federalTax;
-      acc.state += stateTax;
-      acc.socialSecurity += socialSecurity;
-      acc.medicare += medicare;
-      acc.unemployment += unemployment;
-      acc.total += federalTax + stateTax + socialSecurity + medicare + unemployment;
-      
-      return acc;
-    }, {
-      federal: 0,
-      state: 0,
-      socialSecurity: 0,
-      medicare: 0,
-      unemployment: 0,
-      total: 0
-    });
+    const stateTax = records.reduce((sum, r) => {
+      const details = r.payrollDetails as any;
+      return sum + parseFloat(details?.stateTax || '0');
+    }, 0);
+    
+    const socialSecurityTax = records.reduce((sum, r) => {
+      const details = r.payrollDetails as any;
+      return sum + parseFloat(details?.socialSecurityTax || '0');
+    }, 0);
+    
+    const medicareTax = records.reduce((sum, r) => {
+      const details = r.payrollDetails as any;
+      return sum + parseFloat(details?.medicareTax || '0');
+    }, 0);
+    
+    const unemploymentTax = records.reduce((sum, r) => {
+      const details = r.payrollDetails as any;
+      return sum + parseFloat(details?.unemploymentTax || '0');
+    }, 0);
+    
+    const disabilityTax = records.reduce((sum, r) => {
+      const details = r.payrollDetails as any;
+      return sum + parseFloat(details?.stateDisabilityTax || '0');
+    }, 0);
     
     return {
       period: { startDate, endDate },
-      taxLiabilities,
-      totalRecords: records.length
+      federalTax,
+      stateTax,
+      socialSecurityTax,
+      medicareTax,
+      unemploymentTax,
+      disabilityTax,
+      totalTaxLiability: federalTax + stateTax + socialSecurityTax + medicareTax + unemploymentTax + disabilityTax
+    };
+  }
+
+  async getBenefitsReport(startDate: Date, endDate: Date): Promise<any> {
+    const elections = await db.select()
+      .from(employeeBenefitElections)
+      .where(
+        and(
+          gte(employeeBenefitElections.createdAt, startDate),
+          lte(employeeBenefitElections.createdAt, endDate)
+        )
+      );
+
+    const totalEmployees = new Set(elections.map(e => e.employeeId)).size;
+    const totalBenefitDeductions = elections.reduce((sum, e) => sum + parseFloat(e.employeeContribution || '0'), 0);
+
+    return {
+      period: { startDate, endDate },
+      totalEmployees,
+      totalBenefitDeductions,
+      benefitBreakdown: elections.reduce((acc, election) => {
+        const key = election.benefitType;
+        if (!acc[key]) {
+          acc[key] = {
+            totalEmployees: 0,
+            totalDeductions: 0,
+            elections: []
+          };
+        }
+        acc[key].totalEmployees += 1;
+        acc[key].totalDeductions += parseFloat(election.employeeContribution || '0');
+        acc[key].elections.push(election);
+        return acc;
+      }, {} as Record<string, any>)
     };
   }
 
@@ -788,9 +874,96 @@ export class DatabaseStorage implements IStorage {
     return newBatch;
   }
 
-  // Simple Benefits Report
+  // Payroll Reports
+  async getPayrollSummaryReport(startDate: Date, endDate: Date): Promise<any> {
+    const records = await db.select()
+      .from(payrollRecords)
+      .where(
+        and(
+          gte(payrollRecords.payPeriodStart, startDate),
+          lte(payrollRecords.payPeriodEnd, endDate)
+        )
+      );
+
+    if (records.length === 0) {
+      return {
+        summary: {
+          totalEmployees: 0,
+          totalRecords: 0,
+          totalGrossPay: 0,
+          totalNetPay: 0,
+          totalTaxes: 0,
+          totalDeductions: 0
+        }
+      };
+    }
+
+    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
+    const summary = {
+      totalEmployees: employeeIds.length,
+      totalRecords: records.length,
+      totalGrossPay: records.reduce((sum, r) => sum + parseFloat(r.grossPay || '0'), 0),
+      totalNetPay: records.reduce((sum, r) => sum + parseFloat(r.netPay || '0'), 0),
+      totalTaxes: records.reduce((sum, r) => 
+        sum + parseFloat(r.federalTax || '0') + parseFloat(r.stateTax || '0') + 
+        parseFloat(r.socialSecurityTax || '0') + parseFloat(r.medicareTax || '0'), 0),
+      totalDeductions: records.reduce((sum, r) => sum + parseFloat(r.totalDeductions || '0'), 0)
+    };
+
+    return { summary };
+  }
+
+  async getTaxLiabilityReport(startDate: Date, endDate: Date): Promise<any> {
+    const records = await db.select()
+      .from(payrollRecords)
+      .where(
+        and(
+          gte(payrollRecords.payPeriodStart, startDate),
+          lte(payrollRecords.payPeriodEnd, endDate)
+        )
+      );
+
+    if (records.length === 0) {
+      return {
+        period: { startDate, endDate },
+        federalTax: 0,
+        stateTax: 0,
+        socialSecurityTax: 0,
+        medicareTax: 0,
+        unemploymentTax: 0,
+        disabilityTax: 0,
+        totalTaxLiability: 0
+      };
+    }
+
+    const taxLiability = {
+      period: { startDate, endDate },
+      federalTax: records.reduce((sum, r) => sum + parseFloat(r.federalTax || '0'), 0),
+      stateTax: records.reduce((sum, r) => sum + parseFloat(r.stateTax || '0'), 0),
+      socialSecurityTax: records.reduce((sum, r) => sum + parseFloat(r.socialSecurityTax || '0'), 0),
+      medicareTax: records.reduce((sum, r) => sum + parseFloat(r.medicareTax || '0'), 0),
+      unemploymentTax: records.reduce((sum, r) => sum + parseFloat(r.unemploymentTax || '0'), 0),
+      disabilityTax: records.reduce((sum, r) => sum + parseFloat(r.stateDisabilityTax || '0'), 0),
+      totalTaxLiability: 0
+    };
+
+    taxLiability.totalTaxLiability = 
+      taxLiability.federalTax + taxLiability.stateTax + 
+      taxLiability.socialSecurityTax + taxLiability.medicareTax + 
+      taxLiability.unemploymentTax + taxLiability.disabilityTax;
+
+    return taxLiability;
+  }
+
   async getBenefitsReport(startDate: Date, endDate: Date): Promise<any> {
-    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    const records = await db.select()
+      .from(payrollRecords)
+      .where(
+        and(
+          gte(payrollRecords.payPeriodStart, startDate),
+          lte(payrollRecords.payPeriodEnd, endDate)
+        )
+      );
     
     if (records.length === 0) {
       return {
@@ -802,12 +975,12 @@ export class DatabaseStorage implements IStorage {
       };
     }
 
+    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
     const benefitElections = await db.select()
       .from(employeeBenefitElections)
-      .where(inArray(employeeBenefitElections.employeeId, records.map(r => r.employeeId)));
+      .where(inArray(employeeBenefitElections.employeeId, employeeIds));
 
-    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
-    const employees = await db.select()
+    const employeeList = await db.select()
       .from(employees)
       .where(inArray(employees.id, employeeIds));
 
@@ -816,7 +989,7 @@ export class DatabaseStorage implements IStorage {
       totalEmployees: employeeIds.length,
       totalBenefitDeductions: records.reduce((sum, r) => sum + parseFloat(r.totalDeductions || '0'), 0),
       benefitTypes: this.groupBenefitsByType(benefitElections),
-      employeeBenefits: this.getEmployeeBenefitsBreakdown(records, employees, benefitElections)
+      employeeBenefits: this.getEmployeeBenefitsBreakdown(records, employeeList, benefitElections)
     };
 
     return benefitsSummary;

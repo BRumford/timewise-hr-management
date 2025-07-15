@@ -69,6 +69,11 @@ export default function Reports() {
     }).format(amount || 0);
   };
 
+  const handleExport = (reportType: string) => {
+    const url = `/api/payroll/reports/${reportType}/export?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
+    window.open(url, '_blank');
+  };
+
   const reports = [
     {
       id: 1,
@@ -509,7 +514,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full">
+                  <Button className="w-full" onClick={() => handleExport('summary')}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Payroll Summary Report
                   </Button>
@@ -599,7 +604,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full">
+                  <Button className="w-full" onClick={() => handleExport('tax-liability')}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Tax Liability Report
                   </Button>
@@ -637,7 +642,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full">
+                  <Button className="w-full" onClick={() => handleExport('benefits')}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Benefits Report
                   </Button>

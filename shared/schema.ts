@@ -102,43 +102,21 @@ export const substituteAssignments = pgTable("substitute_assignments", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Payroll records table
+// Payroll records table (simplified version that matches actual database)
 export const payrollRecords = pgTable("payroll_records", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull(),
   payPeriodStart: timestamp("pay_period_start").notNull(),
   payPeriodEnd: timestamp("pay_period_end").notNull(),
   grossPay: decimal("gross_pay", { precision: 10, scale: 2 }).notNull(),
-  regularPay: decimal("regular_pay", { precision: 10, scale: 2 }).notNull(),
-  overtimePay: decimal("overtime_pay", { precision: 10, scale: 2 }).default("0"),
-  // Tax withholdings
-  federalTax: decimal("federal_tax", { precision: 10, scale: 2 }).default("0"),
-  stateTax: decimal("state_tax", { precision: 10, scale: 2 }).default("0"),
-  socialSecurityTax: decimal("social_security_tax", { precision: 10, scale: 2 }).default("0"),
-  medicareTax: decimal("medicare_tax", { precision: 10, scale: 2 }).default("0"),
-  stateDisabilityTax: decimal("state_disability_tax", { precision: 10, scale: 2 }).default("0"),
-  unemploymentTax: decimal("unemployment_tax", { precision: 10, scale: 2 }).default("0"),
-  // Benefit deductions
-  healthInsurance: decimal("health_insurance", { precision: 10, scale: 2 }).default("0"),
-  dentalInsurance: decimal("dental_insurance", { precision: 10, scale: 2 }).default("0"),
-  visionInsurance: decimal("vision_insurance", { precision: 10, scale: 2 }).default("0"),
-  retirement401k: decimal("retirement_401k", { precision: 10, scale: 2 }).default("0"),
-  pensionContribution: decimal("pension_contribution", { precision: 10, scale: 2 }).default("0"),
-  unionDues: decimal("union_dues", { precision: 10, scale: 2 }).default("0"),
-  // Other deductions
-  otherDeductions: decimal("other_deductions", { precision: 10, scale: 2 }).default("0"),
-  totalDeductions: decimal("total_deductions", { precision: 10, scale: 2 }).default("0"),
+  deductions: decimal("deductions", { precision: 10, scale: 2 }).default("0"),
   netPay: decimal("net_pay", { precision: 10, scale: 2 }).notNull(),
   hoursWorked: decimal("hours_worked", { precision: 5, scale: 2 }),
   overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
-  payrollDetails: jsonb("payroll_details"), // store detailed breakdown
+  payrollDetails: jsonb("payroll_details"), // store detailed breakdown of taxes and benefits
   processed: boolean("processed").default(false),
   processedAt: timestamp("processed_at"),
-  payDate: timestamp("pay_date"),
-  status: varchar("status").notNull().default("draft"), // draft, processed, paid, cancelled
-  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Tax withholding configurations
