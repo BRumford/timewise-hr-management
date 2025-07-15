@@ -197,8 +197,38 @@ export class DatabaseStorage implements IStorage {
 
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
     const [newEmployee] = await db.insert(employees).values(employee).returning();
+    
+    // Automatically create a time card for the new employee
+    const currentDate = new Date();
+    const timeCardData = {
+      employeeId: newEmployee.id,
+      date: currentDate,
+      totalHours: "0",
+      status: 'draft' as const,
+      notes: 'Automatically created for new employee',
+      currentApprovalStage: 'secretary' as const,
+    };
+    
+    try {
+      await db.insert(timeCards).values(timeCardData);
+      
+      // Create activity log for the automatic time card creation
+      await this.createActivityLog({
+        action: 'time_card_created',
+        description: `Time card automatically created for new employee ${newEmployee.firstName} ${newEmployee.lastName}`,
+        userId: 'system',
+        entityType: 'employee',
+        entityId: newEmployee.id,
+      });
+    } catch (error) {
+      console.error('Error creating automatic time card for new employee:', error);
+      // Don't fail the employee creation if time card creation fails
+    }
+    
     return newEmployee;
   }
+
+
 
   async updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee> {
     const [updatedEmployee] = await db
@@ -239,6 +269,34 @@ export class DatabaseStorage implements IStorage {
         } else {
           // Create new employee
           const [created] = await db.insert(employees).values(employeeData).returning();
+          
+          // Automatically create a time card for the new employee
+          const currentDate = new Date();
+          const timeCardData = {
+            employeeId: created.id,
+            date: currentDate,
+            totalHours: "0",
+            status: 'draft' as const,
+            notes: 'Automatically created for imported employee',
+            currentApprovalStage: 'secretary' as const,
+          };
+          
+          try {
+            await db.insert(timeCards).values(timeCardData);
+            
+            // Create activity log for the automatic time card creation
+            await this.createActivityLog({
+              action: 'time_card_created',
+              description: `Time card automatically created for imported employee ${created.firstName} ${created.lastName}`,
+              userId: 'system',
+              entityType: 'employee',
+              entityId: created.id,
+            });
+          } catch (timeCardError) {
+            console.error('Error creating automatic time card for imported employee:', timeCardError);
+            // Don't fail the import if time card creation fails
+          }
+          
           importedEmployees.push(created);
         }
       } catch (error) {
