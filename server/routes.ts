@@ -941,6 +941,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+
   app.post("/api/payroll", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const payrollData = insertPayrollRecordSchema.parse(req.body);
@@ -967,6 +969,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analysis);
     } catch (error) {
       res.status(500).json({ message: "Failed to analyze payroll data", error: (error as Error).message });
+    }
+  });
+
+  // Payroll Reporting Routes
+  app.get("/api/payroll/reports/summary", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getPayrollSummaryReport(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate payroll summary report", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/payroll/reports/tax-liability", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getTaxLiabilityReport(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate tax liability report", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/payroll/reports/employee/:employeeId", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getEmployeePayrollReport(
+        parseInt(employeeId),
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate employee payroll report", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/payroll/reports/compliance", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getPayrollComplianceReport(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate compliance report", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/payroll/reports/cost-analysis", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getPayrollCostAnalysis(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate cost analysis report", error: (error as Error).message });
     }
   });
 

@@ -66,6 +66,13 @@ export default function Payroll() {
     effectiveDate: ''
   });
 
+  const [reportData, setReportData] = useState({
+    startDate: '',
+    endDate: '',
+    employeeId: '',
+    reportType: 'summary'
+  });
+
   const { data: payrollRecords, isLoading } = useQuery({
     queryKey: ["/api/payroll"],
   });
@@ -280,6 +287,38 @@ export default function Payroll() {
       return;
     }
     createBenefitMutation.mutate(benefitData);
+  };
+
+  const generateReport = async (reportType: string) => {
+    try {
+      const params = new URLSearchParams({
+        startDate: reportData.startDate,
+        endDate: reportData.endDate,
+        ...(reportType === 'employee' && reportData.employeeId && { employeeId: reportData.employeeId })
+      });
+      
+      const response = await fetch(`/api/payroll/reports/${reportType}?${params}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reportType}-report-${reportData.startDate}-to-${reportData.endDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Success",
+        description: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to generate ${reportType} report.`,
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading || summaryLoading) {
@@ -629,10 +668,11 @@ export default function Payroll() {
       </div>
 
       <Tabs defaultValue="payroll" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="payroll">Payroll Records</TabsTrigger>
           <TabsTrigger value="taxes">Tax Configuration</TabsTrigger>
           <TabsTrigger value="benefits">Benefits & Deductions</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
         
         <TabsContent value="payroll" className="space-y-4">
@@ -800,6 +840,194 @@ export default function Payroll() {
                     <p>Set up health insurance, retirement plans, and other employee benefits.</p>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payroll Reports</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="h-8 w-8 text-blue-600" />
+                    <div>
+                      <h3 className="font-semibold">Payroll Summary</h3>
+                      <p className="text-sm text-gray-600">Complete payroll overview by date range</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex space-x-2">
+                      <Input
+                        type="date"
+                        value={reportData.startDate}
+                        onChange={(e) => setReportData({...reportData, startDate: e.target.value})}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="date"
+                        value={reportData.endDate}
+                        onChange={(e) => setReportData({...reportData, endDate: e.target.value})}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      className="w-full"
+                      onClick={() => generateReport('summary')}
+                      disabled={!reportData.startDate || !reportData.endDate}
+                    >
+                      Generate Report
+                    </Button>
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <Receipt className="h-8 w-8 text-green-600" />
+                    <div>
+                      <h3 className="font-semibold">Tax Liability</h3>
+                      <p className="text-sm text-gray-600">Tax withholdings and liabilities</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex space-x-2">
+                      <Input
+                        type="date"
+                        value={reportData.startDate}
+                        onChange={(e) => setReportData({...reportData, startDate: e.target.value})}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="date"
+                        value={reportData.endDate}
+                        onChange={(e) => setReportData({...reportData, endDate: e.target.value})}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      className="w-full"
+                      onClick={() => generateReport('tax-liability')}
+                      disabled={!reportData.startDate || !reportData.endDate}
+                    >
+                      Generate Report
+                    </Button>
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <Users className="h-8 w-8 text-purple-600" />
+                    <div>
+                      <h3 className="font-semibold">Employee Report</h3>
+                      <p className="text-sm text-gray-600">Individual employee payroll details</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <Select value={reportData.employeeId} onValueChange={(value) => setReportData({...reportData, employeeId: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees?.map((employee: any) => (
+                          <SelectItem key={employee.id} value={employee.id.toString()}>
+                            {employee.firstName} {employee.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex space-x-2">
+                      <Input
+                        type="date"
+                        value={reportData.startDate}
+                        onChange={(e) => setReportData({...reportData, startDate: e.target.value})}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="date"
+                        value={reportData.endDate}
+                        onChange={(e) => setReportData({...reportData, endDate: e.target.value})}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      className="w-full"
+                      onClick={() => generateReport('employee')}
+                      disabled={!reportData.employeeId || !reportData.startDate || !reportData.endDate}
+                    >
+                      Generate Report
+                    </Button>
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <Building className="h-8 w-8 text-orange-600" />
+                    <div>
+                      <h3 className="font-semibold">Compliance Report</h3>
+                      <p className="text-sm text-gray-600">Payroll compliance and audit trail</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex space-x-2">
+                      <Input
+                        type="date"
+                        value={reportData.startDate}
+                        onChange={(e) => setReportData({...reportData, startDate: e.target.value})}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="date"
+                        value={reportData.endDate}
+                        onChange={(e) => setReportData({...reportData, endDate: e.target.value})}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      className="w-full"
+                      onClick={() => generateReport('compliance')}
+                      disabled={!reportData.startDate || !reportData.endDate}
+                    >
+                      Generate Report
+                    </Button>
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <DollarSign className="h-8 w-8 text-red-600" />
+                    <div>
+                      <h3 className="font-semibold">Cost Analysis</h3>
+                      <p className="text-sm text-gray-600">Payroll cost breakdown by department</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex space-x-2">
+                      <Input
+                        type="date"
+                        value={reportData.startDate}
+                        onChange={(e) => setReportData({...reportData, startDate: e.target.value})}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="date"
+                        value={reportData.endDate}
+                        onChange={(e) => setReportData({...reportData, endDate: e.target.value})}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      className="w-full"
+                      onClick={() => generateReport('cost-analysis')}
+                      disabled={!reportData.startDate || !reportData.endDate}
+                    >
+                      Generate Report
+                    </Button>
+                  </div>
+                </Card>
               </div>
             </CardContent>
           </Card>

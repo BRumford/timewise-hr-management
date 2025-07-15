@@ -74,7 +74,7 @@ import {
   type InsertCustomFieldLabel,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, or, count, sql, ne } from "drizzle-orm";
+import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for authentication)
@@ -113,6 +113,14 @@ export interface IStorage {
   createPayrollRecord(record: InsertPayrollRecord): Promise<PayrollRecord>;
   getPayrollRecordsByEmployee(employeeId: number): Promise<PayrollRecord[]>;
   getCurrentPayrollSummary(): Promise<any>;
+  getPayrollRecordsByPeriod(startDate: Date, endDate: Date): Promise<PayrollRecord[]>;
+  
+  // Payroll Reporting
+  getPayrollSummaryReport(startDate: Date, endDate: Date): Promise<any>;
+  getTaxLiabilityReport(startDate: Date, endDate: Date): Promise<any>;
+  getEmployeePayrollReport(employeeId: number, startDate: Date, endDate: Date): Promise<any>;
+  getPayrollComplianceReport(startDate: Date, endDate: Date): Promise<any>;
+  getPayrollCostAnalysis(startDate: Date, endDate: Date): Promise<any>;
   
   // Document management
   getDocuments(): Promise<Document[]>;
@@ -300,7 +308,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
-    const [newEmployee] = await db.insert(employees).values(employee).returning();
+    const cleanedEmployee = Object.fromEntries(
+      Object.entries(employee).filter(([_, value]) => value !== undefined)
+    ) as InsertEmployee;
+    
+    const [newEmployee] = await db.insert(employees).values([cleanedEmployee]).returning();
     
     // Automatically create a time card for the new employee
     const currentDate = new Date();
@@ -372,7 +384,11 @@ export class DatabaseStorage implements IStorage {
           importedEmployees.push(updated);
         } else {
           // Create new employee
-          const [created] = await db.insert(employees).values(employeeData).returning();
+          const cleanedData = Object.fromEntries(
+            Object.entries(employeeData).filter(([_, value]) => value !== undefined)
+          ) as InsertEmployee;
+          
+          const [created] = await db.insert(employees).values([cleanedData]).returning();
           importedEmployees.push(created);
         }
       } catch (error) {
@@ -487,6 +503,211 @@ export class DatabaseStorage implements IStorage {
       .where(gte(payrollRecords.payPeriodStart, currentMonth));
     
     return summary;
+  }
+
+  async getPayrollRecordsByPeriod(startDate: Date, endDate: Date): Promise<PayrollRecord[]> {
+    return await db.select().from(payrollRecords).where(
+      and(
+        gte(payrollRecords.payPeriodStart, startDate),
+        lte(payrollRecords.payPeriodEnd, endDate)
+      )
+    );
+  }
+
+  async getPayrollSummaryReport(startDate: Date, endDate: Date): Promise<any> {
+    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
+    
+    // Get employee details
+    const employeeData = await db.select().from(employees).where(
+      inArray(employees.id, employeeIds)
+    );
+    const employeeMap = new Map(employeeData.map(emp => [emp.id, emp]));
+    
+    // Calculate totals
+    const totalGrossPay = records.reduce((sum, record) => sum + parseFloat(record.grossPay || '0'), 0);
+    const totalNetPay = records.reduce((sum, record) => sum + parseFloat(record.netPay || '0'), 0);
+    const totalDeductions = records.reduce((sum, record) => sum + parseFloat(record.totalDeductions || '0'), 0);
+    const totalTaxes = records.reduce((sum, record) => {
+      const federal = parseFloat(record.federalTax || '0');
+      const state = parseFloat(record.stateTax || '0');
+      const social = parseFloat(record.socialSecurityTax || '0');
+      const medicare = parseFloat(record.medicareTax || '0');
+      const unemployment = parseFloat(record.unemploymentTax || '0');
+      return sum + federal + state + social + medicare + unemployment;
+    }, 0);
+    
+    return {
+      period: { startDate, endDate },
+      summary: {
+        totalEmployees: employeeIds.length,
+        totalGrossPay,
+        totalNetPay,
+        totalDeductions,
+        totalTaxes,
+        totalRecords: records.length
+      },
+      detailedRecords: records.map(record => ({
+        ...record,
+        employee: employeeMap.get(record.employeeId)
+      }))
+    };
+  }
+
+  async getTaxLiabilityReport(startDate: Date, endDate: Date): Promise<any> {
+    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    
+    // Calculate tax liabilities by type
+    const taxLiabilities = records.reduce((acc, record) => {
+      const federalTax = parseFloat(record.federalTax || '0');
+      const stateTax = parseFloat(record.stateTax || '0');
+      const socialSecurity = parseFloat(record.socialSecurityTax || '0');
+      const medicare = parseFloat(record.medicareTax || '0');
+      const unemployment = parseFloat(record.unemploymentTax || '0');
+      
+      acc.federal += federalTax;
+      acc.state += stateTax;
+      acc.socialSecurity += socialSecurity;
+      acc.medicare += medicare;
+      acc.unemployment += unemployment;
+      acc.total += federalTax + stateTax + socialSecurity + medicare + unemployment;
+      
+      return acc;
+    }, {
+      federal: 0,
+      state: 0,
+      socialSecurity: 0,
+      medicare: 0,
+      unemployment: 0,
+      total: 0
+    });
+    
+    return {
+      period: { startDate, endDate },
+      taxLiabilities,
+      totalRecords: records.length
+    };
+  }
+
+  async getEmployeePayrollReport(employeeId: number, startDate: Date, endDate: Date): Promise<any> {
+    const employee = await this.getEmployee(employeeId);
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+    
+    const records = await db.select().from(payrollRecords).where(
+      and(
+        eq(payrollRecords.employeeId, employeeId),
+        gte(payrollRecords.payPeriodStart, startDate),
+        lte(payrollRecords.payPeriodEnd, endDate)
+      )
+    );
+    
+    const totals = records.reduce((acc, record) => {
+      acc.grossPay += parseFloat(record.grossPay || '0');
+      acc.netPay += parseFloat(record.netPay || '0');
+      acc.totalDeductions += parseFloat(record.totalDeductions || '0');
+      const taxes = parseFloat(record.federalTax || '0') + parseFloat(record.stateTax || '0') + parseFloat(record.socialSecurityTax || '0') + parseFloat(record.medicareTax || '0') + parseFloat(record.unemploymentTax || '0');
+      acc.totalTaxes += taxes;
+      acc.regularHours += parseFloat(record.regularPay || '0') / 20; // Estimate hours from pay
+      acc.overtimeHours += parseFloat(record.overtimePay || '0') / 30; // Estimate hours from pay
+      return acc;
+    }, {
+      grossPay: 0,
+      netPay: 0,
+      totalDeductions: 0,
+      totalTaxes: 0,
+      regularHours: 0,
+      overtimeHours: 0
+    });
+    
+    return {
+      employee,
+      period: { startDate, endDate },
+      records,
+      totals,
+      recordCount: records.length
+    };
+  }
+
+  async getPayrollComplianceReport(startDate: Date, endDate: Date): Promise<any> {
+    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
+    
+    const employeeData = await db.select().from(employees).where(
+      inArray(employees.id, employeeIds)
+    );
+    
+    const complianceIssues = [];
+    
+    // Check for overtime compliance
+    const overtimeViolations = records.filter(record => 
+      parseFloat(record.overtimePay || '0') > 0 && 
+      parseFloat(record.regularPay || '0') < 800 // Assuming 40 hours * $20/hour
+    );
+    
+    if (overtimeViolations.length > 0) {
+      complianceIssues.push({
+        type: 'Overtime Calculation Issues',
+        severity: 'Medium',
+        count: overtimeViolations.length,
+        description: 'Records with overtime pay but low regular pay'
+      });
+    }
+    
+    return {
+      period: { startDate, endDate },
+      complianceIssues,
+      totalRecords: records.length,
+      totalEmployees: employeeIds.length,
+      complianceScore: complianceIssues.length === 0 ? 100 : Math.max(0, 100 - (complianceIssues.length * 10))
+    };
+  }
+
+  async getPayrollCostAnalysis(startDate: Date, endDate: Date): Promise<any> {
+    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
+    
+    const employeeData = await db.select().from(employees).where(
+      inArray(employees.id, employeeIds)
+    );
+    const employeeMap = new Map(employeeData.map(emp => [emp.id, emp]));
+    
+    // Calculate cost analysis by department
+    const departmentCosts = records.reduce((acc, record) => {
+      const employee = employeeMap.get(record.employeeId);
+      const dept = employee?.department || 'Unknown';
+      
+      if (!acc[dept]) {
+        acc[dept] = {
+          department: dept,
+          employeeCount: 0,
+          grossPay: 0,
+          benefits: 0,
+          taxes: 0,
+          totalCost: 0
+        };
+      }
+      
+      const grossPay = parseFloat(record.grossPay || '0');
+      const benefits = parseFloat(record.totalDeductions || '0');
+      const taxes = parseFloat(record.federalTax || '0') + parseFloat(record.stateTax || '0') + parseFloat(record.socialSecurityTax || '0') + parseFloat(record.medicareTax || '0') + parseFloat(record.unemploymentTax || '0');
+      
+      acc[dept].employeeCount++;
+      acc[dept].grossPay += grossPay;
+      acc[dept].benefits += benefits;
+      acc[dept].taxes += taxes;
+      acc[dept].totalCost += grossPay + benefits + taxes;
+      
+      return acc;
+    }, {} as any);
+    
+    return {
+      period: { startDate, endDate },
+      departmentCosts: Object.values(departmentCosts),
+      totalRecords: records.length,
+      totalEmployees: employeeIds.length
+    };
   }
 
   // Tax configuration management
