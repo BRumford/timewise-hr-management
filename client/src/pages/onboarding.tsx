@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,8 +59,6 @@ export default function Onboarding() {
   const [createMode, setCreateMode] = useState<"new" | "existing">("new");
   const [selectedExistingForm, setSelectedExistingForm] = useState<OnboardingForm | null>(null);
   const [isStartWorkflowDialogOpen, setIsStartWorkflowDialogOpen] = useState(false);
-  
-  console.log("Dialog state:", isStartWorkflowDialogOpen);
   const { toast } = useToast();
 
   const { data: workflows, isLoading } = useQuery({
@@ -92,7 +90,7 @@ export default function Onboarding() {
   const workflowForm = useForm<WorkflowFormData>({
     resolver: zodResolver(workflowFormSchema),
     defaultValues: {
-      employeeId: 0,
+      employeeId: undefined,
       assignedTo: "",
       status: "started",
       workflowType: "new_hire",
@@ -401,13 +399,7 @@ export default function Onboarding() {
                 </select>
                 <Button 
                   className="bg-primary hover:bg-blue-700"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Start Onboarding button clicked");
-                    alert("Button clicked! Opening dialog...");
-                    setIsStartWorkflowDialogOpen(true);
-                  }}
+                  onClick={() => setIsStartWorkflowDialogOpen(true)}
                 >
                   <UserPlus className="mr-2 h-4 w-4" />
                   Start Onboarding
@@ -898,6 +890,9 @@ export default function Onboarding() {
         <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Start Onboarding Workflow</DialogTitle>
+            <DialogDescription>
+              Create a new onboarding workflow for an employee. Select the employee, workflow type, and other details to get started.
+            </DialogDescription>
           </DialogHeader>
           <Form {...workflowForm}>
             <form onSubmit={workflowForm.handleSubmit((data) => startWorkflowMutation.mutate(data))} className="space-y-4">
@@ -907,7 +902,7 @@ export default function Onboarding() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Select Employee</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString() || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Choose an employee" />
@@ -932,7 +927,7 @@ export default function Onboarding() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Workflow Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select workflow type" />
