@@ -69,9 +69,28 @@ export default function Reports() {
     }).format(amount || 0);
   };
 
-  const handleExport = (reportType: string) => {
-    const url = `/api/payroll/reports/${reportType}/export?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
-    window.open(url, '_blank');
+  const handleExport = async (reportType: string) => {
+    try {
+      const url = `/api/payroll/reports/${reportType}/export?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${reportType}-report-${dateRange.startDate}-to-${dateRange.endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export failed. Please try again.');
+    }
   };
 
   const reports = [

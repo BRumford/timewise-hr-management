@@ -316,14 +316,19 @@ export class DatabaseStorage implements IStorage {
       cleanedEmployee.hireDate = new Date(cleanedEmployee.hireDate);
     }
     
-    // Remove undefined values
+    // Remove undefined values and handle hireDate
     Object.keys(cleanedEmployee).forEach(key => {
       if (cleanedEmployee[key as keyof InsertEmployee] === undefined) {
         delete cleanedEmployee[key as keyof InsertEmployee];
       }
     });
     
-    const [newEmployee] = await db.insert(employees).values([cleanedEmployee]).returning();
+    // Ensure hireDate is not undefined if it exists
+    if (cleanedEmployee.hireDate === undefined) {
+      delete cleanedEmployee.hireDate;
+    }
+    
+    const [newEmployee] = await db.insert(employees).values(cleanedEmployee).returning();
     
     // Automatically create a time card for the new employee
     const currentDate = new Date();
@@ -409,7 +414,14 @@ export class DatabaseStorage implements IStorage {
             }
           });
           
-          const [created] = await db.insert(employees).values([cleanedData]).returning();
+          // Remove undefined values including hireDate
+          Object.keys(cleanedData).forEach(key => {
+            if (cleanedData[key as keyof InsertEmployee] === undefined) {
+              delete cleanedData[key as keyof InsertEmployee];
+            }
+          });
+          
+          const [created] = await db.insert(employees).values(cleanedData).returning();
           importedEmployees.push(created);
         }
       } catch (error) {
@@ -517,7 +529,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         totalPayroll: sql<number>`sum(${payrollRecords.grossPay})`,
         employeeCount: count(payrollRecords.id),
-        totalDeductions: sql<number>`sum(${payrollRecords.totalDeductions})`,
+        totalDeductions: sql<number>`sum(${payrollRecords.deductions})`,
         totalNetPay: sql<number>`sum(${payrollRecords.netPay})`,
       })
       .from(payrollRecords)
@@ -662,39 +674,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getBenefitsReport(startDate: Date, endDate: Date): Promise<any> {
-    const elections = await db.select()
-      .from(employeeBenefitElections)
-      .where(
-        and(
-          gte(employeeBenefitElections.createdAt, startDate),
-          lte(employeeBenefitElections.createdAt, endDate)
-        )
-      );
-
-    const totalEmployees = new Set(elections.map(e => e.employeeId)).size;
-    const totalBenefitDeductions = elections.reduce((sum, e) => sum + parseFloat(e.employeeContribution || '0'), 0);
-
-    return {
-      period: { startDate, endDate },
-      totalEmployees,
-      totalBenefitDeductions,
-      benefitBreakdown: elections.reduce((acc, election) => {
-        const key = election.benefitType;
-        if (!acc[key]) {
-          acc[key] = {
-            totalEmployees: 0,
-            totalDeductions: 0,
-            elections: []
-          };
-        }
-        acc[key].totalEmployees += 1;
-        acc[key].totalDeductions += parseFloat(election.employeeContribution || '0');
-        acc[key].elections.push(election);
-        return acc;
-      }, {} as Record<string, any>)
-    };
-  }
+  // Removed duplicate getBenefitsReport function
 
   async getEmployeePayrollReport(employeeId: number, startDate: Date, endDate: Date): Promise<any> {
     const employee = await this.getEmployee(employeeId);
@@ -713,11 +693,13 @@ export class DatabaseStorage implements IStorage {
     const totals = records.reduce((acc, record) => {
       acc.grossPay += parseFloat(record.grossPay || '0');
       acc.netPay += parseFloat(record.netPay || '0');
-      acc.totalDeductions += parseFloat(record.totalDeductions || '0');
-      const taxes = parseFloat(record.federalTax || '0') + parseFloat(record.stateTax || '0') + parseFloat(record.socialSecurityTax || '0') + parseFloat(record.medicareTax || '0') + parseFloat(record.unemploymentTax || '0');
+      acc.totalDeductions += parseFloat(record.deductions || '0');
+      // Extract tax details from payrollDetails JSON
+      const details = record.payrollDetails as any;
+      const taxes = parseFloat(details?.federalTax || '0') + parseFloat(details?.stateTax || '0') + parseFloat(details?.socialSecurityTax || '0') + parseFloat(details?.medicareTax || '0') + parseFloat(details?.unemploymentTax || '0');
       acc.totalTaxes += taxes;
-      acc.regularHours += parseFloat(record.regularPay || '0') / 20; // Estimate hours from pay
-      acc.overtimeHours += parseFloat(record.overtimePay || '0') / 30; // Estimate hours from pay
+      acc.regularHours += parseFloat(record.hoursWorked || '0') - parseFloat(record.overtimeHours || '0');
+      acc.overtimeHours += parseFloat(record.overtimeHours || '0');
       return acc;
     }, {
       grossPay: 0,
@@ -749,8 +731,8 @@ export class DatabaseStorage implements IStorage {
     
     // Check for overtime compliance
     const overtimeViolations = records.filter(record => 
-      parseFloat(record.overtimePay || '0') > 0 && 
-      parseFloat(record.regularPay || '0') < 800 // Assuming 40 hours * $20/hour
+      parseFloat(record.overtimeHours || '0') > 0 && 
+      parseFloat(record.hoursWorked || '0') < 40 // Assuming 40 hours regular
     );
     
     if (overtimeViolations.length > 0) {
@@ -797,8 +779,10 @@ export class DatabaseStorage implements IStorage {
       }
       
       const grossPay = parseFloat(record.grossPay || '0');
-      const benefits = parseFloat(record.totalDeductions || '0');
-      const taxes = parseFloat(record.federalTax || '0') + parseFloat(record.stateTax || '0') + parseFloat(record.socialSecurityTax || '0') + parseFloat(record.medicareTax || '0') + parseFloat(record.unemploymentTax || '0');
+      const benefits = parseFloat(record.deductions || '0');
+      // Extract tax details from payrollDetails JSON
+      const details = record.payrollDetails as any;
+      const taxes = parseFloat(details?.federalTax || '0') + parseFloat(details?.stateTax || '0') + parseFloat(details?.socialSecurityTax || '0') + parseFloat(details?.medicareTax || '0') + parseFloat(details?.unemploymentTax || '0');
       
       acc[dept].employeeCount++;
       acc[dept].grossPay += grossPay;
@@ -874,86 +858,9 @@ export class DatabaseStorage implements IStorage {
     return newBatch;
   }
 
-  // Payroll Reports
-  async getPayrollSummaryReport(startDate: Date, endDate: Date): Promise<any> {
-    const records = await db.select()
-      .from(payrollRecords)
-      .where(
-        and(
-          gte(payrollRecords.payPeriodStart, startDate),
-          lte(payrollRecords.payPeriodEnd, endDate)
-        )
-      );
+  // Payroll Reports - removed duplicate function
 
-    if (records.length === 0) {
-      return {
-        summary: {
-          totalEmployees: 0,
-          totalRecords: 0,
-          totalGrossPay: 0,
-          totalNetPay: 0,
-          totalTaxes: 0,
-          totalDeductions: 0
-        }
-      };
-    }
-
-    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
-    const summary = {
-      totalEmployees: employeeIds.length,
-      totalRecords: records.length,
-      totalGrossPay: records.reduce((sum, r) => sum + parseFloat(r.grossPay || '0'), 0),
-      totalNetPay: records.reduce((sum, r) => sum + parseFloat(r.netPay || '0'), 0),
-      totalTaxes: records.reduce((sum, r) => 
-        sum + parseFloat(r.federalTax || '0') + parseFloat(r.stateTax || '0') + 
-        parseFloat(r.socialSecurityTax || '0') + parseFloat(r.medicareTax || '0'), 0),
-      totalDeductions: records.reduce((sum, r) => sum + parseFloat(r.totalDeductions || '0'), 0)
-    };
-
-    return { summary };
-  }
-
-  async getTaxLiabilityReport(startDate: Date, endDate: Date): Promise<any> {
-    const records = await db.select()
-      .from(payrollRecords)
-      .where(
-        and(
-          gte(payrollRecords.payPeriodStart, startDate),
-          lte(payrollRecords.payPeriodEnd, endDate)
-        )
-      );
-
-    if (records.length === 0) {
-      return {
-        period: { startDate, endDate },
-        federalTax: 0,
-        stateTax: 0,
-        socialSecurityTax: 0,
-        medicareTax: 0,
-        unemploymentTax: 0,
-        disabilityTax: 0,
-        totalTaxLiability: 0
-      };
-    }
-
-    const taxLiability = {
-      period: { startDate, endDate },
-      federalTax: records.reduce((sum, r) => sum + parseFloat(r.federalTax || '0'), 0),
-      stateTax: records.reduce((sum, r) => sum + parseFloat(r.stateTax || '0'), 0),
-      socialSecurityTax: records.reduce((sum, r) => sum + parseFloat(r.socialSecurityTax || '0'), 0),
-      medicareTax: records.reduce((sum, r) => sum + parseFloat(r.medicareTax || '0'), 0),
-      unemploymentTax: records.reduce((sum, r) => sum + parseFloat(r.unemploymentTax || '0'), 0),
-      disabilityTax: records.reduce((sum, r) => sum + parseFloat(r.stateDisabilityTax || '0'), 0),
-      totalTaxLiability: 0
-    };
-
-    taxLiability.totalTaxLiability = 
-      taxLiability.federalTax + taxLiability.stateTax + 
-      taxLiability.socialSecurityTax + taxLiability.medicareTax + 
-      taxLiability.unemploymentTax + taxLiability.disabilityTax;
-
-    return taxLiability;
-  }
+  // Removed duplicate getTaxLiabilityReport function
 
   async getBenefitsReport(startDate: Date, endDate: Date): Promise<any> {
     const records = await db.select()
@@ -987,7 +894,7 @@ export class DatabaseStorage implements IStorage {
     const benefitsSummary = {
       period: { startDate, endDate },
       totalEmployees: employeeIds.length,
-      totalBenefitDeductions: records.reduce((sum, r) => sum + parseFloat(r.totalDeductions || '0'), 0),
+      totalBenefitDeductions: records.reduce((sum, r) => sum + parseFloat(r.deductions || '0'), 0),
       benefitTypes: this.groupBenefitsByType(benefitElections),
       employeeBenefits: this.getEmployeeBenefitsBreakdown(records, employeeList, benefitElections)
     };

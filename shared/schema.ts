@@ -623,7 +623,7 @@ export const insertLeaveRequestSchema = z.object({
   approvedBy: z.number().optional(),
   approvedAt: z.date().optional(),
 });
-export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({ id: true, createdAt: true });
 export const insertTaxWithholdingConfigSchema = createInsertSchema(taxWithholdingConfigs).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEmployeeBenefitElectionSchema = createInsertSchema(employeeBenefitElections).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEmployeeTaxWithholdingSchema = createInsertSchema(employeeTaxWithholdings).omit({ id: true, createdAt: true, updatedAt: true });

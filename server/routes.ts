@@ -953,7 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "create_payroll_record",
         entityType: "payroll",
         entityId: payrollRecord.id,
-        description: `Created payroll record for employee ${payrollData.employeeId}`,
+        description: `Created payroll record for employee ${payrollRecord.employeeId}`,
       });
 
       res.status(201).json(payrollRecord);
