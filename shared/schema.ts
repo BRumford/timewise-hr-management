@@ -8,7 +8,8 @@ import {
   timestamp, 
   decimal, 
   jsonb,
-  index
+  index,
+  date
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -224,6 +225,47 @@ export const activityLogs = pgTable("activity_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Extra Pay Activities - Contracts
+export const extraPayContracts = pgTable("extra_pay_contracts", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  status: varchar("status").notNull().default("active"), // active, inactive, expired
+  contractType: varchar("contract_type").notNull(), // coaching, tutoring, after_school, etc.
+  department: varchar("department"),
+  requirements: text("requirements"),
+  documentUrl: varchar("document_url"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Extra Pay Activities - Requests to Pay
+export const extraPayRequests = pgTable("extra_pay_requests", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").references(() => extraPayContracts.id),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  requestedBy: varchar("requested_by").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  hoursWorked: decimal("hours_worked", { precision: 5, scale: 2 }),
+  dateWorked: date("date_worked").notNull(),
+  description: text("description").notNull(),
+  status: varchar("status").notNull().default("pending"), // pending, approved, rejected, paid
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  paidAt: timestamp("paid_at"),
+  notes: text("notes"),
+  supportingDocuments: text("supporting_documents").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   employees: many(employees),
@@ -240,6 +282,7 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
   timeCards: many(timeCards),
   onboardingWorkflow: one(onboardingWorkflows),
   substituteAssignments: many(substituteAssignments),
+  extraPayRequests: many(extraPayRequests),
 }));
 
 export const leaveRequestsRelations = relations(leaveRequests, ({ one, many }) => ({
@@ -286,6 +329,15 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
   user: one(users, { fields: [activityLogs.userId], references: [users.id] }),
 }));
 
+export const extraPayContractsRelations = relations(extraPayContracts, ({ many }) => ({
+  payRequests: many(extraPayRequests),
+}));
+
+export const extraPayRequestsRelations = relations(extraPayRequests, ({ one }) => ({
+  contract: one(extraPayContracts, { fields: [extraPayRequests.contractId], references: [extraPayContracts.id] }),
+  employee: one(employees, { fields: [extraPayRequests.employeeId], references: [employees.id] }),
+}));
+
 // Zod schemas
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({ id: true, createdAt: true, updatedAt: true });
@@ -295,6 +347,8 @@ export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkf
 export const insertTimeCardSchema = createInsertSchema(timeCards).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSubstituteTimeCardSchema = createInsertSchema(substituteTimeCards).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
+export const insertExtraPayContractSchema = createInsertSchema(extraPayContracts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExtraPayRequestSchema = createInsertSchema(extraPayRequests).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -317,3 +371,7 @@ export type InsertSubstituteTimeCard = z.infer<typeof insertSubstituteTimeCardSc
 export type SubstituteTimeCard = typeof substituteTimeCards.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertExtraPayContract = z.infer<typeof insertExtraPayContractSchema>;
+export type ExtraPayContract = typeof extraPayContracts.$inferSelect;
+export type InsertExtraPayRequest = z.infer<typeof insertExtraPayRequestSchema>;
+export type ExtraPayRequest = typeof extraPayRequests.$inferSelect;

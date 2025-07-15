@@ -10,6 +10,8 @@ import {
   timeCards,
   substituteTimeCards,
   activityLogs,
+  extraPayContracts,
+  extraPayRequests,
   type User,
   type UpsertUser,
   type Employee,
@@ -30,6 +32,10 @@ import {
   type InsertSubstituteTimeCard,
   type ActivityLog,
   type InsertActivityLog,
+  type ExtraPayContract,
+  type InsertExtraPayContract,
+  type ExtraPayRequest,
+  type InsertExtraPayRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne } from "drizzle-orm";
@@ -120,6 +126,27 @@ export interface IStorage {
   
   // Dashboard statistics
   getDashboardStats(): Promise<any>;
+  
+  // Extra Pay Contracts
+  getExtraPayContracts(): Promise<ExtraPayContract[]>;
+  getExtraPayContract(id: number): Promise<ExtraPayContract | undefined>;
+  createExtraPayContract(contract: InsertExtraPayContract): Promise<ExtraPayContract>;
+  updateExtraPayContract(id: number, contract: Partial<InsertExtraPayContract>): Promise<ExtraPayContract>;
+  deleteExtraPayContract(id: number): Promise<void>;
+  getActiveExtraPayContracts(): Promise<ExtraPayContract[]>;
+  
+  // Extra Pay Requests
+  getExtraPayRequests(): Promise<ExtraPayRequest[]>;
+  getExtraPayRequest(id: number): Promise<ExtraPayRequest | undefined>;
+  createExtraPayRequest(request: InsertExtraPayRequest): Promise<ExtraPayRequest>;
+  updateExtraPayRequest(id: number, request: Partial<InsertExtraPayRequest>): Promise<ExtraPayRequest>;
+  deleteExtraPayRequest(id: number): Promise<void>;
+  getExtraPayRequestsByEmployee(employeeId: number): Promise<ExtraPayRequest[]>;
+  getExtraPayRequestsByContract(contractId: number): Promise<ExtraPayRequest[]>;
+  getPendingExtraPayRequests(): Promise<ExtraPayRequest[]>;
+  approveExtraPayRequest(id: number, approvedBy: string): Promise<ExtraPayRequest>;
+  rejectExtraPayRequest(id: number, rejectedBy: string, reason: string): Promise<ExtraPayRequest>;
+  markExtraPayRequestPaid(id: number): Promise<ExtraPayRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -598,6 +625,103 @@ export class DatabaseStorage implements IStorage {
       status: "rejected",
       adminNotes: notes,
     }).where(eq(substituteTimeCards.id, id)).returning();
+    return updated;
+  }
+
+  // Extra Pay Contracts
+  async getExtraPayContracts(): Promise<ExtraPayContract[]> {
+    return await db.select().from(extraPayContracts).orderBy(desc(extraPayContracts.createdAt));
+  }
+
+  async getExtraPayContract(id: number): Promise<ExtraPayContract | undefined> {
+    const [contract] = await db.select().from(extraPayContracts).where(eq(extraPayContracts.id, id));
+    return contract;
+  }
+
+  async createExtraPayContract(contract: InsertExtraPayContract): Promise<ExtraPayContract> {
+    const [newContract] = await db.insert(extraPayContracts).values(contract).returning();
+    return newContract;
+  }
+
+  async updateExtraPayContract(id: number, contract: Partial<InsertExtraPayContract>): Promise<ExtraPayContract> {
+    const [updated] = await db.update(extraPayContracts).set({
+      ...contract,
+      updatedAt: new Date(),
+    }).where(eq(extraPayContracts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteExtraPayContract(id: number): Promise<void> {
+    await db.delete(extraPayContracts).where(eq(extraPayContracts.id, id));
+  }
+
+  async getActiveExtraPayContracts(): Promise<ExtraPayContract[]> {
+    return await db.select().from(extraPayContracts).where(eq(extraPayContracts.status, "active"));
+  }
+
+  // Extra Pay Requests
+  async getExtraPayRequests(): Promise<ExtraPayRequest[]> {
+    return await db.select().from(extraPayRequests).orderBy(desc(extraPayRequests.createdAt));
+  }
+
+  async getExtraPayRequest(id: number): Promise<ExtraPayRequest | undefined> {
+    const [request] = await db.select().from(extraPayRequests).where(eq(extraPayRequests.id, id));
+    return request;
+  }
+
+  async createExtraPayRequest(request: InsertExtraPayRequest): Promise<ExtraPayRequest> {
+    const [newRequest] = await db.insert(extraPayRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async updateExtraPayRequest(id: number, request: Partial<InsertExtraPayRequest>): Promise<ExtraPayRequest> {
+    const [updated] = await db.update(extraPayRequests).set({
+      ...request,
+      updatedAt: new Date(),
+    }).where(eq(extraPayRequests.id, id)).returning();
+    return updated;
+  }
+
+  async deleteExtraPayRequest(id: number): Promise<void> {
+    await db.delete(extraPayRequests).where(eq(extraPayRequests.id, id));
+  }
+
+  async getExtraPayRequestsByEmployee(employeeId: number): Promise<ExtraPayRequest[]> {
+    return await db.select().from(extraPayRequests).where(eq(extraPayRequests.employeeId, employeeId));
+  }
+
+  async getExtraPayRequestsByContract(contractId: number): Promise<ExtraPayRequest[]> {
+    return await db.select().from(extraPayRequests).where(eq(extraPayRequests.contractId, contractId));
+  }
+
+  async getPendingExtraPayRequests(): Promise<ExtraPayRequest[]> {
+    return await db.select().from(extraPayRequests).where(eq(extraPayRequests.status, "pending"));
+  }
+
+  async approveExtraPayRequest(id: number, approvedBy: string): Promise<ExtraPayRequest> {
+    const [updated] = await db.update(extraPayRequests).set({
+      status: "approved",
+      approvedBy: approvedBy,
+      approvedAt: new Date(),
+    }).where(eq(extraPayRequests.id, id)).returning();
+    return updated;
+  }
+
+  async rejectExtraPayRequest(id: number, rejectedBy: string, reason: string): Promise<ExtraPayRequest> {
+    const [updated] = await db.update(extraPayRequests).set({
+      status: "rejected",
+      rejectedBy: rejectedBy,
+      rejectedAt: new Date(),
+      rejectionReason: reason,
+    }).where(eq(extraPayRequests.id, id)).returning();
+    return updated;
+  }
+
+  async markExtraPayRequestPaid(id: number): Promise<ExtraPayRequest> {
+    const [updated] = await db.update(extraPayRequests).set({
+      status: "paid",
+      paidAt: new Date(),
+    }).where(eq(extraPayRequests.id, id)).returning();
     return updated;
   }
 }

@@ -9,6 +9,8 @@ import {
   insertOnboardingWorkflowSchema,
   insertTimeCardSchema,
   insertSubstituteTimeCardSchema,
+  insertExtraPayContractSchema,
+  insertExtraPayRequestSchema,
 } from "@shared/schema";
 import { 
   processDocument, 
@@ -757,6 +759,217 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error rejecting substitute time card:', error);
       res.status(500).json({ message: "Failed to reject substitute time card" });
+    }
+  });
+
+  // Extra Pay Contracts Routes
+  app.get('/api/extra-pay-contracts', async (req, res) => {
+    try {
+      const contracts = await storage.getExtraPayContracts();
+      res.json(contracts);
+    } catch (error) {
+      console.error('Error fetching extra pay contracts:', error);
+      res.status(500).json({ message: "Failed to fetch extra pay contracts" });
+    }
+  });
+
+  app.get('/api/extra-pay-contracts/active', async (req, res) => {
+    try {
+      const contracts = await storage.getActiveExtraPayContracts();
+      res.json(contracts);
+    } catch (error) {
+      console.error('Error fetching active extra pay contracts:', error);
+      res.status(500).json({ message: "Failed to fetch active extra pay contracts" });
+    }
+  });
+
+  app.get('/api/extra-pay-contracts/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const contract = await storage.getExtraPayContract(id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      res.json(contract);
+    } catch (error) {
+      console.error('Error fetching extra pay contract:', error);
+      res.status(500).json({ message: "Failed to fetch extra pay contract" });
+    }
+  });
+
+  app.post('/api/extra-pay-contracts', async (req, res) => {
+    try {
+      const validation = insertExtraPayContractSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const contract = await storage.createExtraPayContract(validation.data);
+      res.json(contract);
+    } catch (error) {
+      console.error('Error creating extra pay contract:', error);
+      res.status(500).json({ message: "Failed to create extra pay contract" });
+    }
+  });
+
+  app.put('/api/extra-pay-contracts/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertExtraPayContractSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const contract = await storage.updateExtraPayContract(id, validation.data);
+      res.json(contract);
+    } catch (error) {
+      console.error('Error updating extra pay contract:', error);
+      res.status(500).json({ message: "Failed to update extra pay contract" });
+    }
+  });
+
+  app.delete('/api/extra-pay-contracts/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteExtraPayContract(id);
+      res.json({ message: "Contract deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting extra pay contract:', error);
+      res.status(500).json({ message: "Failed to delete extra pay contract" });
+    }
+  });
+
+  // Extra Pay Requests Routes
+  app.get('/api/extra-pay-requests', async (req, res) => {
+    try {
+      const requests = await storage.getExtraPayRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching extra pay requests:', error);
+      res.status(500).json({ message: "Failed to fetch extra pay requests" });
+    }
+  });
+
+  app.get('/api/extra-pay-requests/pending', async (req, res) => {
+    try {
+      const requests = await storage.getPendingExtraPayRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching pending extra pay requests:', error);
+      res.status(500).json({ message: "Failed to fetch pending extra pay requests" });
+    }
+  });
+
+  app.get('/api/extra-pay-requests/employee/:employeeId', async (req, res) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      const requests = await storage.getExtraPayRequestsByEmployee(employeeId);
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching employee extra pay requests:', error);
+      res.status(500).json({ message: "Failed to fetch employee extra pay requests" });
+    }
+  });
+
+  app.get('/api/extra-pay-requests/contract/:contractId', async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.contractId);
+      const requests = await storage.getExtraPayRequestsByContract(contractId);
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching contract extra pay requests:', error);
+      res.status(500).json({ message: "Failed to fetch contract extra pay requests" });
+    }
+  });
+
+  app.get('/api/extra-pay-requests/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const request = await storage.getExtraPayRequest(id);
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      console.error('Error fetching extra pay request:', error);
+      res.status(500).json({ message: "Failed to fetch extra pay request" });
+    }
+  });
+
+  app.post('/api/extra-pay-requests', async (req, res) => {
+    try {
+      const validation = insertExtraPayRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const request = await storage.createExtraPayRequest(validation.data);
+      res.json(request);
+    } catch (error) {
+      console.error('Error creating extra pay request:', error);
+      res.status(500).json({ message: "Failed to create extra pay request" });
+    }
+  });
+
+  app.put('/api/extra-pay-requests/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertExtraPayRequestSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const request = await storage.updateExtraPayRequest(id, validation.data);
+      res.json(request);
+    } catch (error) {
+      console.error('Error updating extra pay request:', error);
+      res.status(500).json({ message: "Failed to update extra pay request" });
+    }
+  });
+
+  app.delete('/api/extra-pay-requests/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteExtraPayRequest(id);
+      res.json({ message: "Request deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting extra pay request:', error);
+      res.status(500).json({ message: "Failed to delete extra pay request" });
+    }
+  });
+
+  app.post('/api/extra-pay-requests/:id/approve', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { approvedBy } = req.body;
+      const request = await storage.approveExtraPayRequest(id, approvedBy);
+      res.json(request);
+    } catch (error) {
+      console.error('Error approving extra pay request:', error);
+      res.status(500).json({ message: "Failed to approve extra pay request" });
+    }
+  });
+
+  app.post('/api/extra-pay-requests/:id/reject', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { rejectedBy, reason } = req.body;
+      const request = await storage.rejectExtraPayRequest(id, rejectedBy, reason);
+      res.json(request);
+    } catch (error) {
+      console.error('Error rejecting extra pay request:', error);
+      res.status(500).json({ message: "Failed to reject extra pay request" });
+    }
+  });
+
+  app.post('/api/extra-pay-requests/:id/mark-paid', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const request = await storage.markExtraPayRequestPaid(id);
+      res.json(request);
+    } catch (error) {
+      console.error('Error marking extra pay request as paid:', error);
+      res.status(500).json({ message: "Failed to mark extra pay request as paid" });
     }
   });
 
