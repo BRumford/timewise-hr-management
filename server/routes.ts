@@ -221,98 +221,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard routes - different views for different roles
-  app.get("/api/dashboard/stats", async (req, res) => {
+  // Dashboard routes - admin/hr only
+  app.get("/api/dashboard/stats", requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const user = (req as any).user;
-      
-      if (user.role === 'employee') {
-        // Employee-specific stats (limited)
-        const employee = await storage.getEmployeeByUserId(user.id);
-        if (!employee) {
-          // If no employee record exists, create a default one or return basic stats
-          const stats = {
-            totalEmployees: 0,
-            pendingOnboarding: 0,
-            activeLeaveRequests: 0,
-            substituteAssignments: 0,
-            upcomingEvents: [],
-            notifications: []
-          };
-          return res.json(stats);
-        }
-        
-        const stats = {
-          totalEmployees: 1, // Just themselves
-          pendingOnboarding: 0,
-          activeLeaveRequests: 0,
-          substituteAssignments: 0,
-          upcomingEvents: [],
-          notifications: []
-        };
-        
-        res.json(stats);
-      } else {
-        // Admin/HR get full stats
-        const stats = await storage.getDashboardStats();
-        res.json(stats);
-      }
+      const stats = await storage.getDashboardStats();
+      res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats", error: (error as Error).message });
     }
   });
 
-  app.get("/api/dashboard/recent-activity", async (req, res) => {
+  app.get("/api/dashboard/recent-activity", requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const user = (req as any).user;
-      
-      if (user.role === 'employee') {
-        // Employee sees only their own activity
-        const employee = await storage.getEmployeeByUserId(user.id);
-        if (!employee) {
-          // If no employee record exists, return empty activity
-          return res.json([]);
-        }
-        
-        const activity = await storage.getRecentActivityLogs();
-        // Filter to only show activity related to this employee
-        const filteredActivity = activity.filter((log: any) => 
-          log.userId === user.id || log.description.includes(employee.firstName + ' ' + employee.lastName)
-        );
-        
-        res.json(filteredActivity);
-      } else {
-        // Admin/HR see all activity
-        const activity = await storage.getRecentActivityLogs();
-        res.json(activity);
-      }
+      const activity = await storage.getRecentActivityLogs();
+      res.json(activity);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch recent activity", error: (error as Error).message });
     }
   });
 
-  // Employee routes - different views for different roles
-  app.get("/api/employees", async (req, res) => {
+  // Employee routes - admin/hr only for full access
+  app.get("/api/employees", requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const user = (req as any).user;
-      
-      if (user.role === 'employee') {
-        // Employees can see basic directory info (names, departments, positions)
-        const employees = await storage.getEmployees();
-        const publicEmployeeData = employees.map((emp: any) => ({
-          id: emp.id,
-          firstName: emp.firstName,
-          lastName: emp.lastName,
-          department: emp.department,
-          position: emp.position,
-          email: emp.email
-        }));
-        res.json(publicEmployeeData);
-      } else {
-        // Admin/HR see all employee data
-        const employees = await storage.getEmployees();
-        res.json(employees);
-      }
+      const employees = await storage.getEmployees();
+      res.json(employees);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch employees", error: (error as Error).message });
     }
@@ -330,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees", async (req, res) => {
+  app.post("/api/employees", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const employeeData = insertEmployeeSchema.parse(req.body);
       const employee = await storage.createEmployee(employeeData);
@@ -350,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/employees/:id", async (req, res) => {
+  app.put("/api/employees/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const employeeData = insertEmployeeSchema.partial().parse(req.body);
       const employee = await storage.updateEmployee(parseInt(req.params.id), employeeData);
@@ -369,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/employees/:id", async (req, res) => {
+  app.delete("/api/employees/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       await storage.deleteEmployee(parseInt(req.params.id));
       
@@ -388,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Employee import/export routes
-  app.post('/api/employees/import', async (req, res) => {
+  app.post('/api/employees/import', requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { employees } = req.body;
       
@@ -432,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/employees/bulk-update', async (req, res) => {
+  app.post('/api/employees/bulk-update', requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { updates } = req.body;
       
@@ -485,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/employees/export', async (req, res) => {
+  app.get('/api/employees/export', requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const employees = await storage.getEmployees();
       
@@ -793,7 +725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payroll routes
-  app.get("/api/payroll", async (req, res) => {
+  app.get("/api/payroll", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const payrollRecords = await storage.getPayrollRecords();
       res.json(payrollRecords);
@@ -802,7 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/payroll/summary", async (req, res) => {
+  app.get("/api/payroll/summary", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const summary = await storage.getCurrentPayrollSummary();
       res.json(summary);
@@ -811,7 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/payroll", async (req, res) => {
+  app.post("/api/payroll", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const payrollData = insertPayrollRecordSchema.parse(req.body);
       const payrollRecord = await storage.createPayrollRecord(payrollData);
@@ -830,7 +762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/payroll/analyze", async (req, res) => {
+  app.post("/api/payroll/analyze", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const payrollRecords = await storage.getPayrollRecords();
       const analysis = await analyzePayrollAnomalies(payrollRecords);
@@ -841,7 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Document routes
-  app.get("/api/documents", async (req, res) => {
+  app.get("/api/documents", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const documents = await storage.getDocuments();
       res.json(documents);
@@ -850,7 +782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/documents/pending", async (req, res) => {
+  app.get("/api/documents/pending", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const pendingDocuments = await storage.getPendingDocuments();
       res.json(pendingDocuments);
@@ -859,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/documents", async (req, res) => {
+  app.post("/api/documents", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const documentData = insertDocumentSchema.parse(req.body);
       const document = await storage.createDocument(documentData);
@@ -888,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/documents/:id", async (req, res) => {
+  app.put("/api/documents/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const documentData = insertDocumentSchema.partial().parse(req.body);
       const document = await storage.updateDocument(parseInt(req.params.id), documentData);
@@ -908,7 +840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Onboarding routes
-  app.get("/api/onboarding", async (req, res) => {
+  app.get("/api/onboarding", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const workflows = await storage.getOnboardingWorkflows();
       res.json(workflows);
@@ -917,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/onboarding", async (req, res) => {
+  app.post("/api/onboarding", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       // Convert string dates to Date objects for validation
       const requestData = {
@@ -960,7 +892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/onboarding/:id", async (req, res) => {
+  app.put("/api/onboarding/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const workflowData = insertOnboardingWorkflowSchema.partial().parse(req.body);
       const workflow = await storage.updateOnboardingWorkflow(parseInt(req.params.id), workflowData);
@@ -980,7 +912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Onboarding forms routes
-  app.get("/api/onboarding/forms", async (req, res) => {
+  app.get("/api/onboarding/forms", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const forms = await storage.getOnboardingForms();
       res.json(forms);
@@ -989,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/onboarding/forms/active", async (req, res) => {
+  app.get("/api/onboarding/forms/active", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const forms = await storage.getActiveOnboardingForms();
       res.json(forms);
@@ -998,7 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/onboarding/forms/:id", async (req, res) => {
+  app.get("/api/onboarding/forms/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const form = await storage.getOnboardingForm(parseInt(req.params.id));
       if (!form) {
@@ -1010,7 +942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/onboarding/forms", async (req, res) => {
+  app.post("/api/onboarding/forms", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const formData = insertOnboardingFormSchema.parse(req.body);
       const form = await storage.createOnboardingForm({
@@ -1034,7 +966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File upload endpoint for onboarding forms
-  app.post("/api/onboarding/forms/upload", upload.single('file'), async (req, res) => {
+  app.post("/api/onboarding/forms/upload", requireRole(['admin', 'hr']), upload.single('file'), async (req, res) => {
     try {
       const formData = JSON.parse(req.body.formData);
       const validatedData = insertOnboardingFormSchema.parse(formData);
@@ -1076,7 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/onboarding/forms/:id", async (req, res) => {
+  app.put("/api/onboarding/forms/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const formData = insertOnboardingFormSchema.partial().parse(req.body);
       const form = await storage.updateOnboardingForm(parseInt(req.params.id), formData);
@@ -1095,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/onboarding/forms/:id", async (req, res) => {
+  app.delete("/api/onboarding/forms/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const formId = parseInt(req.params.id);
       const form = await storage.getOnboardingForm(formId);

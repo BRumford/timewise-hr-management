@@ -8,20 +8,15 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 
 export default function RoleSwitcher() {
   const { user } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<string>(user?.role || "employee");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedRole, setSelectedRole] = useState<string>(user?.role || "employee");
 
   // Check if user can switch roles
   const { data: canSwitchData } = useQuery({
     queryKey: ['/api/auth/can-switch-roles'],
     enabled: !!user,
   });
-
-  // Don't show the switcher if user can't switch roles
-  if (!canSwitchData?.canSwitch) {
-    return null;
-  }
 
   const switchRoleMutation = useMutation({
     mutationFn: async (role: string) => {
@@ -53,6 +48,11 @@ export default function RoleSwitcher() {
       switchRoleMutation.mutate(selectedRole);
     }
   };
+
+  // Don't show the switcher if user can't switch roles
+  if (!canSwitchData?.canSwitch) {
+    return null;
+  }
 
   return (
     <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
