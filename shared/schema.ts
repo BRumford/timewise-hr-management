@@ -157,6 +157,7 @@ export const onboardingWorkflows = pgTable("onboarding_workflows", {
 export const timeCards = pgTable("time_cards", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull(),
+  payPeriodId: integer("pay_period_id").references(() => payPeriods.id),
   templateId: integer("template_id").references(() => timecardTemplates.id),
   date: timestamp("date").notNull(),
   clockIn: timestamp("clock_in"),
@@ -192,6 +193,7 @@ export const timeCards = pgTable("time_cards", {
 export const substituteTimeCards = pgTable("substitute_time_cards", {
   id: serial("id").primaryKey(),
   substituteId: integer("substitute_id").notNull(),
+  payPeriodId: integer("pay_period_id").references(() => payPeriods.id),
   assignmentId: integer("assignment_id"), // Reference to substitute assignment
   date: timestamp("date").notNull(),
   clockIn: timestamp("clock_in"),
@@ -333,6 +335,53 @@ export const letters = pgTable("letters", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// District configuration settings
+export const districtSettings = pgTable("district_settings", {
+  id: serial("id").primaryKey(),
+  districtName: varchar("district_name", { length: 200 }).notNull(),
+  districtCode: varchar("district_code", { length: 50 }).notNull().unique(),
+  // Payroll settings
+  payrollFrequency: varchar("payroll_frequency", { length: 20 }).notNull().default("bi-weekly"), // weekly, bi-weekly, monthly, semi-monthly
+  payrollCutoffDay: integer("payroll_cutoff_day").notNull().default(25), // Day of month for cutoff
+  payrollPayDay: integer("payroll_pay_day").notNull().default(10), // Day of month for pay
+  // Timecard settings
+  timecardCutoffDay: integer("timecard_cutoff_day").notNull().default(25), // Day of month for timecard cutoff
+  timecardSubmissionDeadline: integer("timecard_submission_deadline").notNull().default(2), // Days after cutoff for submission
+  timecardApprovalDeadline: integer("timecard_approval_deadline").notNull().default(5), // Days after cutoff for approval
+  // Calendar settings
+  fiscalYearStart: date("fiscal_year_start").notNull().default("2024-07-01"),
+  workingDays: jsonb("working_days").default(["monday", "tuesday", "wednesday", "thursday", "friday"]),
+  holidays: jsonb("holidays").default([]), // Array of holiday dates
+  // Approval settings
+  requireManagerApproval: boolean("require_manager_approval").default(true),
+  requirePayrollApproval: boolean("require_payroll_approval").default(true),
+  autoApprovalThreshold: decimal("auto_approval_threshold", { precision: 8, scale: 2 }).default("0.00"), // Hours that auto-approve
+  // Notification settings
+  enableEmailNotifications: boolean("enable_email_notifications").default(true),
+  enableSmsNotifications: boolean("enable_sms_notifications").default(false),
+  reminderDaysBefore: integer("reminder_days_before").default(3), // Days before cutoff to send reminders
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Pay periods table
+export const payPeriods = pgTable("pay_periods", {
+  id: serial("id").primaryKey(),
+  periodName: varchar("period_name", { length: 100 }).notNull(), // "January 2024 - 1st Half", "Pay Period 1"
+  periodType: varchar("period_type", { length: 20 }).notNull(), // weekly, bi-weekly, monthly, semi-monthly
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  timecardCutoffDate: date("timecard_cutoff_date").notNull(),
+  timecardSubmissionDeadline: date("timecard_submission_deadline").notNull(),
+  timecardApprovalDeadline: date("timecard_approval_deadline").notNull(),
+  payrollProcessingDate: date("payroll_processing_date").notNull(),
+  payDate: date("pay_date").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("upcoming"), // upcoming, current, cutoff_passed, processed, paid
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Custom timecard templates
 export const timecardTemplates = pgTable("timecard_templates", {
   id: serial("id").primaryKey(),
@@ -421,6 +470,7 @@ export const onboardingFormSubmissionsRelations = relations(onboardingFormSubmis
 
 export const timeCardsRelations = relations(timeCards, ({ one }) => ({
   employee: one(employees, { fields: [timeCards.employeeId], references: [employees.id] }),
+  payPeriod: one(payPeriods, { fields: [timeCards.payPeriodId], references: [payPeriods.id] }),
   template: one(timecardTemplates, { fields: [timeCards.templateId], references: [timecardTemplates.id] }),
   submitter: one(employees, { fields: [timeCards.submittedBy], references: [employees.id] }),
   employeeApprover: one(employees, { fields: [timeCards.approvedByEmployee], references: [employees.id] }),
@@ -430,6 +480,7 @@ export const timeCardsRelations = relations(timeCards, ({ one }) => ({
 
 export const substituteTimeCardsRelations = relations(substituteTimeCards, ({ one }) => ({
   substitute: one(employees, { fields: [substituteTimeCards.substituteId], references: [employees.id] }),
+  payPeriod: one(payPeriods, { fields: [substituteTimeCards.payPeriodId], references: [payPeriods.id] }),
   assignment: one(substituteAssignments, { fields: [substituteTimeCards.assignmentId], references: [substituteAssignments.id] }),
   submitter: one(employees, { fields: [substituteTimeCards.submittedBy], references: [employees.id] }),
   adminApprover: one(employees, { fields: [substituteTimeCards.approvedByAdmin], references: [employees.id] }),
@@ -462,6 +513,11 @@ export const timecardTemplateFieldsRelations = relations(timecardTemplateFields,
   template: one(timecardTemplates, { fields: [timecardTemplateFields.templateId], references: [timecardTemplates.id] }),
 }));
 
+export const payPeriodsRelations = relations(payPeriods, ({ many }) => ({
+  timeCards: many(timeCards),
+  substituteTimeCards: many(substituteTimeCards),
+}));
+
 // Zod schemas
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({ id: true, createdAt: true, updatedAt: true });
@@ -478,6 +534,8 @@ export const insertExtraPayRequestSchema = createInsertSchema(extraPayRequests).
 export const insertLetterSchema = createInsertSchema(letters).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTimecardTemplateSchema = createInsertSchema(timecardTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTimecardTemplateFieldSchema = createInsertSchema(timecardTemplateFields).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDistrictSettingsSchema = createInsertSchema(districtSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPayPeriodSchema = createInsertSchema(payPeriods).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -514,3 +572,7 @@ export type InsertTimecardTemplate = z.infer<typeof insertTimecardTemplateSchema
 export type TimecardTemplate = typeof timecardTemplates.$inferSelect;
 export type InsertTimecardTemplateField = z.infer<typeof insertTimecardTemplateFieldSchema>;
 export type TimecardTemplateField = typeof timecardTemplateFields.$inferSelect;
+export type InsertDistrictSettings = z.infer<typeof insertDistrictSettingsSchema>;
+export type DistrictSettings = typeof districtSettings.$inferSelect;
+export type InsertPayPeriod = z.infer<typeof insertPayPeriodSchema>;
+export type PayPeriod = typeof payPeriods.$inferSelect;

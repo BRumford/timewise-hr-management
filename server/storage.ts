@@ -14,6 +14,8 @@ import {
   activityLogs,
   extraPayContracts,
   extraPayRequests,
+  districtSettings,
+  payPeriods,
   type User,
   type UpsertUser,
   type Employee,
@@ -51,6 +53,10 @@ import {
   type InsertTimecardTemplateField,
   timecardTemplates,
   timecardTemplateFields,
+  type DistrictSettings,
+  type InsertDistrictSettings,
+  type PayPeriod,
+  type InsertPayPeriod,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne } from "drizzle-orm";
@@ -213,6 +219,24 @@ export interface IStorage {
   updateTimecardTemplateField(id: number, field: Partial<InsertTimecardTemplateField>): Promise<TimecardTemplateField>;
   deleteTimecardTemplateField(id: number): Promise<void>;
   getTimecardTemplateFieldsBySection(templateId: number, section: string): Promise<TimecardTemplateField[]>;
+  
+  // District Settings
+  getDistrictSettings(): Promise<DistrictSettings | undefined>;
+  createDistrictSettings(settings: InsertDistrictSettings): Promise<DistrictSettings>;
+  updateDistrictSettings(id: number, settings: Partial<InsertDistrictSettings>): Promise<DistrictSettings>;
+  upsertDistrictSettings(settings: InsertDistrictSettings): Promise<DistrictSettings>;
+  
+  // Pay Periods
+  getPayPeriods(): Promise<PayPeriod[]>;
+  getPayPeriod(id: number): Promise<PayPeriod | undefined>;
+  createPayPeriod(period: InsertPayPeriod): Promise<PayPeriod>;
+  updatePayPeriod(id: number, period: Partial<InsertPayPeriod>): Promise<PayPeriod>;
+  deletePayPeriod(id: number): Promise<void>;
+  getCurrentPayPeriod(): Promise<PayPeriod | undefined>;
+  getPayPeriodsByDateRange(startDate: Date, endDate: Date): Promise<PayPeriod[]>;
+  getPayPeriodsByStatus(status: string): Promise<PayPeriod[]>;
+  getActivePayPeriods(): Promise<PayPeriod[]>;
+  generatePayPeriods(startDate: Date, endDate: Date, frequency: string): Promise<PayPeriod[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1150,6 +1174,180 @@ export class DatabaseStorage implements IStorage {
         eq(timecardTemplateFields.section, section)
       )
     ).orderBy(timecardTemplateFields.displayOrder);
+  }
+
+  // District Settings operations
+  async getDistrictSettings(): Promise<DistrictSettings | undefined> {
+    const [settings] = await db.select().from(districtSettings).limit(1);
+    return settings;
+  }
+
+  async createDistrictSettings(settings: InsertDistrictSettings): Promise<DistrictSettings> {
+    const [newSettings] = await db.insert(districtSettings).values(settings).returning();
+    return newSettings;
+  }
+
+  async updateDistrictSettings(id: number, settings: Partial<InsertDistrictSettings>): Promise<DistrictSettings> {
+    const [updated] = await db.update(districtSettings).set({
+      ...settings,
+      updatedAt: new Date(),
+    }).where(eq(districtSettings.id, id)).returning();
+    return updated;
+  }
+
+  async upsertDistrictSettings(settings: InsertDistrictSettings): Promise<DistrictSettings> {
+    const existingSettings = await this.getDistrictSettings();
+    
+    if (existingSettings) {
+      return await this.updateDistrictSettings(existingSettings.id, settings);
+    } else {
+      return await this.createDistrictSettings(settings);
+    }
+  }
+
+  // Pay Periods operations
+  async getPayPeriods(): Promise<PayPeriod[]> {
+    return await db.select().from(payPeriods).orderBy(desc(payPeriods.startDate));
+  }
+
+  async getPayPeriod(id: number): Promise<PayPeriod | undefined> {
+    const [period] = await db.select().from(payPeriods).where(eq(payPeriods.id, id));
+    return period;
+  }
+
+  async createPayPeriod(period: InsertPayPeriod): Promise<PayPeriod> {
+    const [newPeriod] = await db.insert(payPeriods).values(period).returning();
+    return newPeriod;
+  }
+
+  async updatePayPeriod(id: number, period: Partial<InsertPayPeriod>): Promise<PayPeriod> {
+    const [updated] = await db.update(payPeriods).set({
+      ...period,
+      updatedAt: new Date(),
+    }).where(eq(payPeriods.id, id)).returning();
+    return updated;
+  }
+
+  async deletePayPeriod(id: number): Promise<void> {
+    await db.delete(payPeriods).where(eq(payPeriods.id, id));
+  }
+
+  async getCurrentPayPeriod(): Promise<PayPeriod | undefined> {
+    const currentDate = new Date();
+    const [period] = await db.select().from(payPeriods).where(
+      and(
+        lte(payPeriods.startDate, currentDate.toISOString().split('T')[0]),
+        gte(payPeriods.endDate, currentDate.toISOString().split('T')[0]),
+        eq(payPeriods.isActive, true)
+      )
+    );
+    return period;
+  }
+
+  async getPayPeriodsByDateRange(startDate: Date, endDate: Date): Promise<PayPeriod[]> {
+    return await db.select().from(payPeriods).where(
+      and(
+        gte(payPeriods.startDate, startDate.toISOString().split('T')[0]),
+        lte(payPeriods.endDate, endDate.toISOString().split('T')[0])
+      )
+    ).orderBy(payPeriods.startDate);
+  }
+
+  async getPayPeriodsByStatus(status: string): Promise<PayPeriod[]> {
+    return await db.select().from(payPeriods).where(eq(payPeriods.status, status));
+  }
+
+  async getActivePayPeriods(): Promise<PayPeriod[]> {
+    return await db.select().from(payPeriods).where(eq(payPeriods.isActive, true));
+  }
+
+  async generatePayPeriods(startDate: Date, endDate: Date, frequency: string): Promise<PayPeriod[]> {
+    const periods: PayPeriod[] = [];
+    const settings = await this.getDistrictSettings();
+    
+    if (!settings) {
+      throw new Error('District settings not found. Please configure district settings first.');
+    }
+
+    let currentDate = new Date(startDate);
+    let periodNumber = 1;
+
+    while (currentDate < endDate) {
+      const periodStartDate = new Date(currentDate);
+      let periodEndDate = new Date(currentDate);
+      
+      // Calculate period end date based on frequency
+      switch (frequency) {
+        case 'weekly':
+          periodEndDate.setDate(periodEndDate.getDate() + 6);
+          break;
+        case 'bi-weekly':
+          periodEndDate.setDate(periodEndDate.getDate() + 13);
+          break;
+        case 'monthly':
+          periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+          periodEndDate.setDate(0); // Last day of the month
+          break;
+        case 'semi-monthly':
+          if (periodStartDate.getDate() === 1) {
+            periodEndDate.setDate(15);
+          } else {
+            periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+            periodEndDate.setDate(0);
+          }
+          break;
+        default:
+          throw new Error(`Unsupported frequency: ${frequency}`);
+      }
+
+      // Don't go past the end date
+      if (periodEndDate > endDate) {
+        periodEndDate = new Date(endDate);
+      }
+
+      // Calculate cutoff dates and deadlines
+      const timecardCutoffDate = new Date(periodEndDate);
+      timecardCutoffDate.setDate(settings.timecardCutoffDay);
+      
+      const timecardSubmissionDeadline = new Date(timecardCutoffDate);
+      timecardSubmissionDeadline.setDate(timecardSubmissionDeadline.getDate() + settings.timecardSubmissionDeadline);
+      
+      const timecardApprovalDeadline = new Date(timecardCutoffDate);
+      timecardApprovalDeadline.setDate(timecardApprovalDeadline.getDate() + settings.timecardApprovalDeadline);
+      
+      const payrollProcessingDate = new Date(timecardApprovalDeadline);
+      payrollProcessingDate.setDate(payrollProcessingDate.getDate() + 2);
+      
+      const payDate = new Date(periodEndDate);
+      payDate.setDate(settings.payrollPayDay);
+      if (payDate < periodEndDate) {
+        payDate.setMonth(payDate.getMonth() + 1);
+      }
+
+      const periodData: InsertPayPeriod = {
+        periodName: `${frequency.charAt(0).toUpperCase() + frequency.slice(1)} Period ${periodNumber} - ${periodStartDate.toLocaleDateString()}`,
+        periodType: frequency,
+        startDate: periodStartDate.toISOString().split('T')[0],
+        endDate: periodEndDate.toISOString().split('T')[0],
+        timecardCutoffDate: timecardCutoffDate.toISOString().split('T')[0],
+        timecardSubmissionDeadline: timecardSubmissionDeadline.toISOString().split('T')[0],
+        timecardApprovalDeadline: timecardApprovalDeadline.toISOString().split('T')[0],
+        payrollProcessingDate: payrollProcessingDate.toISOString().split('T')[0],
+        payDate: payDate.toISOString().split('T')[0],
+        status: 'upcoming',
+        isActive: true,
+      };
+
+      const newPeriod = await this.createPayPeriod(periodData);
+      periods.push(newPeriod);
+
+      // Move to next period
+      currentDate = new Date(periodEndDate);
+      currentDate.setDate(currentDate.getDate() + 1);
+      periodNumber++;
+    }
+
+    return periods;
   }
 }
 

@@ -115,6 +115,8 @@ import {
   insertLetterSchema,
   insertTimecardTemplateSchema,
   insertTimecardTemplateFieldSchema,
+  insertDistrictSettingsSchema,
+  insertPayPeriodSchema,
 } from "@shared/schema";
 import { 
   processDocument, 
@@ -2061,6 +2063,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching timecard template fields by section:', error);
       res.status(500).json({ message: "Failed to fetch timecard template fields by section" });
+    }
+  });
+
+  // District Settings routes
+  app.get("/api/district-settings", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const settings = await storage.getDistrictSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch district settings", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/district-settings", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const settingsData = insertDistrictSettingsSchema.parse(req.body);
+      const settings = await storage.upsertDistrictSettings(settingsData);
+      
+      await storage.createActivityLog({
+        userId: (req as any).currentUser.id,
+        action: "update_district_settings",
+        entityType: "district_settings",
+        entityId: settings.id,
+        description: `Updated district settings for ${settings.districtName}`,
+      });
+
+      res.json(settings);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update district settings", error: (error as Error).message });
+    }
+  });
+
+  app.put("/api/district-settings/:id", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const settingsData = insertDistrictSettingsSchema.partial().parse(req.body);
+      const settings = await storage.updateDistrictSettings(parseInt(req.params.id), settingsData);
+      
+      await storage.createActivityLog({
+        userId: (req as any).currentUser.id,
+        action: "update_district_settings",
+        entityType: "district_settings",
+        entityId: settings.id,
+        description: `Updated district settings`,
+      });
+
+      res.json(settings);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update district settings", error: (error as Error).message });
+    }
+  });
+
+  // Pay Periods routes
+  app.get("/api/pay-periods", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const periods = await storage.getPayPeriods();
+      res.json(periods);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pay periods", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/pay-periods/current", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      res.json(currentPeriod);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch current pay period", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/pay-periods/active", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const activePeriods = await storage.getActivePayPeriods();
+      res.json(activePeriods);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch active pay periods", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/pay-periods", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const periodData = insertPayPeriodSchema.parse(req.body);
+      const period = await storage.createPayPeriod(periodData);
+      
+      await storage.createActivityLog({
+        userId: (req as any).currentUser.id,
+        action: "create_pay_period",
+        entityType: "pay_period",
+        entityId: period.id,
+        description: `Created pay period: ${period.periodName}`,
+      });
+
+      res.status(201).json(period);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create pay period", error: (error as Error).message });
+    }
+  });
+
+  app.put("/api/pay-periods/:id", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const periodData = insertPayPeriodSchema.partial().parse(req.body);
+      const period = await storage.updatePayPeriod(parseInt(req.params.id), periodData);
+      
+      await storage.createActivityLog({
+        userId: (req as any).currentUser.id,
+        action: "update_pay_period",
+        entityType: "pay_period",
+        entityId: period.id,
+        description: `Updated pay period: ${period.periodName}`,
+      });
+
+      res.json(period);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update pay period", error: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/pay-periods/:id", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      await storage.deletePayPeriod(parseInt(req.params.id));
+      
+      await storage.createActivityLog({
+        userId: (req as any).currentUser.id,
+        action: "delete_pay_period",
+        entityType: "pay_period",
+        entityId: parseInt(req.params.id),
+        description: `Deleted pay period`,
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ message: "Failed to delete pay period", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/pay-periods/generate", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate, frequency } = req.body;
+      
+      if (!startDate || !endDate || !frequency) {
+        return res.status(400).json({ message: "Missing required fields: startDate, endDate, frequency" });
+      }
+
+      const periods = await storage.generatePayPeriods(
+        new Date(startDate),
+        new Date(endDate),
+        frequency
+      );
+      
+      await storage.createActivityLog({
+        userId: (req as any).currentUser.id,
+        action: "generate_pay_periods",
+        entityType: "pay_period",
+        entityId: 0,
+        description: `Generated ${periods.length} pay periods for ${frequency} frequency`,
+      });
+
+      res.json(periods);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to generate pay periods", error: (error as Error).message });
     }
   });
 

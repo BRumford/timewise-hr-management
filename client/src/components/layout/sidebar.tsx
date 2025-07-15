@@ -26,6 +26,7 @@ const menuItems = [
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards", roles: ["admin", "hr"] },
   { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["admin", "hr"] },
+  { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["admin", "hr"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["admin", "hr"] },
   { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr"] },
   { path: "/letters", icon: Mail, label: "Letters", roles: ["admin", "hr"] },
