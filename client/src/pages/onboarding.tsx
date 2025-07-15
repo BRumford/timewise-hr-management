@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertOnboardingFormSchema } from "@shared/schema";
+import { insertOnboardingFormSchema, insertOnboardingWorkflowSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, 
@@ -42,7 +42,12 @@ const formSchema = insertOnboardingFormSchema.extend({
   applicableEmployeeTypes: z.array(z.string()).optional(),
 });
 
+const workflowFormSchema = insertOnboardingWorkflowSchema.extend({
+  targetCompletionDate: z.string().optional(),
+});
+
 type FormData = z.infer<typeof formSchema>;
+type WorkflowFormData = z.infer<typeof workflowFormSchema>;
 
 export default function Onboarding() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,6 +58,7 @@ export default function Onboarding() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [createMode, setCreateMode] = useState<"new" | "existing">("new");
   const [selectedExistingForm, setSelectedExistingForm] = useState<OnboardingForm | null>(null);
+  const [isStartWorkflowDialogOpen, setIsStartWorkflowDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: workflows, isLoading } = useQuery({
@@ -78,6 +84,18 @@ export default function Onboarding() {
       isActive: true,
       isRequired: false,
       createdBy: "current-user",
+    },
+  });
+
+  const workflowForm = useForm<WorkflowFormData>({
+    resolver: zodResolver(workflowFormSchema),
+    defaultValues: {
+      employeeId: 0,
+      assignedTo: "",
+      status: "started",
+      workflowType: "new_hire",
+      targetCompletionDate: "",
+      notes: "",
     },
   });
 
@@ -132,6 +150,33 @@ export default function Onboarding() {
       toast({
         title: "Success",
         description: "Form deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const startWorkflowMutation = useMutation({
+    mutationFn: async (data: WorkflowFormData) => {
+      const workflowData = {
+        ...data,
+        startDate: new Date().toISOString(),
+        targetCompletionDate: data.targetCompletionDate ? new Date(data.targetCompletionDate).toISOString() : null,
+      };
+      return await apiRequest("POST", "/api/onboarding", workflowData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
+      setIsStartWorkflowDialogOpen(false);
+      workflowForm.reset();
+      toast({
+        title: "Success",
+        description: "Onboarding workflow started successfully",
       });
     },
     onError: (error) => {
@@ -352,7 +397,10 @@ export default function Onboarding() {
                   <option value="completed">Completed</option>
                   <option value="stalled">Stalled</option>
                 </select>
-                <Button className="bg-primary hover:bg-blue-700">
+                <Button 
+                  className="bg-primary hover:bg-blue-700"
+                  onClick={() => setIsStartWorkflowDialogOpen(true)}
+                >
                   <UserPlus className="mr-2 h-4 w-4" />
                   Start Onboarding
                 </Button>
@@ -836,6 +884,129 @@ export default function Onboarding() {
           </CardContent>
         </Card>
       )}
+
+      {/* Start Workflow Dialog */}
+      <Dialog open={isStartWorkflowDialogOpen} onOpenChange={setIsStartWorkflowDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Start Onboarding Workflow</DialogTitle>
+          </DialogHeader>
+          <Form {...workflowForm}>
+            <form onSubmit={workflowForm.handleSubmit((data) => startWorkflowMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={workflowForm.control}
+                name="employeeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Employee</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose an employee" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {employees?.map((employee: any) => (
+                          <SelectItem key={employee.id} value={employee.id.toString()}>
+                            {employee.firstName} {employee.lastName} - {employee.position}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={workflowForm.control}
+                name="workflowType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Workflow Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select workflow type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="new_hire">New Hire</SelectItem>
+                        <SelectItem value="transfer">Transfer</SelectItem>
+                        <SelectItem value="promotion">Promotion</SelectItem>
+                        <SelectItem value="substitute">Substitute</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={workflowForm.control}
+                name="targetCompletionDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Completion Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={workflowForm.control}
+                name="assignedTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assigned To</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter assignee name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={workflowForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Add any additional notes or instructions..."
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex justify-end space-x-2 mt-6">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={() => setIsStartWorkflowDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={startWorkflowMutation.isPending}
+                >
+                  {startWorkflowMutation.isPending ? "Starting..." : "Start Workflow"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
