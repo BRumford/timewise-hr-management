@@ -105,10 +105,7 @@ export default function TimecardTemplates() {
   // Create template mutation
   const createTemplateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/timecard-templates`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest(`/api/timecard-templates`, 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-templates'] });
@@ -125,10 +122,7 @@ export default function TimecardTemplates() {
   // Update template mutation
   const updateTemplateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/timecard-templates/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
+      return apiRequest(`/api/timecard-templates/${id}`, 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-templates'] });
@@ -145,9 +139,7 @@ export default function TimecardTemplates() {
   // Delete template mutation
   const deleteTemplateMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/timecard-templates/${id}`, {
-        method: 'DELETE',
-      });
+      return apiRequest(`/api/timecard-templates/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-templates'] });
@@ -161,10 +153,7 @@ export default function TimecardTemplates() {
   // Create field mutation
   const createFieldMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/timecard-template-fields`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest(`/api/timecard-template-fields`, 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-template-fields', selectedTemplate?.id] });
@@ -180,10 +169,7 @@ export default function TimecardTemplates() {
   // Update field mutation
   const updateFieldMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/timecard-template-fields/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
+      return apiRequest(`/api/timecard-template-fields/${id}`, 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-template-fields', selectedTemplate?.id] });
@@ -199,9 +185,7 @@ export default function TimecardTemplates() {
   // Delete field mutation
   const deleteFieldMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/timecard-template-fields/${id}`, {
-        method: 'DELETE',
-      });
+      return apiRequest(`/api/timecard-template-fields/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-template-fields', selectedTemplate?.id] });
@@ -224,7 +208,20 @@ export default function TimecardTemplates() {
 
   const handleUpdateTemplate = () => {
     if (!selectedTemplate) return;
-    updateTemplateMutation.mutate({ id: selectedTemplate.id, data: editingTemplate });
+    console.log('Updating template:', selectedTemplate.id, editingTemplate);
+    
+    // Clean up the data before sending
+    const cleanData = {
+      name: editingTemplate.name || selectedTemplate.name,
+      description: editingTemplate.description || selectedTemplate.description,
+      employeeType: editingTemplate.employeeType || selectedTemplate.employeeType,
+      isActive: editingTemplate.isActive ?? selectedTemplate.isActive,
+      isDefault: editingTemplate.isDefault ?? selectedTemplate.isDefault,
+      approvalWorkflow: editingTemplate.approvalWorkflow || selectedTemplate.approvalWorkflow || [],
+      settings: editingTemplate.settings || selectedTemplate.settings || {},
+    };
+    
+    updateTemplateMutation.mutate({ id: selectedTemplate.id, data: cleanData });
   };
 
   const handleDeleteTemplate = (id: number) => {

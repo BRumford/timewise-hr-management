@@ -2088,8 +2088,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/timecard-templates/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      console.log('Updating timecard template:', id, req.body);
+      
       const validation = insertTimecardTemplateSchema.partial().safeParse(req.body);
       if (!validation.success) {
+        console.log('Validation errors:', validation.error.errors);
         return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
       }
       
@@ -2097,7 +2100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(template);
     } catch (error) {
       console.error('Error updating timecard template:', error);
-      res.status(500).json({ message: "Failed to update timecard template" });
+      res.status(500).json({ message: "Failed to update timecard template", error: (error as Error).message });
     }
   });
 
