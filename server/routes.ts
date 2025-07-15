@@ -23,8 +23,46 @@ import {
   analyzePayrollAnomalies,
   generateSubstituteRecommendations 
 } from "./openai";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+
+// Configure multer for file uploads
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage_config = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage_config,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded files
+  app.use('/uploads', (req, res, next) => {
+    const express = require('express');
+    express.static(uploadDir)(req, res, next);
+  });
+
   // Dashboard routes
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
@@ -562,6 +600,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(form);
     } catch (error) {
       res.status(400).json({ message: "Failed to create onboarding form", error: (error as Error).message });
+    }
+  });
+
+  // File upload endpoint for onboarding forms
+  app.post("/api/onboarding/forms/upload", upload.single('file'), async (req, res) => {
+    try {
+      const formData = JSON.parse(req.body.formData);
+      const validatedData = insertOnboardingFormSchema.parse(formData);
+
+      let fileUrl = null;
+      let fileName = null;
+      let fileSize = null;
+      let mimeType = null;
+
+      if (req.file) {
+        fileUrl = `/uploads/${req.file.filename}`;
+        fileName = req.file.originalname;
+        fileSize = req.file.size;
+        mimeType = req.file.mimetype;
+      }
+
+      const form = await storage.createOnboardingForm({
+        ...validatedData,
+        fileUrl,
+        fileName,
+        fileSize,
+        mimeType,
+      });
+
+      await storage.createActivityLog({
+        userId: validatedData.createdBy,
+        action: "create_onboarding_form",
+        entityType: "onboarding_form",
+        entityId: form.id,
+        description: `Created onboarding form "${form.title}"${req.file ? ' with file upload' : ''}`,
+      });
+
+      res.status(201).json(form);
+    } catch (error) {
+      console.error('Error uploading form:', error);
+      res.status(400).json({ message: "Failed to create onboarding form with file", error: (error as Error).message });
     }
   });
 

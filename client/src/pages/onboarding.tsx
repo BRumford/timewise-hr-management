@@ -50,6 +50,7 @@ export default function Onboarding() {
   const [activeTab, setActiveTab] = useState<"workflows" | "forms">("workflows");
   const [isCreateFormDialogOpen, setIsCreateFormDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<OnboardingForm | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   const { data: workflows, isLoading } = useQuery({
@@ -80,11 +81,31 @@ export default function Onboarding() {
 
   const createFormMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest("POST", "/api/onboarding/forms", data);
+      if (selectedFile) {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('formData', JSON.stringify(data));
+        
+        const response = await fetch('/api/onboarding/forms/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`${response.status}: ${errorText}`);
+        }
+        
+        return response.json();
+      } else {
+        return await apiRequest("POST", "/api/onboarding/forms", data);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding/forms"] });
       setIsCreateFormDialogOpen(false);
+      setSelectedFile(null);
       form.reset();
       toast({
         title: "Success",
@@ -517,15 +538,58 @@ export default function Onboarding() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="digital">Digital</SelectItem>
-                                  <SelectItem value="physical">Physical</SelectItem>
-                                  <SelectItem value="hybrid">Hybrid</SelectItem>
+                                  <SelectItem value="hr_form">HR Form</SelectItem>
+                                  <SelectItem value="tax_form">Tax Form</SelectItem>
+                                  <SelectItem value="benefits_form">Benefits Form</SelectItem>
+                                  <SelectItem value="certification">Certification</SelectItem>
+                                  <SelectItem value="agreement">Agreement</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
+                        
+                        {/* File Upload Section */}
+                        <div className="space-y-2">
+                          <Label htmlFor="file-upload">Upload PDF Form (Optional)</Label>
+                          <div className="flex items-center space-x-2">
+                            <Input
+                              id="file-upload"
+                              type="file"
+                              accept=".pdf,.doc,.docx"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setSelectedFile(file);
+                                }
+                              }}
+                              className="cursor-pointer"
+                            />
+                            {selectedFile && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedFile(null);
+                                  const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                                  if (fileInput) fileInput.value = '';
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                          {selectedFile && (
+                            <p className="text-sm text-gray-600">
+                              Selected: {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            Upload W4 forms, I9 forms, or other onboarding documents in PDF format
+                          </p>
+                        </div>
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={form.watch("isActive")}
@@ -590,6 +654,11 @@ export default function Onboarding() {
                         <div className="text-sm text-gray-500">
                           {form.description}
                         </div>
+                        {form.fileName && (
+                          <div className="text-xs text-blue-600 mt-1">
+                            📄 {form.fileName}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
@@ -623,6 +692,15 @@ export default function Onboarding() {
                           <Button variant="link" className="text-indigo-600 hover:text-indigo-900 p-0">
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {form.fileUrl && (
+                            <Button 
+                              variant="link" 
+                              className="text-blue-600 hover:text-blue-900 p-0"
+                              onClick={() => window.open(form.fileUrl, '_blank')}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="link" className="text-green-600 hover:text-green-900 p-0">
                             <Edit className="h-4 w-4" />
                           </Button>
