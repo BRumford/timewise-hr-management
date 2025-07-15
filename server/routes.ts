@@ -8,6 +8,7 @@ import {
   insertDocumentSchema,
   insertOnboardingWorkflowSchema,
   insertTimeCardSchema,
+  insertSubstituteTimeCardSchema,
 } from "@shared/schema";
 import { 
   processDocument, 
@@ -532,6 +533,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(timeCard);
     } catch (error) {
       res.status(500).json({ message: "Failed to reject time card", error: error.message });
+    }
+  });
+
+  // Substitute Time Cards API endpoints
+  app.get('/api/substitute-time-cards', async (req, res) => {
+    try {
+      const substituteTimeCards = await storage.getSubstituteTimeCards();
+      res.json(substituteTimeCards);
+    } catch (error) {
+      console.error('Error fetching substitute time cards:', error);
+      res.status(500).json({ message: "Failed to fetch substitute time cards" });
+    }
+  });
+
+  app.get('/api/substitute-time-cards/pending', async (req, res) => {
+    try {
+      const pendingSubstituteTimeCards = await storage.getPendingSubstituteTimeCards();
+      res.json(pendingSubstituteTimeCards);
+    } catch (error) {
+      console.error('Error fetching pending substitute time cards:', error);
+      res.status(500).json({ message: "Failed to fetch pending substitute time cards" });
+    }
+  });
+
+  app.post('/api/substitute-time-cards', async (req, res) => {
+    try {
+      const validation = insertSubstituteTimeCardSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const substituteTimeCard = await storage.createSubstituteTimeCard(validation.data);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error creating substitute time card:', error);
+      res.status(500).json({ message: "Failed to create substitute time card" });
+    }
+  });
+
+  app.post('/api/substitute-time-cards/:id/submit', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { submittedBy } = req.body;
+      const substituteTimeCard = await storage.submitSubstituteTimeCardForApproval(id, submittedBy);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error submitting substitute time card:', error);
+      res.status(500).json({ message: "Failed to submit substitute time card" });
+    }
+  });
+
+  app.post('/api/substitute-time-cards/:id/approve-admin', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { adminId, notes } = req.body;
+      const substituteTimeCard = await storage.approveSubstituteTimeCardByAdmin(id, adminId, notes);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error approving substitute time card:', error);
+      res.status(500).json({ message: "Failed to approve substitute time card" });
+    }
+  });
+
+  app.post('/api/substitute-time-cards/:id/process-payroll', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { payrollId, notes } = req.body;
+      const substituteTimeCard = await storage.processSubstituteTimeCardByPayroll(id, payrollId, notes);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error processing substitute time card:', error);
+      res.status(500).json({ message: "Failed to process substitute time card" });
+    }
+  });
+
+  app.post('/api/substitute-time-cards/:id/reject', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { rejectedBy, notes } = req.body;
+      const substituteTimeCard = await storage.rejectSubstituteTimeCard(id, rejectedBy, notes);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error rejecting substitute time card:', error);
+      res.status(500).json({ message: "Failed to reject substitute time card" });
     }
   });
 

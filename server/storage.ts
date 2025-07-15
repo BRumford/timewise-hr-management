@@ -8,6 +8,7 @@ import {
   onboardingWorkflows,
   substituteAssignments,
   timeCards,
+  substituteTimeCards,
   activityLogs,
   type User,
   type UpsertUser,
@@ -25,6 +26,8 @@ import {
   type SubstituteAssignment,
   type TimeCard,
   type InsertTimeCard,
+  type SubstituteTimeCard,
+  type InsertSubstituteTimeCard,
   type ActivityLog,
   type InsertActivityLog,
 } from "@shared/schema";
@@ -96,6 +99,20 @@ export interface IStorage {
   approveTimeCardByAdmin(id: number, adminId: number, notes?: string): Promise<TimeCard>;
   processTimeCardByPayroll(id: number, payrollId: number, notes?: string): Promise<TimeCard>;
   rejectTimeCard(id: number, rejectedBy: number, notes?: string): Promise<TimeCard>;
+  
+  // Substitute time cards
+  getSubstituteTimeCards(): Promise<SubstituteTimeCard[]>;
+  getSubstituteTimeCard(id: number): Promise<SubstituteTimeCard | undefined>;
+  createSubstituteTimeCard(timeCard: InsertSubstituteTimeCard): Promise<SubstituteTimeCard>;
+  updateSubstituteTimeCard(id: number, timeCard: Partial<InsertSubstituteTimeCard>): Promise<SubstituteTimeCard>;
+  deleteSubstituteTimeCard(id: number): Promise<void>;
+  getSubstituteTimeCardsBySubstitute(substituteId: number): Promise<SubstituteTimeCard[]>;
+  getPendingSubstituteTimeCards(): Promise<SubstituteTimeCard[]>;
+  getSubstituteTimeCardsByApprovalStage(stage: string): Promise<SubstituteTimeCard[]>;
+  submitSubstituteTimeCardForApproval(id: number, submittedBy: number): Promise<SubstituteTimeCard>;
+  approveSubstituteTimeCardByAdmin(id: number, adminId: number, notes?: string): Promise<SubstituteTimeCard>;
+  processSubstituteTimeCardByPayroll(id: number, payrollId: number, notes?: string): Promise<SubstituteTimeCard>;
+  rejectSubstituteTimeCard(id: number, rejectedBy: number, notes?: string): Promise<SubstituteTimeCard>;
   
   // Activity logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -506,6 +523,82 @@ export class DatabaseStorage implements IStorage {
       ...pendingStats,
       todaySubstituteAssignments: todayAssignments[0].count,
     };
+  }
+
+  // Substitute time cards methods
+  async getSubstituteTimeCards(): Promise<SubstituteTimeCard[]> {
+    return await db.select().from(substituteTimeCards).orderBy(desc(substituteTimeCards.createdAt));
+  }
+
+  async getSubstituteTimeCard(id: number): Promise<SubstituteTimeCard | undefined> {
+    const [timeCard] = await db.select().from(substituteTimeCards).where(eq(substituteTimeCards.id, id));
+    return timeCard;
+  }
+
+  async createSubstituteTimeCard(timeCard: InsertSubstituteTimeCard): Promise<SubstituteTimeCard> {
+    const [created] = await db.insert(substituteTimeCards).values(timeCard).returning();
+    return created;
+  }
+
+  async updateSubstituteTimeCard(id: number, timeCard: Partial<InsertSubstituteTimeCard>): Promise<SubstituteTimeCard> {
+    const [updated] = await db.update(substituteTimeCards).set(timeCard).where(eq(substituteTimeCards.id, id)).returning();
+    return updated;
+  }
+
+  async deleteSubstituteTimeCard(id: number): Promise<void> {
+    await db.delete(substituteTimeCards).where(eq(substituteTimeCards.id, id));
+  }
+
+  async getSubstituteTimeCardsBySubstitute(substituteId: number): Promise<SubstituteTimeCard[]> {
+    return await db.select().from(substituteTimeCards).where(eq(substituteTimeCards.substituteId, substituteId));
+  }
+
+  async getPendingSubstituteTimeCards(): Promise<SubstituteTimeCard[]> {
+    return await db.select().from(substituteTimeCards).where(ne(substituteTimeCards.status, "payroll_processed"));
+  }
+
+  async getSubstituteTimeCardsByApprovalStage(stage: string): Promise<SubstituteTimeCard[]> {
+    return await db.select().from(substituteTimeCards).where(eq(substituteTimeCards.currentApprovalStage, stage));
+  }
+
+  async submitSubstituteTimeCardForApproval(id: number, submittedBy: number): Promise<SubstituteTimeCard> {
+    const [updated] = await db.update(substituteTimeCards).set({
+      status: "secretary_submitted",
+      currentApprovalStage: "administrator",
+      submittedBy: submittedBy,
+      submittedAt: new Date(),
+    }).where(eq(substituteTimeCards.id, id)).returning();
+    return updated;
+  }
+
+  async approveSubstituteTimeCardByAdmin(id: number, adminId: number, notes?: string): Promise<SubstituteTimeCard> {
+    const [updated] = await db.update(substituteTimeCards).set({
+      status: "admin_approved",
+      currentApprovalStage: "payroll",
+      approvedByAdmin: adminId,
+      adminApprovedAt: new Date(),
+      adminNotes: notes,
+    }).where(eq(substituteTimeCards.id, id)).returning();
+    return updated;
+  }
+
+  async processSubstituteTimeCardByPayroll(id: number, payrollId: number, notes?: string): Promise<SubstituteTimeCard> {
+    const [updated] = await db.update(substituteTimeCards).set({
+      status: "payroll_processed",
+      currentApprovalStage: "completed",
+      processedByPayroll: payrollId,
+      payrollProcessedAt: new Date(),
+      payrollNotes: notes,
+    }).where(eq(substituteTimeCards.id, id)).returning();
+    return updated;
+  }
+
+  async rejectSubstituteTimeCard(id: number, rejectedBy: number, notes?: string): Promise<SubstituteTimeCard> {
+    const [updated] = await db.update(substituteTimeCards).set({
+      status: "rejected",
+      adminNotes: notes,
+    }).where(eq(substituteTimeCards.id, id)).returning();
+    return updated;
   }
 }
 

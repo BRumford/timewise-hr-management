@@ -9,7 +9,8 @@ import {
   UserPlus, 
   BarChart3, 
   Settings,
-  Clock 
+  Clock,
+  UserCheck
 } from "lucide-react";
 
 const menuItems = [
@@ -17,6 +18,7 @@ const menuItems = [
   { path: "/employees", icon: Users, label: "Employee Management" },
   { path: "/leave-management", icon: Calendar, label: "Leave Management" },
   { path: "/time-cards", icon: Clock, label: "Time Cards" },
+  { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards" },
   { path: "/payroll", icon: Calculator, label: "Payroll" },
   { path: "/documents", icon: FileText, label: "Documents" },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding" },

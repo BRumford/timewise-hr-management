@@ -182,6 +182,36 @@ export const timeCards = pgTable("time_cards", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Substitute time cards table
+export const substituteTimeCards = pgTable("substitute_time_cards", {
+  id: serial("id").primaryKey(),
+  substituteId: integer("substitute_id").notNull(),
+  assignmentId: integer("assignment_id"), // Reference to substitute assignment
+  date: timestamp("date").notNull(),
+  clockIn: timestamp("clock_in"),
+  clockOut: timestamp("clock_out"),
+  breakStart: timestamp("break_start"),
+  breakEnd: timestamp("break_end"),
+  totalHours: decimal("total_hours", { precision: 5, scale: 2 }),
+  overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
+  dailyRate: decimal("daily_rate", { precision: 8, scale: 2 }), // Daily substitute rate
+  totalPay: decimal("total_pay", { precision: 8, scale: 2 }), // Calculated total pay
+  status: varchar("status").notNull().default("draft"), // draft, secretary_submitted, admin_approved, payroll_processed, rejected
+  currentApprovalStage: varchar("current_approval_stage").default("secretary"), // secretary, administrator, payroll
+  notes: text("notes"),
+  secretaryNotes: text("secretary_notes"),
+  adminNotes: text("admin_notes"),
+  payrollNotes: text("payroll_notes"),
+  submittedBy: integer("submitted_by"), // Secretary who submitted
+  approvedByAdmin: integer("approved_by_admin"),
+  processedByPayroll: integer("processed_by_payroll"),
+  submittedAt: timestamp("submitted_at"),
+  adminApprovedAt: timestamp("admin_approved_at"),
+  payrollProcessedAt: timestamp("payroll_processed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Activity logs table
 export const activityLogs = pgTable("activity_logs", {
   id: serial("id").primaryKey(),
@@ -244,6 +274,14 @@ export const timeCardsRelations = relations(timeCards, ({ one }) => ({
   payrollProcessor: one(employees, { fields: [timeCards.processedByPayroll], references: [employees.id] }),
 }));
 
+export const substituteTimeCardsRelations = relations(substituteTimeCards, ({ one }) => ({
+  substitute: one(employees, { fields: [substituteTimeCards.substituteId], references: [employees.id] }),
+  assignment: one(substituteAssignments, { fields: [substituteTimeCards.assignmentId], references: [substituteAssignments.id] }),
+  submitter: one(employees, { fields: [substituteTimeCards.submittedBy], references: [employees.id] }),
+  adminApprover: one(employees, { fields: [substituteTimeCards.approvedByAdmin], references: [employees.id] }),
+  payrollProcessor: one(employees, { fields: [substituteTimeCards.processedByPayroll], references: [employees.id] }),
+}));
+
 export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
   user: one(users, { fields: [activityLogs.userId], references: [users.id] }),
 }));
@@ -255,6 +293,7 @@ export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTimeCardSchema = createInsertSchema(timeCards).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSubstituteTimeCardSchema = createInsertSchema(substituteTimeCards).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 
 // Types
@@ -274,5 +313,7 @@ export type OnboardingWorkflow = typeof onboardingWorkflows.$inferSelect;
 export type SubstituteAssignment = typeof substituteAssignments.$inferSelect;
 export type InsertTimeCard = z.infer<typeof insertTimeCardSchema>;
 export type TimeCard = typeof timeCards.$inferSelect;
+export type InsertSubstituteTimeCard = z.infer<typeof insertSubstituteTimeCardSchema>;
+export type SubstituteTimeCard = typeof substituteTimeCards.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
