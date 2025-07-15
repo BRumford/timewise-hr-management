@@ -18,7 +18,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
-  { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr", "employee"] },
+  { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr"] },
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["admin", "hr"] },
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["admin", "hr", "employee"] },
   { path: "/time-cards", icon: Clock, label: "Time Cards", roles: ["admin", "hr", "employee"] },
@@ -26,11 +26,11 @@ const menuItems = [
   { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["admin", "hr"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["admin", "hr"] },
-  { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr", "employee"] },
+  { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr"] },
   { path: "/letters", icon: Mail, label: "Letters", roles: ["admin", "hr"] },
-  { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr", "employee"] },
+  { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["admin", "hr"] },
-  { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr", "employee"] },
+  { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr"] },
 ];
 
 export default function Sidebar() {
