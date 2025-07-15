@@ -6,11 +6,39 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Filter, Download, Upload, FileText, AlertCircle, CheckCircle, Edit, Eye, Trash2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+// Form validation schema for employee editing
+const editEmployeeSchema = z.object({
+  employeeId: z.string().min(1, "Employee ID is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  phoneNumber: z.string().optional(),
+  address: z.string().optional(),
+  department: z.string().min(1, "Department is required"),
+  position: z.string().min(1, "Position is required"),
+  employeeType: z.enum(["teacher", "administrator", "support_staff", "substitute"]),
+  hireDate: z.string().min(1, "Hire date is required"),
+  salary: z.string().min(1, "Salary is required"),
+  status: z.enum(["active", "inactive", "on_leave", "terminated"]),
+  payGrade: z.string().optional(),
+  educationLevel: z.string().optional(),
+  certifications: z.string().optional(),
+  supervisorId: z.string().optional(),
+});
+
+type EditEmployeeFormData = z.infer<typeof editEmployeeSchema>;
 
 export default function Employees() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,6 +57,29 @@ export default function Employees() {
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ["/api/employees"],
+  });
+
+  // Form for editing employees
+  const editForm = useForm<EditEmployeeFormData>({
+    resolver: zodResolver(editEmployeeSchema),
+    defaultValues: {
+      employeeId: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phoneNumber: "",
+      address: "",
+      department: "",
+      position: "",
+      employeeType: "teacher",
+      hireDate: "",
+      salary: "",
+      status: "active",
+      payGrade: "",
+      educationLevel: "",
+      certifications: "",
+      supervisorId: "",
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -185,6 +236,25 @@ export default function Employees() {
 
   const handleEditEmployee = (employee: any) => {
     setSelectedEmployee(employee);
+    // Populate form with employee data
+    editForm.reset({
+      employeeId: employee.employeeId,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      email: employee.email,
+      phoneNumber: employee.phoneNumber || "",
+      address: employee.address || "",
+      department: employee.department,
+      position: employee.position,
+      employeeType: employee.employeeType,
+      hireDate: employee.hireDate ? new Date(employee.hireDate).toISOString().split('T')[0] : "",
+      salary: employee.salary || "",
+      status: employee.status,
+      payGrade: employee.payGrade || "",
+      educationLevel: employee.educationLevel || "",
+      certifications: employee.certifications ? employee.certifications.join(', ') : "",
+      supervisorId: employee.supervisorId ? employee.supervisorId.toString() : "",
+    });
     setIsEditDialogOpen(true);
   };
 
@@ -218,9 +288,48 @@ export default function Employees() {
     },
   });
 
+  const editEmployeeMutation = useMutation({
+    mutationFn: async (data: EditEmployeeFormData & { id: number }) => {
+      const { id, ...updateData } = data;
+      // Convert fields to proper types for backend
+      const formattedData = {
+        ...updateData,
+        hireDate: new Date(updateData.hireDate),
+        supervisorId: updateData.supervisorId ? parseInt(updateData.supervisorId) : null,
+        certifications: updateData.certifications ? updateData.certifications.split(',').map(c => c.trim()) : [],
+      };
+      return await apiRequest(`/api/employees/${id}`, 'PUT', formattedData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+      setIsEditDialogOpen(false);
+      editForm.reset();
+      toast({
+        title: "Success",
+        description: "Employee updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update employee",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteEmployee = (employee: any) => {
     if (window.confirm(`Are you sure you want to delete ${employee.firstName} ${employee.lastName}?`)) {
       deleteEmployeeMutation.mutate(employee.id);
+    }
+  };
+
+  const onEditSubmit = (data: EditEmployeeFormData) => {
+    if (selectedEmployee) {
+      editEmployeeMutation.mutate({
+        ...data,
+        id: selectedEmployee.id,
+      });
     }
   };
 
@@ -538,17 +647,262 @@ export default function Employees() {
 
       {/* Edit Employee Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Employee</DialogTitle>
             <DialogDescription>
               Update information for {selectedEmployee?.firstName} {selectedEmployee?.lastName}
             </DialogDescription>
           </DialogHeader>
-          <div className="text-center py-8">
-            <p className="text-gray-500">Edit employee functionality coming soon...</p>
-            <p className="text-sm text-gray-400 mt-2">This feature will allow you to update employee details.</p>
-          </div>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="employeeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employee ID</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter employee ID" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="on_leave">On Leave</SelectItem>
+                          <SelectItem value="terminated">Terminated</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter first name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter last name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" placeholder="Enter email address" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter phone number" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter department" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="position"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Position</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter position" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="employeeType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employee Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select employee type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="teacher">Teacher</SelectItem>
+                          <SelectItem value="administrator">Administrator</SelectItem>
+                          <SelectItem value="support_staff">Support Staff</SelectItem>
+                          <SelectItem value="substitute">Substitute</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="hireDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hire Date</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="salary"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Salary</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter salary" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="payGrade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pay Grade</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter pay grade (optional)" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="educationLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Education Level</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter education level (optional)" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="supervisorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Supervisor ID</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter supervisor ID (optional)" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={editForm.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Enter address (optional)" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="certifications"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Certifications</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Enter certifications, separated by commas (optional)" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsEditDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={editEmployeeMutation.isPending}
+                >
+                  {editEmployeeMutation.isPending ? "Updating..." : "Update Employee"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
