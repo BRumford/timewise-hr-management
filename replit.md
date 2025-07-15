@@ -264,3 +264,12 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Leave requests now successfully create even when AI services are unavailable
   - Added comprehensive logging for OpenAI API errors to help with debugging
   - System continues to function normally with manual substitute assignment when AI fails
+
+- Fixed Timecard Templates Edit Button and API Request Issues (July 15, 2025)
+  - Resolved non-functional edit button on timecard templates page
+  - Fixed API request format errors in all template mutation functions
+  - Corrected apiRequest parameter structure from object format to (url, method, data) format
+  - Added proper state management for template editing workflow
+  - Improved data cleaning and validation before sending updates
+  - Enhanced error handling and debugging capabilities for template operations
+  - Template editing now works correctly with proper form population and successful updates
