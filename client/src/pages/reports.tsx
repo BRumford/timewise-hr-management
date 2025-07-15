@@ -46,19 +46,25 @@ export default function Reports() {
   // Payroll Reports Queries
   const { data: payrollSummaryReport, isLoading: payrollSummaryLoading } = useQuery({
     queryKey: ["/api/payroll/reports/summary", dateRange.startDate, dateRange.endDate],
-    queryFn: () => fetch(`/api/payroll/reports/summary?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`).then(res => res.json()),
+    queryFn: () => fetch(`/api/payroll/reports/summary?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`, {
+      credentials: 'include'
+    }).then(res => res.json()),
     enabled: !!dateRange.startDate && !!dateRange.endDate,
   });
 
   const { data: taxLiabilityReport, isLoading: taxLiabilityLoading } = useQuery({
     queryKey: ["/api/payroll/reports/tax-liability", dateRange.startDate, dateRange.endDate],
-    queryFn: () => fetch(`/api/payroll/reports/tax-liability?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`).then(res => res.json()),
+    queryFn: () => fetch(`/api/payroll/reports/tax-liability?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`, {
+      credentials: 'include'
+    }).then(res => res.json()),
     enabled: !!dateRange.startDate && !!dateRange.endDate,
   });
 
   const { data: benefitsReport, isLoading: benefitsLoading } = useQuery({
     queryKey: ["/api/payroll/reports/benefits", dateRange.startDate, dateRange.endDate],
-    queryFn: () => fetch(`/api/payroll/reports/benefits?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`).then(res => res.json()),
+    queryFn: () => fetch(`/api/payroll/reports/benefits?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`, {
+      credentials: 'include'
+    }).then(res => res.json()),
     enabled: !!dateRange.startDate && !!dateRange.endDate,
   });
 
@@ -72,10 +78,18 @@ export default function Reports() {
   const handleExport = async (reportType: string) => {
     try {
       const url = `/api/payroll/reports/${reportType}/export?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include', // Include cookies for authentication
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       
       if (!response.ok) {
-        throw new Error('Export failed');
+        const errorText = await response.text();
+        console.error('Export error response:', errorText);
+        throw new Error(`Export failed: ${response.status} ${response.statusText}`);
       }
       
       const blob = await response.blob();
@@ -89,7 +103,7 @@ export default function Reports() {
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error('Export error:', error);
-      alert('Export failed. Please try again.');
+      alert(`Export failed: ${error.message}. Please try again.`);
     }
   };
 
