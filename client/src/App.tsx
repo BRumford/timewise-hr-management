@@ -16,6 +16,7 @@ import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import ExtraPayActivities from "@/pages/extra-pay-activities";
 import Letters from "@/pages/letters";
+import TimecardTemplates from "@/pages/timecard-templates";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -32,6 +33,7 @@ function Router() {
             <Route path="/leave-management" component={LeaveManagement} />
             <Route path="/time-cards" component={TimeCards} />
             <Route path="/substitute-time-cards" component={SubstituteTimeCards} />
+            <Route path="/timecard-templates" component={TimecardTemplates} />
             <Route path="/payroll" component={Payroll} />
             <Route path="/documents" component={Documents} />
             <Route path="/onboarding" component={Onboarding} />

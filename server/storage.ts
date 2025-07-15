@@ -45,6 +45,12 @@ import {
   type Letter,
   type InsertLetter,
   letters,
+  type TimecardTemplate,
+  type InsertTimecardTemplate,
+  type TimecardTemplateField,
+  type InsertTimecardTemplateField,
+  timecardTemplates,
+  timecardTemplateFields,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne } from "drizzle-orm";
@@ -188,6 +194,24 @@ export interface IStorage {
   deleteLetter(id: number): Promise<void>;
   getLettersByEmployee(employeeId: number): Promise<Letter[]>;
   processLetterTemplate(id: number, employeeData: any): Promise<Letter>;
+  
+  // Timecard Templates
+  getTimecardTemplates(): Promise<TimecardTemplate[]>;
+  getTimecardTemplate(id: number): Promise<TimecardTemplate | undefined>;
+  createTimecardTemplate(template: InsertTimecardTemplate): Promise<TimecardTemplate>;
+  updateTimecardTemplate(id: number, template: Partial<InsertTimecardTemplate>): Promise<TimecardTemplate>;
+  deleteTimecardTemplate(id: number): Promise<void>;
+  getTimecardTemplatesByEmployeeType(employeeType: string): Promise<TimecardTemplate[]>;
+  getActiveTimecardTemplates(): Promise<TimecardTemplate[]>;
+  getDefaultTimecardTemplate(employeeType: string): Promise<TimecardTemplate | undefined>;
+  
+  // Timecard Template Fields
+  getTimecardTemplateFields(templateId: number): Promise<TimecardTemplateField[]>;
+  getTimecardTemplateField(id: number): Promise<TimecardTemplateField | undefined>;
+  createTimecardTemplateField(field: InsertTimecardTemplateField): Promise<TimecardTemplateField>;
+  updateTimecardTemplateField(id: number, field: Partial<InsertTimecardTemplateField>): Promise<TimecardTemplateField>;
+  deleteTimecardTemplateField(id: number): Promise<void>;
+  getTimecardTemplateFieldsBySection(templateId: number, section: string): Promise<TimecardTemplateField[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1036,6 +1060,90 @@ export class DatabaseStorage implements IStorage {
     }).where(eq(letters.id, id)).returning();
 
     return updated;
+  }
+
+  // Timecard Template operations
+  async getTimecardTemplates(): Promise<TimecardTemplate[]> {
+    return await db.select().from(timecardTemplates).orderBy(desc(timecardTemplates.createdAt));
+  }
+
+  async getTimecardTemplate(id: number): Promise<TimecardTemplate | undefined> {
+    const [template] = await db.select().from(timecardTemplates).where(eq(timecardTemplates.id, id));
+    return template;
+  }
+
+  async createTimecardTemplate(template: InsertTimecardTemplate): Promise<TimecardTemplate> {
+    const [newTemplate] = await db.insert(timecardTemplates).values(template).returning();
+    return newTemplate;
+  }
+
+  async updateTimecardTemplate(id: number, template: Partial<InsertTimecardTemplate>): Promise<TimecardTemplate> {
+    const [updated] = await db.update(timecardTemplates).set({
+      ...template,
+      updatedAt: new Date(),
+    }).where(eq(timecardTemplates.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTimecardTemplate(id: number): Promise<void> {
+    await db.delete(timecardTemplates).where(eq(timecardTemplates.id, id));
+  }
+
+  async getTimecardTemplatesByEmployeeType(employeeType: string): Promise<TimecardTemplate[]> {
+    return await db.select().from(timecardTemplates).where(eq(timecardTemplates.employeeType, employeeType));
+  }
+
+  async getActiveTimecardTemplates(): Promise<TimecardTemplate[]> {
+    return await db.select().from(timecardTemplates).where(eq(timecardTemplates.isActive, true));
+  }
+
+  async getDefaultTimecardTemplate(employeeType: string): Promise<TimecardTemplate | undefined> {
+    const [template] = await db.select().from(timecardTemplates).where(
+      and(
+        eq(timecardTemplates.employeeType, employeeType),
+        eq(timecardTemplates.isDefault, true),
+        eq(timecardTemplates.isActive, true)
+      )
+    );
+    return template;
+  }
+
+  // Timecard Template Fields operations
+  async getTimecardTemplateFields(templateId: number): Promise<TimecardTemplateField[]> {
+    return await db.select().from(timecardTemplateFields)
+      .where(eq(timecardTemplateFields.templateId, templateId))
+      .orderBy(timecardTemplateFields.displayOrder);
+  }
+
+  async getTimecardTemplateField(id: number): Promise<TimecardTemplateField | undefined> {
+    const [field] = await db.select().from(timecardTemplateFields).where(eq(timecardTemplateFields.id, id));
+    return field;
+  }
+
+  async createTimecardTemplateField(field: InsertTimecardTemplateField): Promise<TimecardTemplateField> {
+    const [newField] = await db.insert(timecardTemplateFields).values(field).returning();
+    return newField;
+  }
+
+  async updateTimecardTemplateField(id: number, field: Partial<InsertTimecardTemplateField>): Promise<TimecardTemplateField> {
+    const [updated] = await db.update(timecardTemplateFields).set({
+      ...field,
+      updatedAt: new Date(),
+    }).where(eq(timecardTemplateFields.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTimecardTemplateField(id: number): Promise<void> {
+    await db.delete(timecardTemplateFields).where(eq(timecardTemplateFields.id, id));
+  }
+
+  async getTimecardTemplateFieldsBySection(templateId: number, section: string): Promise<TimecardTemplateField[]> {
+    return await db.select().from(timecardTemplateFields).where(
+      and(
+        eq(timecardTemplateFields.templateId, templateId),
+        eq(timecardTemplateFields.section, section)
+      )
+    ).orderBy(timecardTemplateFields.displayOrder);
   }
 }
 

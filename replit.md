@@ -156,3 +156,16 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Added comprehensive error reporting for import validation failures
   - Support for updating existing employees based on employeeId matching
   - Automatic data type conversion for dates and numeric fields
+
+- Implemented Custom Timecard Templates system for flexible timecard design (July 15, 2025)
+  - Created timecardTemplates and timecardTemplateFields database tables
+  - Built comprehensive template designer with drag-and-drop field management
+  - Added support for different employee types (certificated, classified, substitute)
+  - Implemented field types: text, number, date, time, dropdown, checkbox, textarea, radio, email, phone
+  - Created section-based organization: general, time_tracking, breaks, overtime, leave, approval, notes
+  - Built template preview functionality showing real-time form layout
+  - Added template management with active/inactive states and default template selection
+  - Integrated custom fields data storage in time_cards table with jsonb column
+  - Created full CRUD API endpoints for templates and template fields
+  - Added comprehensive frontend page with tabs for templates, design, and preview
+  - School districts can now create custom timecard layouts tailored to their specific needs

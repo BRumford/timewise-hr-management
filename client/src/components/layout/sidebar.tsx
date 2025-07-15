@@ -12,7 +12,8 @@ import {
   Clock,
   UserCheck,
   DollarSign,
-  Mail
+  Mail,
+  Layout
 } from "lucide-react";
 
 const menuItems = [
@@ -21,6 +22,7 @@ const menuItems = [
   { path: "/leave-management", icon: Calendar, label: "Leave Management" },
   { path: "/time-cards", icon: Clock, label: "Time Cards" },
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards" },
+  { path: "/timecard-templates", icon: Layout, label: "Timecard Templates" },
   { path: "/payroll", icon: Calculator, label: "Payroll" },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities" },
   { path: "/documents", icon: FileText, label: "Documents" },

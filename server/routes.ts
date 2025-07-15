@@ -14,6 +14,8 @@ import {
   insertExtraPayContractSchema,
   insertExtraPayRequestSchema,
   insertLetterSchema,
+  insertTimecardTemplateSchema,
+  insertTimecardTemplateFieldSchema,
 } from "@shared/schema";
 import { 
   processDocument, 
@@ -1357,6 +1359,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error processing letter:', error);
       res.status(500).json({ message: "Failed to process letter" });
+    }
+  });
+
+  // Timecard Template Routes
+  app.get('/api/timecard-templates', async (req, res) => {
+    try {
+      const templates = await storage.getTimecardTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching timecard templates:', error);
+      res.status(500).json({ message: "Failed to fetch timecard templates" });
+    }
+  });
+
+  app.get('/api/timecard-templates/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await storage.getTimecardTemplate(id);
+      if (!template) {
+        return res.status(404).json({ message: "Timecard template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching timecard template:', error);
+      res.status(500).json({ message: "Failed to fetch timecard template" });
+    }
+  });
+
+  app.post('/api/timecard-templates', async (req, res) => {
+    try {
+      const validation = insertTimecardTemplateSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const template = await storage.createTimecardTemplate(validation.data);
+      res.json(template);
+    } catch (error) {
+      console.error('Error creating timecard template:', error);
+      res.status(500).json({ message: "Failed to create timecard template" });
+    }
+  });
+
+  app.put('/api/timecard-templates/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertTimecardTemplateSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const template = await storage.updateTimecardTemplate(id, validation.data);
+      res.json(template);
+    } catch (error) {
+      console.error('Error updating timecard template:', error);
+      res.status(500).json({ message: "Failed to update timecard template" });
+    }
+  });
+
+  app.delete('/api/timecard-templates/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteTimecardTemplate(id);
+      res.json({ message: "Timecard template deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting timecard template:', error);
+      res.status(500).json({ message: "Failed to delete timecard template" });
+    }
+  });
+
+  app.get('/api/timecard-templates/employee-type/:employeeType', async (req, res) => {
+    try {
+      const employeeType = req.params.employeeType;
+      const templates = await storage.getTimecardTemplatesByEmployeeType(employeeType);
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching timecard templates by employee type:', error);
+      res.status(500).json({ message: "Failed to fetch timecard templates by employee type" });
+    }
+  });
+
+  app.get('/api/timecard-templates/active', async (req, res) => {
+    try {
+      const templates = await storage.getActiveTimecardTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching active timecard templates:', error);
+      res.status(500).json({ message: "Failed to fetch active timecard templates" });
+    }
+  });
+
+  app.get('/api/timecard-templates/default/:employeeType', async (req, res) => {
+    try {
+      const employeeType = req.params.employeeType;
+      const template = await storage.getDefaultTimecardTemplate(employeeType);
+      if (!template) {
+        return res.status(404).json({ message: "Default timecard template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching default timecard template:', error);
+      res.status(500).json({ message: "Failed to fetch default timecard template" });
+    }
+  });
+
+  // Timecard Template Fields Routes
+  app.get('/api/timecard-template-fields/:templateId', async (req, res) => {
+    try {
+      const templateId = parseInt(req.params.templateId);
+      const fields = await storage.getTimecardTemplateFields(templateId);
+      res.json(fields);
+    } catch (error) {
+      console.error('Error fetching timecard template fields:', error);
+      res.status(500).json({ message: "Failed to fetch timecard template fields" });
+    }
+  });
+
+  app.get('/api/timecard-template-fields/field/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const field = await storage.getTimecardTemplateField(id);
+      if (!field) {
+        return res.status(404).json({ message: "Timecard template field not found" });
+      }
+      res.json(field);
+    } catch (error) {
+      console.error('Error fetching timecard template field:', error);
+      res.status(500).json({ message: "Failed to fetch timecard template field" });
+    }
+  });
+
+  app.post('/api/timecard-template-fields', async (req, res) => {
+    try {
+      const validation = insertTimecardTemplateFieldSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const field = await storage.createTimecardTemplateField(validation.data);
+      res.json(field);
+    } catch (error) {
+      console.error('Error creating timecard template field:', error);
+      res.status(500).json({ message: "Failed to create timecard template field" });
+    }
+  });
+
+  app.put('/api/timecard-template-fields/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertTimecardTemplateFieldSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const field = await storage.updateTimecardTemplateField(id, validation.data);
+      res.json(field);
+    } catch (error) {
+      console.error('Error updating timecard template field:', error);
+      res.status(500).json({ message: "Failed to update timecard template field" });
+    }
+  });
+
+  app.delete('/api/timecard-template-fields/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteTimecardTemplateField(id);
+      res.json({ message: "Timecard template field deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting timecard template field:', error);
+      res.status(500).json({ message: "Failed to delete timecard template field" });
+    }
+  });
+
+  app.get('/api/timecard-template-fields/:templateId/section/:section', async (req, res) => {
+    try {
+      const templateId = parseInt(req.params.templateId);
+      const section = req.params.section;
+      const fields = await storage.getTimecardTemplateFieldsBySection(templateId, section);
+      res.json(fields);
+    } catch (error) {
+      console.error('Error fetching timecard template fields by section:', error);
+      res.status(500).json({ message: "Failed to fetch timecard template fields by section" });
     }
   });
 

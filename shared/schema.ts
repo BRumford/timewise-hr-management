@@ -157,6 +157,7 @@ export const onboardingWorkflows = pgTable("onboarding_workflows", {
 export const timeCards = pgTable("time_cards", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull(),
+  templateId: integer("template_id").references(() => timecardTemplates.id),
   date: timestamp("date").notNull(),
   clockIn: timestamp("clock_in"),
   clockOut: timestamp("clock_out"),
@@ -164,6 +165,7 @@ export const timeCards = pgTable("time_cards", {
   breakEnd: timestamp("break_end"),
   totalHours: decimal("total_hours", { precision: 5, scale: 2 }),
   overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
+  customFieldsData: jsonb("custom_fields_data").default({}), // Store custom field values
   status: varchar("status").notNull().default("draft"), // draft, secretary_submitted, employee_approved, admin_approved, payroll_processed, rejected
   currentApprovalStage: varchar("current_approval_stage").default("secretary"), // secretary, employee, administrator, payroll
   notes: text("notes"),
@@ -325,6 +327,37 @@ export const letters = pgTable("letters", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Custom timecard templates
+export const timecardTemplates = pgTable("timecard_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  employeeType: varchar("employee_type", { length: 50 }).notNull(), // certificated, classified, substitute
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false),
+  approvalWorkflow: jsonb("approval_workflow").default([]), // Array of approval stages
+  settings: jsonb("settings").default({}), // Template-specific settings
+  createdBy: varchar("created_by", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const timecardTemplateFields = pgTable("timecard_template_fields", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => timecardTemplates.id, { onDelete: "cascade" }),
+  fieldName: varchar("field_name", { length: 100 }).notNull(),
+  fieldLabel: varchar("field_label", { length: 200 }).notNull(),
+  fieldType: varchar("field_type", { length: 50 }).notNull(), // text, number, date, time, dropdown, checkbox, textarea
+  fieldOptions: jsonb("field_options").default({}), // For dropdown options, validation rules, etc.
+  isRequired: boolean("is_required").default(false),
+  isReadOnly: boolean("is_read_only").default(false),
+  displayOrder: integer("display_order").default(0),
+  section: varchar("section", { length: 100 }).default("general"), // general, time_tracking, breaks, approval, etc.
+  validationRules: jsonb("validation_rules").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   employees: many(employees),
@@ -382,6 +415,7 @@ export const onboardingFormSubmissionsRelations = relations(onboardingFormSubmis
 
 export const timeCardsRelations = relations(timeCards, ({ one }) => ({
   employee: one(employees, { fields: [timeCards.employeeId], references: [employees.id] }),
+  template: one(timecardTemplates, { fields: [timeCards.templateId], references: [timecardTemplates.id] }),
   submitter: one(employees, { fields: [timeCards.submittedBy], references: [employees.id] }),
   employeeApprover: one(employees, { fields: [timeCards.approvedByEmployee], references: [employees.id] }),
   adminApprover: one(employees, { fields: [timeCards.approvedByAdmin], references: [employees.id] }),
@@ -413,6 +447,15 @@ export const lettersRelations = relations(letters, ({ one }) => ({
   employee: one(employees, { fields: [letters.employeeId], references: [employees.id] }),
 }));
 
+export const timecardTemplatesRelations = relations(timecardTemplates, ({ many }) => ({
+  fields: many(timecardTemplateFields),
+  timeCards: many(timeCards),
+}));
+
+export const timecardTemplateFieldsRelations = relations(timecardTemplateFields, ({ one }) => ({
+  template: one(timecardTemplates, { fields: [timecardTemplateFields.templateId], references: [timecardTemplates.id] }),
+}));
+
 // Zod schemas
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({ id: true, createdAt: true, updatedAt: true });
@@ -427,6 +470,8 @@ export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ i
 export const insertExtraPayContractSchema = createInsertSchema(extraPayContracts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExtraPayRequestSchema = createInsertSchema(extraPayRequests).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLetterSchema = createInsertSchema(letters).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTimecardTemplateSchema = createInsertSchema(timecardTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTimecardTemplateFieldSchema = createInsertSchema(timecardTemplateFields).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -459,3 +504,7 @@ export type InsertExtraPayRequest = z.infer<typeof insertExtraPayRequestSchema>;
 export type ExtraPayRequest = typeof extraPayRequests.$inferSelect;
 export type InsertLetter = z.infer<typeof insertLetterSchema>;
 export type Letter = typeof letters.$inferSelect;
+export type InsertTimecardTemplate = z.infer<typeof insertTimecardTemplateSchema>;
+export type TimecardTemplate = typeof timecardTemplates.$inferSelect;
+export type InsertTimecardTemplateField = z.infer<typeof insertTimecardTemplateFieldSchema>;
+export type TimecardTemplateField = typeof timecardTemplateFields.$inferSelect;
