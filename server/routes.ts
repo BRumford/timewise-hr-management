@@ -4,15 +4,38 @@ import { storage } from "./storage";
 import type { Request, Response, NextFunction } from "express";
 
 // Simple authentication middleware for demo purposes
-const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  // For demo, we'll simulate a logged-in user
-  // In production, this would check session or JWT token
-  (req as any).user = {
-    id: "demo_user",
-    role: "employee", // Change this to test different roles: 'admin', 'hr', 'employee'
-    claims: { sub: "demo_user" }
-  };
-  next();
+const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // For demo, we'll simulate a logged-in user
+    // In production, this would check session or JWT token
+    const userId = "demo_user";
+    
+    // Get the user from the database to get their current role
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      // If user doesn't exist, create them with default role
+      const newUser = await storage.upsertUser({
+        id: userId,
+        role: "employee"
+      });
+      (req as any).user = {
+        id: newUser.id,
+        role: newUser.role,
+        claims: { sub: newUser.id }
+      };
+    } else {
+      (req as any).user = {
+        id: user.id,
+        role: user.role,
+        claims: { sub: user.id }
+      };
+    }
+    
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Authentication error", error: (error as Error).message });
+  }
 };
 
 // Role-based access control middleware
@@ -159,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if user can switch roles
-  app.get('/api/auth/can-switch-roles', async (req, res) => {
+  app.get('/api/auth/can-switch-roles', isAuthenticated, async (req, res) => {
     try {
       const user = (req as any).user;
       
@@ -182,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Role switch route for authorized users only
-  app.post('/api/auth/switch-role', async (req, res) => {
+  app.post('/api/auth/switch-role', isAuthenticated, async (req, res) => {
     try {
       const { role } = req.body;
       if (!['employee', 'admin', 'hr'].includes(role)) {
