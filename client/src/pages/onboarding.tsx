@@ -45,6 +45,7 @@ const formSchema = insertOnboardingFormSchema.extend({
 const workflowFormSchema = insertOnboardingWorkflowSchema.extend({
   targetCompletionDate: z.string().optional(),
   workflowType: z.string(), // Adding workflow type field
+  selectedForms: z.array(z.number()).optional(), // Form IDs to include
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -60,6 +61,9 @@ export default function Onboarding() {
   const [createMode, setCreateMode] = useState<"new" | "existing">("new");
   const [selectedExistingForm, setSelectedExistingForm] = useState<OnboardingForm | null>(null);
   const [isStartWorkflowDialogOpen, setIsStartWorkflowDialogOpen] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<any>(null);
+  const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false);
+  const [isUpdateWorkflowDialogOpen, setIsUpdateWorkflowDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: workflows, isLoading } = useQuery({
@@ -98,6 +102,7 @@ export default function Onboarding() {
       workflowType: "new_hire",
       targetCompletionDate: "",
       notes: "",
+      selectedForms: [],
     },
   });
 
@@ -486,11 +491,25 @@ export default function Onboarding() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex space-x-2">
-                          <Button variant="link" className="text-indigo-600 hover:text-indigo-900 p-0">
+                          <Button 
+                            variant="link" 
+                            className="text-indigo-600 hover:text-indigo-900 p-0"
+                            onClick={() => {
+                              setSelectedWorkflow(workflow);
+                              setIsViewDetailsDialogOpen(true);
+                            }}
+                          >
                             View Details
                           </Button>
                           {workflow.status !== 'completed' && (
-                            <Button variant="link" className="text-green-600 hover:text-green-900 p-0">
+                            <Button 
+                              variant="link" 
+                              className="text-green-600 hover:text-green-900 p-0"
+                              onClick={() => {
+                                setSelectedWorkflow(workflow);
+                                setIsUpdateWorkflowDialogOpen(true);
+                              }}
+                            >
                               Update
                             </Button>
                           )}
@@ -978,6 +997,40 @@ export default function Onboarding() {
               
               <FormField
                 control={workflowForm.control}
+                name="selectedForms"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Required Forms</FormLabel>
+                    <div className="space-y-2">
+                      {onboardingForms?.map((form: any) => (
+                        <div key={form.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`form-${form.id}`}
+                            checked={field.value?.includes(form.id) || false}
+                            onChange={(e) => {
+                              const currentValues = field.value || [];
+                              if (e.target.checked) {
+                                field.onChange([...currentValues, form.id]);
+                              } else {
+                                field.onChange(currentValues.filter(id => id !== form.id));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <label htmlFor={`form-${form.id}`} className="text-sm text-gray-700">
+                            {form.title} - {form.formType}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={workflowForm.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
@@ -1011,6 +1064,138 @@ export default function Onboarding() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={isViewDetailsDialogOpen} onOpenChange={setIsViewDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Workflow Details</DialogTitle>
+            <DialogDescription>
+              View detailed information about the onboarding workflow
+            </DialogDescription>
+          </DialogHeader>
+          {selectedWorkflow && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Employee</Label>
+                  <p className="text-sm text-gray-900">{getEmployeeName(selectedWorkflow.employeeId)}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Current Step</Label>
+                  <p className="text-sm text-gray-900 capitalize">{selectedWorkflow.currentStep?.replace('_', ' ')}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Status</Label>
+                  <Badge className={getStatusColor(selectedWorkflow.status)}>
+                    {selectedWorkflow.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Progress</Label>
+                  <p className="text-sm text-gray-900">{calculateProgress(selectedWorkflow)}% Complete</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Start Date</Label>
+                  <p className="text-sm text-gray-900">{format(new Date(selectedWorkflow.startDate), 'PPP')}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Target Date</Label>
+                  <p className="text-sm text-gray-900">
+                    {selectedWorkflow.targetCompletionDate 
+                      ? format(new Date(selectedWorkflow.targetCompletionDate), 'PPP')
+                      : 'Not set'
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Required Documents</Label>
+                <div className="mt-2 space-y-1">
+                  {selectedWorkflow.requiredDocuments?.map((doc: string, index: number) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      {selectedWorkflow.completedSteps?.includes(doc) ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className="text-sm text-gray-700">{doc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {selectedWorkflow.notes && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Notes</Label>
+                  <p className="text-sm text-gray-900 mt-1">{selectedWorkflow.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Workflow Dialog */}
+      <Dialog open={isUpdateWorkflowDialogOpen} onOpenChange={setIsUpdateWorkflowDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Update Workflow</DialogTitle>
+            <DialogDescription>
+              Update the status and progress of the onboarding workflow
+            </DialogDescription>
+          </DialogHeader>
+          {selectedWorkflow && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Employee</Label>
+                <p className="text-sm text-gray-900">{getEmployeeName(selectedWorkflow.employeeId)}</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="status-select">Status</Label>
+                <select
+                  id="status-select"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  defaultValue={selectedWorkflow.status}
+                  onChange={(e) => {
+                    // Handle status update
+                    const newStatus = e.target.value;
+                    // TODO: Implement status update mutation
+                  }}
+                >
+                  <option value="started">Started</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="stalled">Stalled</option>
+                </select>
+              </div>
+              
+              <div>
+                <Label htmlFor="current-step">Current Step</Label>
+                <Input
+                  id="current-step"
+                  defaultValue={selectedWorkflow.currentStep}
+                  placeholder="Enter current step"
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsUpdateWorkflowDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button>
+                  Update Workflow
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
