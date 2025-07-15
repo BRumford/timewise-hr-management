@@ -508,7 +508,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/onboarding", async (req, res) => {
     try {
-      const workflowData = insertOnboardingWorkflowSchema.parse(req.body);
+      // Convert string dates to Date objects for validation
+      const requestData = {
+        ...req.body,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+        targetCompletionDate: req.body.targetCompletionDate ? new Date(req.body.targetCompletionDate) : undefined,
+      };
+      
+      const workflowData = insertOnboardingWorkflowSchema.parse(requestData);
       
       // Generate AI-powered checklist or fallback to default
       const employee = await storage.getEmployee(workflowData.employeeId);

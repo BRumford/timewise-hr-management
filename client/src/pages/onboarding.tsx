@@ -169,7 +169,7 @@ export default function Onboarding() {
       const finalData = {
         ...workflowData,
         startDate: new Date().toISOString(),
-        targetCompletionDate: data.targetCompletionDate ? new Date(data.targetCompletionDate).toISOString() : null,
+        targetCompletionDate: data.targetCompletionDate || null,
       };
       return await apiRequest("POST", "/api/onboarding", finalData);
     },
