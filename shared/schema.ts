@@ -266,6 +266,25 @@ export const extraPayRequests = pgTable("extra_pay_requests", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Letters table for automated document generation
+export const letters = pgTable("letters", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  templateContent: text("template_content").notNull(), // Original template with placeholders
+  processedContent: text("processed_content"), // Content with employee data filled in
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  letterType: varchar("letter_type").notNull(), // offer, recommendation, disciplinary, etc.
+  status: varchar("status").notNull().default("draft"), // draft, processed, sent, archived
+  placeholders: jsonb("placeholders"), // Metadata about what placeholders were used
+  createdBy: varchar("created_by").notNull(),
+  processedAt: timestamp("processed_at"),
+  sentAt: timestamp("sent_at"),
+  documentUrl: varchar("document_url"), // URL to the generated document
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   employees: many(employees),
@@ -283,6 +302,7 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
   onboardingWorkflow: one(onboardingWorkflows),
   substituteAssignments: many(substituteAssignments),
   extraPayRequests: many(extraPayRequests),
+  letters: many(letters),
 }));
 
 export const leaveRequestsRelations = relations(leaveRequests, ({ one, many }) => ({
@@ -338,6 +358,10 @@ export const extraPayRequestsRelations = relations(extraPayRequests, ({ one }) =
   employee: one(employees, { fields: [extraPayRequests.employeeId], references: [employees.id] }),
 }));
 
+export const lettersRelations = relations(letters, ({ one }) => ({
+  employee: one(employees, { fields: [letters.employeeId], references: [employees.id] }),
+}));
+
 // Zod schemas
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({ id: true, createdAt: true, updatedAt: true });
@@ -349,6 +373,7 @@ export const insertSubstituteTimeCardSchema = createInsertSchema(substituteTimeC
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export const insertExtraPayContractSchema = createInsertSchema(extraPayContracts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExtraPayRequestSchema = createInsertSchema(extraPayRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLetterSchema = createInsertSchema(letters).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -375,3 +400,5 @@ export type InsertExtraPayContract = z.infer<typeof insertExtraPayContractSchema
 export type ExtraPayContract = typeof extraPayContracts.$inferSelect;
 export type InsertExtraPayRequest = z.infer<typeof insertExtraPayRequestSchema>;
 export type ExtraPayRequest = typeof extraPayRequests.$inferSelect;
+export type InsertLetter = z.infer<typeof insertLetterSchema>;
+export type Letter = typeof letters.$inferSelect;

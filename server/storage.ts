@@ -36,6 +36,9 @@ import {
   type InsertExtraPayContract,
   type ExtraPayRequest,
   type InsertExtraPayRequest,
+  type Letter,
+  type InsertLetter,
+  letters,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne } from "drizzle-orm";
@@ -147,6 +150,15 @@ export interface IStorage {
   approveExtraPayRequest(id: number, approvedBy: string): Promise<ExtraPayRequest>;
   rejectExtraPayRequest(id: number, rejectedBy: string, reason: string): Promise<ExtraPayRequest>;
   markExtraPayRequestPaid(id: number): Promise<ExtraPayRequest>;
+  
+  // Letters
+  getLetters(): Promise<Letter[]>;
+  getLetter(id: number): Promise<Letter | undefined>;
+  createLetter(letter: InsertLetter): Promise<Letter>;
+  updateLetter(id: number, letter: Partial<InsertLetter>): Promise<Letter>;
+  deleteLetter(id: number): Promise<void>;
+  getLettersByEmployee(employeeId: number): Promise<Letter[]>;
+  processLetterTemplate(id: number, employeeData: any): Promise<Letter>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -722,6 +734,86 @@ export class DatabaseStorage implements IStorage {
       status: "paid",
       paidAt: new Date(),
     }).where(eq(extraPayRequests.id, id)).returning();
+    return updated;
+  }
+
+  // Letters operations
+  async getLetters(): Promise<Letter[]> {
+    return await db.select().from(letters).orderBy(desc(letters.createdAt));
+  }
+
+  async getLetter(id: number): Promise<Letter | undefined> {
+    const [letter] = await db.select().from(letters).where(eq(letters.id, id));
+    return letter;
+  }
+
+  async createLetter(letter: InsertLetter): Promise<Letter> {
+    const [newLetter] = await db.insert(letters).values(letter).returning();
+    return newLetter;
+  }
+
+  async updateLetter(id: number, letter: Partial<InsertLetter>): Promise<Letter> {
+    const [updated] = await db.update(letters).set({
+      ...letter,
+      updatedAt: new Date(),
+    }).where(eq(letters.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLetter(id: number): Promise<void> {
+    await db.delete(letters).where(eq(letters.id, id));
+  }
+
+  async getLettersByEmployee(employeeId: number): Promise<Letter[]> {
+    return await db.select().from(letters).where(eq(letters.employeeId, employeeId));
+  }
+
+  async processLetterTemplate(id: number, employeeData: any): Promise<Letter> {
+    const letter = await this.getLetter(id);
+    if (!letter) {
+      throw new Error('Letter not found');
+    }
+
+    // Replace placeholders with employee data
+    let processedContent = letter.templateContent;
+    const placeholders = [];
+
+    // Common placeholders
+    const replacements = {
+      '{{firstName}}': employeeData.firstName || '',
+      '{{lastName}}': employeeData.lastName || '',
+      '{{fullName}}': `${employeeData.firstName || ''} ${employeeData.lastName || ''}`.trim(),
+      '{{employeeId}}': employeeData.employeeId || '',
+      '{{email}}': employeeData.email || '',
+      '{{department}}': employeeData.department || '',
+      '{{position}}': employeeData.position || '',
+      '{{startDate}}': employeeData.startDate ? new Date(employeeData.startDate).toLocaleDateString() : '',
+      '{{salary}}': employeeData.salary || '',
+      '{{phone}}': employeeData.phone || '',
+      '{{address}}': employeeData.address || '',
+      '{{emergencyContact}}': employeeData.emergencyContact || '',
+      '{{emergencyPhone}}': employeeData.emergencyPhone || '',
+      '{{currentDate}}': new Date().toLocaleDateString(),
+      '{{currentYear}}': new Date().getFullYear().toString(),
+    };
+
+    // Replace placeholders and track what was replaced
+    for (const [placeholder, value] of Object.entries(replacements)) {
+      if (processedContent.includes(placeholder)) {
+        processedContent = processedContent.replace(new RegExp(placeholder, 'g'), value);
+        placeholders.push({ placeholder, value });
+      }
+    }
+
+    // Update the letter with processed content
+    const [updated] = await db.update(letters).set({
+      processedContent,
+      placeholders,
+      status: 'processed',
+      processedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(letters.id, id)).returning();
+
     return updated;
   }
 }

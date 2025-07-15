@@ -11,7 +11,8 @@ import {
   Settings,
   Clock,
   UserCheck,
-  DollarSign
+  DollarSign,
+  Mail
 } from "lucide-react";
 
 const menuItems = [
@@ -23,6 +24,7 @@ const menuItems = [
   { path: "/payroll", icon: Calculator, label: "Payroll" },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities" },
   { path: "/documents", icon: FileText, label: "Documents" },
+  { path: "/letters", icon: Mail, label: "Letters" },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding" },
   { path: "/reports", icon: BarChart3, label: "Reports" },
   { path: "/settings", icon: Settings, label: "Settings" },

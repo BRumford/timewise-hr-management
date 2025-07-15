@@ -11,6 +11,7 @@ import {
   insertSubstituteTimeCardSchema,
   insertExtraPayContractSchema,
   insertExtraPayRequestSchema,
+  insertLetterSchema,
 } from "@shared/schema";
 import { 
   processDocument, 
@@ -970,6 +971,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error marking extra pay request as paid:', error);
       res.status(500).json({ message: "Failed to mark extra pay request as paid" });
+    }
+  });
+
+  // Letters Routes
+  app.get('/api/letters', async (req, res) => {
+    try {
+      const letters = await storage.getLetters();
+      res.json(letters);
+    } catch (error) {
+      console.error('Error fetching letters:', error);
+      res.status(500).json({ message: "Failed to fetch letters" });
+    }
+  });
+
+  app.get('/api/letters/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const letter = await storage.getLetter(id);
+      if (!letter) {
+        return res.status(404).json({ message: "Letter not found" });
+      }
+      res.json(letter);
+    } catch (error) {
+      console.error('Error fetching letter:', error);
+      res.status(500).json({ message: "Failed to fetch letter" });
+    }
+  });
+
+  app.post('/api/letters', async (req, res) => {
+    try {
+      const validation = insertLetterSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const letter = await storage.createLetter(validation.data);
+      res.json(letter);
+    } catch (error) {
+      console.error('Error creating letter:', error);
+      res.status(500).json({ message: "Failed to create letter" });
+    }
+  });
+
+  app.put('/api/letters/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertLetterSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const letter = await storage.updateLetter(id, validation.data);
+      res.json(letter);
+    } catch (error) {
+      console.error('Error updating letter:', error);
+      res.status(500).json({ message: "Failed to update letter" });
+    }
+  });
+
+  app.delete('/api/letters/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLetter(id);
+      res.json({ message: "Letter deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting letter:', error);
+      res.status(500).json({ message: "Failed to delete letter" });
+    }
+  });
+
+  app.get('/api/letters/employee/:employeeId', async (req, res) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      const letters = await storage.getLettersByEmployee(employeeId);
+      res.json(letters);
+    } catch (error) {
+      console.error('Error fetching letters by employee:', error);
+      res.status(500).json({ message: "Failed to fetch letters by employee" });
+    }
+  });
+
+  app.post('/api/letters/:id/process', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { employeeId } = req.body;
+      
+      // Get employee data
+      const employee = await storage.getEmployee(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      const letter = await storage.processLetterTemplate(id, employee);
+      res.json(letter);
+    } catch (error) {
+      console.error('Error processing letter:', error);
+      res.status(500).json({ message: "Failed to process letter" });
     }
   });
 
