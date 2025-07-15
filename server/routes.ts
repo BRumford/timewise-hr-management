@@ -401,6 +401,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export time cards for accounting
+  app.get("/api/time-cards/export", async (req, res) => {
+    try {
+      const { startDate, endDate, status } = req.query;
+      const timeCards = await storage.getTimeCards();
+      
+      // Filter by date range if provided
+      let filteredCards = timeCards;
+      if (startDate && endDate) {
+        filteredCards = timeCards.filter(card => {
+          const cardDate = new Date(card.date);
+          return cardDate >= new Date(startDate as string) && cardDate <= new Date(endDate as string);
+        });
+      }
+      
+      // Filter by status if provided
+      if (status && status !== 'all') {
+        filteredCards = filteredCards.filter(card => card.status === status);
+      }
+      
+      // Get employee information
+      const employees = await storage.getEmployees();
+      const employeeMap = new Map(employees.map(emp => [emp.id, emp]));
+      
+      // Format data for accounting export
+      const exportData = filteredCards.map(card => {
+        const employee = employeeMap.get(card.employeeId);
+        const hourlyRate = employee?.salary ? (parseFloat(employee.salary) / 2080) : 0;
+        const regularPay = card.totalHours ? (card.totalHours * hourlyRate) : 0;
+        const overtimePay = card.overtimeHours ? (card.overtimeHours * hourlyRate * 1.5) : 0;
+        
+        return {
+          TimeCardID: card.id,
+          EmployeeID: employee?.employeeId || '',
+          FirstName: employee?.firstName || '',
+          LastName: employee?.lastName || '',
+          Department: employee?.department || '',
+          Position: employee?.position || '',
+          Date: card.date,
+          ClockIn: card.clockIn,
+          ClockOut: card.clockOut,
+          BreakStart: card.breakStart,
+          BreakEnd: card.breakEnd,
+          TotalHours: card.totalHours,
+          OvertimeHours: card.overtimeHours,
+          HourlyRate: hourlyRate.toFixed(2),
+          RegularPay: regularPay.toFixed(2),
+          OvertimePay: overtimePay.toFixed(2),
+          TotalPay: (regularPay + overtimePay).toFixed(2),
+          Status: card.status,
+          ApprovalStage: card.currentApprovalStage,
+          SubmittedAt: card.submittedAt,
+          ApprovedAt: card.adminApprovedAt,
+          ProcessedAt: card.payrollProcessedAt,
+          Notes: card.notes
+        };
+      });
+      
+      res.json({
+        exportDate: new Date().toISOString(),
+        totalRecords: exportData.length,
+        dateRange: { startDate, endDate },
+        status: status || 'all',
+        data: exportData
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export time cards", error: error.message });
+    }
+  });
+
   app.get("/api/time-cards/:id", async (req, res) => {
     try {
       const timeCard = await storage.getTimeCard(parseInt(req.params.id));
@@ -544,6 +614,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching substitute time cards:', error);
       res.status(500).json({ message: "Failed to fetch substitute time cards" });
+    }
+  });
+
+  // Export substitute time cards for accounting
+  app.get('/api/substitute-time-cards/export', async (req, res) => {
+    try {
+      const { startDate, endDate, status } = req.query;
+      const substituteTimeCards = await storage.getSubstituteTimeCards();
+      
+      // Filter by date range if provided
+      let filteredCards = substituteTimeCards;
+      if (startDate && endDate) {
+        filteredCards = substituteTimeCards.filter(card => {
+          const cardDate = new Date(card.date);
+          return cardDate >= new Date(startDate as string) && cardDate <= new Date(endDate as string);
+        });
+      }
+      
+      // Filter by status if provided
+      if (status && status !== 'all') {
+        filteredCards = filteredCards.filter(card => card.status === status);
+      }
+      
+      // Get employee information
+      const employees = await storage.getEmployees();
+      const employeeMap = new Map(employees.map(emp => [emp.id, emp]));
+      
+      // Format data for accounting export
+      const exportData = filteredCards.map(card => {
+        const employee = employeeMap.get(card.substituteId);
+        const dailyRate = card.dailyRate || 150; // Default daily rate
+        const totalPay = card.totalPay || (card.totalHours * dailyRate / 8); // Calculate based on hours
+        
+        return {
+          TimeCardID: card.id,
+          EmployeeID: employee?.employeeId || '',
+          FirstName: employee?.firstName || '',
+          LastName: employee?.lastName || '',
+          EmployeeType: 'Substitute',
+          Department: employee?.department || '',
+          Position: employee?.position || '',
+          Date: card.date,
+          ClockIn: card.clockIn,
+          ClockOut: card.clockOut,
+          BreakStart: card.breakStart,
+          BreakEnd: card.breakEnd,
+          TotalHours: card.totalHours,
+          OvertimeHours: card.overtimeHours || 0,
+          DailyRate: dailyRate,
+          TotalPay: totalPay,
+          Status: card.status,
+          ApprovalStage: card.currentApprovalStage,
+          SubmittedAt: card.submittedAt,
+          ApprovedAt: card.adminApprovedAt,
+          ProcessedAt: card.payrollProcessedAt,
+          Notes: card.notes
+        };
+      });
+      
+      res.json({
+        exportDate: new Date().toISOString(),
+        totalRecords: exportData.length,
+        dateRange: { startDate, endDate },
+        status: status || 'all',
+        employeeType: 'substitute',
+        data: exportData
+      });
+    } catch (error) {
+      console.error('Error exporting substitute time cards:', error);
+      res.status(500).json({ message: "Failed to export substitute time cards" });
     }
   });
 

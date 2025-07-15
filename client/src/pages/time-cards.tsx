@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, User, Filter, Plus, Check, X, Edit, ArrowRight, FileText, Users, AlertCircle } from "lucide-react";
+import { Calendar, Clock, User, Filter, Plus, Check, X, Edit, ArrowRight, FileText, Users, AlertCircle, Download } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,38 @@ const getApprovalStageLabel = (stage: string) => {
   }
 };
 
+// Helper function to convert JSON to CSV
+const convertToCSV = (data: any[]) => {
+  if (!data.length) return '';
+  
+  const headers = Object.keys(data[0]);
+  const csvRows = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(header => {
+        const value = row[header];
+        return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+      }).join(',')
+    )
+  ];
+  
+  return csvRows.join('\n');
+};
+
+// Helper function to download CSV
+const downloadCSV = (data: any[], filename: string) => {
+  const csv = convertToCSV(data);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 export default function TimeCards() {
   const [filter, setFilter] = useState<string>("all");
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
@@ -72,6 +104,8 @@ export default function TimeCards() {
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   const [approvalAction, setApprovalAction] = useState<string>("");
   const [approvalNotes, setApprovalNotes] = useState("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const { toast } = useToast();
 
   const { data: timeCards = [], isLoading } = useQuery({
@@ -185,6 +219,36 @@ export default function TimeCards() {
     },
   });
 
+  const exportTimeCards = useMutation({
+    mutationFn: async () => {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (filter !== 'all') params.append('status', filter);
+      
+      const response = await fetch(`/api/time-cards/export?${params}`);
+      if (!response.ok) {
+        throw new Error('Failed to export time cards');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const filename = `time-cards-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      downloadCSV(data.data, filename);
+      toast({
+        title: "Success",
+        description: `Exported ${data.totalRecords} time card records`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApproval = (timeCard: TimeCard, action: string) => {
     setSelectedTimeCard(timeCard);
     setApprovalAction(action);
@@ -233,14 +297,23 @@ export default function TimeCards() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Time Cards Management</h1>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Time Card
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => exportTimeCards.mutate()}
+            disabled={exportTimeCards.isPending}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {exportTimeCards.isPending ? "Exporting..." : "Export for Accounting"}
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Time Card
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Create New Time Card</DialogTitle>
             </DialogHeader>
@@ -370,6 +443,7 @@ export default function TimeCards() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Statistics Cards */}
