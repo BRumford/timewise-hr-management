@@ -318,8 +318,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/employees/:id", requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const employeeData = insertEmployeeSchema.partial().parse(req.body);
-      const employee = await storage.updateEmployee(parseInt(req.params.id), employeeData);
+      console.log('Update employee request body:', req.body);
+      
+      // Transform date fields to proper format
+      const employeeData = { ...req.body };
+      if (employeeData.hireDate) {
+        employeeData.hireDate = new Date(employeeData.hireDate);
+      }
+      
+      // Parse with schema validation
+      const validatedData = insertEmployeeSchema.partial().parse(employeeData);
+      console.log('Validated employee data:', validatedData);
+      
+      const employee = await storage.updateEmployee(parseInt(req.params.id), validatedData);
       
       await storage.createActivityLog({
         userId: req.body.userId || "system",
@@ -331,6 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(employee);
     } catch (error) {
+      console.error('Employee update error:', error);
       res.status(400).json({ message: "Failed to update employee", error: (error as Error).message });
     }
   });

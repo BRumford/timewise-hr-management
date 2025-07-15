@@ -629,7 +629,10 @@ export const payPeriodsRelations = relations(payPeriods, ({ many }) => ({
 }));
 
 // Zod schemas
-export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  hireDate: z.coerce.date().optional(),
+  certifications: z.array(z.string()).optional(),
+});
 export const insertLeaveRequestSchema = z.object({
   employeeId: z.number(),
   leaveTypeId: z.number(), 
