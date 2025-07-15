@@ -15,25 +15,50 @@ import {
   Mail,
   Layout
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
-  { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/employees", icon: Users, label: "Employee Management" },
-  { path: "/leave-management", icon: Calendar, label: "Leave Management" },
-  { path: "/time-cards", icon: Clock, label: "Time Cards" },
-  { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards" },
-  { path: "/timecard-templates", icon: Layout, label: "Timecard Templates" },
-  { path: "/payroll", icon: Calculator, label: "Payroll" },
-  { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities" },
-  { path: "/documents", icon: FileText, label: "Documents" },
-  { path: "/letters", icon: Mail, label: "Letters" },
-  { path: "/onboarding", icon: UserPlus, label: "Onboarding" },
-  { path: "/reports", icon: BarChart3, label: "Reports" },
-  { path: "/settings", icon: Settings, label: "Settings" },
+  { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr", "employee"] },
+  { path: "/employees", icon: Users, label: "Employee Management", roles: ["admin", "hr"] },
+  { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["admin", "hr", "employee"] },
+  { path: "/time-cards", icon: Clock, label: "Time Cards", roles: ["admin", "hr", "employee"] },
+  { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards", roles: ["admin", "hr"] },
+  { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
+  { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["admin", "hr"] },
+  { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["admin", "hr"] },
+  { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr"] },
+  { path: "/letters", icon: Mail, label: "Letters", roles: ["admin", "hr"] },
+  { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
+  { path: "/reports", icon: BarChart3, label: "Reports", roles: ["admin", "hr"] },
+  { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr", "employee"] },
 ];
 
 export default function Sidebar() {
   const [location] = useLocation();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="w-64 bg-white shadow-lg border-r border-gray-200 fixed left-0 top-0 h-full overflow-y-auto scrollbar-hide">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+              <GraduationCap className="text-white text-lg" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">EduHR Pro</h1>
+              <p className="text-sm text-gray-500">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Filter menu items based on user role
+  const visibleMenuItems = menuItems.filter(item => 
+    user && item.roles.includes(user.role)
+  );
 
   return (
     <div className="w-64 bg-white shadow-lg border-r border-gray-200 fixed left-0 top-0 h-full overflow-y-auto scrollbar-hide">
@@ -45,14 +70,17 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">EduHR Pro</h1>
-            <p className="text-sm text-gray-500">Lincoln School District</p>
+            <p className="text-sm text-gray-500">
+              {user?.employee ? `${user.employee.firstName} ${user.employee.lastName}` : "Lincoln School District"}
+            </p>
+            <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
           </div>
         </div>
       </div>
 
       {/* Navigation Menu */}
       <nav className="p-4 space-y-2">
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location === item.path;
           

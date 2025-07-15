@@ -1,6 +1,82 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import type { Request, Response, NextFunction } from "express";
+
+// Simple authentication middleware for demo purposes
+const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  // For demo, we'll simulate a logged-in user
+  // In production, this would check session or JWT token
+  (req as any).user = {
+    id: "demo_user",
+    role: "employee", // Change this to test different roles: 'admin', 'hr', 'employee'
+    claims: { sub: "demo_user" }
+  };
+  next();
+};
+
+// Role-based access control middleware
+const requireRole = (allowedRoles: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // For demo purposes, use the simulated user role
+      const userRole = user.role;
+      
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+      }
+
+      // Add user info to request for easy access
+      (req as any).currentUser = { id: user.id, role: userRole };
+      next();
+    } catch (error) {
+      res.status(500).json({ message: "Authorization error", error: (error as Error).message });
+    }
+  };
+};
+
+// Middleware to check if user can only access their own employee record
+const requireSelfOrAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Admin and HR can access all records
+    if (user.role === 'admin' || user.role === 'hr') {
+      (req as any).currentUser = user;
+      return next();
+    }
+
+    // Employee can only access their own records
+    if (user.role === 'employee') {
+      const employee = await storage.getEmployeeByUserId(user.id);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee record not found" });
+      }
+      
+      // Check if they're trying to access their own record
+      const requestedId = parseInt(req.params.id);
+      if (requestedId !== employee.id) {
+        return res.status(403).json({ message: "Forbidden: Can only access your own records" });
+      }
+      
+      (req as any).currentUser = user;
+      (req as any).currentEmployee = employee;
+      return next();
+    }
+
+    res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+  } catch (error) {
+    res.status(500).json({ message: "Authorization error", error: (error as Error).message });
+  }
+};
 import {
   insertEmployeeSchema,
   insertLeaveRequestSchema,
@@ -63,11 +139,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     express.static(uploadDir)(req, res, next);
   });
 
-  // Dashboard routes
+  // Apply authentication middleware to all API routes
+  app.use('/api', isAuthenticated);
+
+  // User profile route
+  app.get('/api/auth/user', async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const employee = await storage.getEmployeeByUserId(user.id);
+      
+      res.json({
+        id: user.id,
+        role: user.role,
+        employee: employee || null
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user information", error: (error as Error).message });
+    }
+  });
+
+  // Dashboard routes - different views for different roles
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
-      res.json(stats);
+      const user = (req as any).user;
+      
+      if (user.role === 'employee') {
+        // Employee-specific stats (limited)
+        const employee = await storage.getEmployeeByUserId(user.id);
+        if (!employee) {
+          // If no employee record exists, create a default one or return basic stats
+          const stats = {
+            totalEmployees: 0,
+            pendingOnboarding: 0,
+            activeLeaveRequests: 0,
+            substituteAssignments: 0,
+            upcomingEvents: [],
+            notifications: []
+          };
+          return res.json(stats);
+        }
+        
+        const stats = {
+          totalEmployees: 1, // Just themselves
+          pendingOnboarding: 0,
+          activeLeaveRequests: 0,
+          substituteAssignments: 0,
+          upcomingEvents: [],
+          notifications: []
+        };
+        
+        res.json(stats);
+      } else {
+        // Admin/HR get full stats
+        const stats = await storage.getDashboardStats();
+        res.json(stats);
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats", error: (error as Error).message });
     }
@@ -75,18 +201,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/dashboard/recent-activity", async (req, res) => {
     try {
-      const activity = await storage.getRecentActivityLogs();
-      res.json(activity);
+      const user = (req as any).user;
+      
+      if (user.role === 'employee') {
+        // Employee sees only their own activity
+        const employee = await storage.getEmployeeByUserId(user.id);
+        if (!employee) {
+          // If no employee record exists, return empty activity
+          return res.json([]);
+        }
+        
+        const activity = await storage.getRecentActivityLogs();
+        // Filter to only show activity related to this employee
+        const filteredActivity = activity.filter((log: any) => 
+          log.userId === user.id || log.description.includes(employee.firstName + ' ' + employee.lastName)
+        );
+        
+        res.json(filteredActivity);
+      } else {
+        // Admin/HR see all activity
+        const activity = await storage.getRecentActivityLogs();
+        res.json(activity);
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch recent activity", error: (error as Error).message });
     }
   });
 
-  // Employee routes
+  // Employee routes - different views for different roles
   app.get("/api/employees", async (req, res) => {
     try {
-      const employees = await storage.getEmployees();
-      res.json(employees);
+      const user = (req as any).user;
+      
+      if (user.role === 'employee') {
+        // Employees can see basic directory info (names, departments, positions)
+        const employees = await storage.getEmployees();
+        const publicEmployeeData = employees.map((emp: any) => ({
+          id: emp.id,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          department: emp.department,
+          position: emp.position,
+          email: emp.email
+        }));
+        res.json(publicEmployeeData);
+      } else {
+        // Admin/HR see all employee data
+        const employees = await storage.getEmployees();
+        res.json(employees);
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch employees", error: (error as Error).message });
     }
@@ -297,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leave management routes
+  // Leave management routes (all authenticated users can view leave types)
   app.get("/api/leave-types", async (req, res) => {
     try {
       const leaveTypes = await storage.getLeaveTypes();
@@ -308,6 +471,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/leave-requests", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      let leaveRequests: any[] = [];
+      
+      if (user.role === 'admin' || user.role === 'hr') {
+        // Admin and HR can see all leave requests
+        leaveRequests = await storage.getLeaveRequests();
+      } else {
+        // Employees can only see their own leave requests
+        const employee = await storage.getEmployeeByUserId(user.id);
+        if (employee) {
+          leaveRequests = await storage.getLeaveRequestsByEmployee(employee.id);
+        }
+      }
+      
+      res.json(leaveRequests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch leave requests", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/leave-requests-admin", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const leaveRequests = await storage.getLeaveRequests();
       res.json(leaveRequests);
@@ -326,6 +511,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/leave-requests", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const requestData = insertLeaveRequestSchema.parse(req.body);
+      
+      // If user is an employee, ensure they can only create requests for themselves
+      if (user.role === 'employee') {
+        const employee = await storage.getEmployeeByUserId(user.id);
+        if (!employee) {
+          return res.status(404).json({ message: "Employee record not found" });
+        }
+        
+        // Force the employee ID to match the current user's employee record
+        requestData.employeeId = employee.id;
+      }
+      
+      const leaveRequest = await storage.createLeaveRequest(requestData);
+      
+      // Auto-assign substitute if required
+      if (requestData.substituteRequired) {
+        const availableSubstitutes = await storage.getAvailableSubstitutes();
+        if (availableSubstitutes.length > 0) {
+          const recommendations = await generateSubstituteRecommendations(leaveRequest, availableSubstitutes);
+          if (recommendations.recommendations.length > 0) {
+            const bestMatch = recommendations.recommendations[0];
+            await storage.createSubstituteAssignment({
+              leaveRequestId: leaveRequest.id,
+              substituteEmployeeId: bestMatch.substituteId,
+              assignedDate: new Date(),
+              status: "assigned",
+              notes: `Auto-assigned based on AI recommendation (${bestMatch.matchScore} match score)`,
+            });
+          }
+        }
+      }
+
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "create_leave_request",
+        entityType: "leave_request",
+        entityId: leaveRequest.id,
+        description: `Created leave request for employee ${requestData.employeeId}`,
+      });
+
+      res.status(201).json(leaveRequest);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create leave request", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/leave-requests-submit", async (req, res) => {
     try {
       const requestData = insertLeaveRequestSchema.parse(req.body);
       const leaveRequest = await storage.createLeaveRequest(requestData);
@@ -381,7 +616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leave-requests/:id/approve", async (req, res) => {
+  app.post("/api/leave-requests/:id/approve", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const leaveRequestId = parseInt(req.params.id);
       const leaveRequests = await storage.getLeaveRequests();
@@ -456,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leave-requests/:id/reject", async (req, res) => {
+  app.post("/api/leave-requests/:id/reject", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const leaveRequestId = parseInt(req.params.id);
       const leaveRequests = await storage.getLeaveRequests();
@@ -898,8 +1133,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Time card routes
+  // Time cards routes (role-based access)
   app.get("/api/time-cards", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      let timeCards: any[] = [];
+      
+      if (user.role === 'admin' || user.role === 'hr') {
+        // Admin and HR can see all time cards
+        timeCards = await storage.getTimeCards();
+      } else {
+        // Employees can only see their own time cards
+        const employee = await storage.getEmployeeByUserId(user.id);
+        if (employee) {
+          timeCards = await storage.getTimeCardsByEmployee(employee.id);
+        }
+      }
+      
+      res.json(timeCards);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch time cards", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/time-cards-admin", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const timeCards = await storage.getTimeCards();
       res.json(timeCards);
@@ -991,6 +1248,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/time-cards", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const timeCardData = insertTimeCardSchema.parse(req.body);
+      
+      // If user is an employee, ensure they can only create time cards for themselves
+      if (user.role === 'employee') {
+        const employee = await storage.getEmployeeByUserId(user.id);
+        if (!employee) {
+          return res.status(404).json({ message: "Employee record not found" });
+        }
+        
+        // Force the employee ID to match the current user's employee record
+        timeCardData.employeeId = employee.id;
+      }
+      
+      const timeCard = await storage.createTimeCard(timeCardData);
+      
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "create_time_card",
+        entityType: "time_card",
+        entityId: timeCard.id,
+        description: `Created time card for employee ${timeCardData.employeeId}`,
+      });
+
+      res.status(201).json(timeCard);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create time card", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/time-cards-create", async (req, res) => {
     try {
       const data = insertTimeCardSchema.parse(req.body);
       const timeCard = await storage.createTimeCard(data);

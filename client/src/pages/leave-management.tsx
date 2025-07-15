@@ -16,6 +16,7 @@ import { Plus, Calendar, Clock, CheckCircle, XCircle, User, AlertCircle } from "
 import { format, differenceInDays, addDays } from "date-fns";
 import { z } from "zod";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const leaveRequestFormSchema = insertLeaveRequestSchema.extend({
   startDate: z.string().min(1, "Start date is required"),
@@ -30,6 +31,7 @@ export default function LeaveManagement() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, canViewAllRecords } = useAuth();
 
   const { data: leaveRequests, isLoading } = useQuery({
     queryKey: ["/api/leave-requests"],
@@ -37,6 +39,7 @@ export default function LeaveManagement() {
 
   const { data: employees } = useQuery({
     queryKey: ["/api/employees"],
+    enabled: canViewAllRecords, // Only fetch if user can view all records
   });
 
   const { data: leaveTypes } = useQuery({
@@ -46,7 +49,7 @@ export default function LeaveManagement() {
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestFormSchema),
     defaultValues: {
-      employeeId: 0,
+      employeeId: user?.employee?.id || 0,
       leaveTypeId: 0,
       startDate: "",
       endDate: "",
@@ -210,30 +213,44 @@ export default function LeaveManagement() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="employeeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Employee</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select employee" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {employees?.map((employee: any) => (
-                            <SelectItem key={employee.id} value={employee.id.toString()}>
-                              {employee.firstName} {employee.lastName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                <>
+                  {canViewAllRecords && (
+                    <FormField
+                      control={form.control}
+                      name="employeeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Employee</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select employee" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {employees?.map((employee: any) => (
+                              <SelectItem key={employee.id} value={employee.id.toString()}>
+                                {employee.firstName} {employee.lastName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   )}
-                />
+                  
+                  {!canViewAllRecords && user?.employee && (
+                    <div className="space-y-2">
+                      <FormLabel>Employee</FormLabel>
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium">{user.employee.firstName} {user.employee.lastName}</p>
+                        <p className="text-sm text-gray-600">{user.employee.department} - {user.employee.position}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
                 
                 <FormField
                   control={form.control}

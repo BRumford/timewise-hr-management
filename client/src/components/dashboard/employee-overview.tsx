@@ -133,8 +133,8 @@ export default function EmployeeOverview() {
                     <div className="text-sm text-gray-900">{employee.department}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={getStatusColor(employee.status)}>
-                      {employee.status.replace('_', ' ')}
+                    <Badge className={getStatusColor(employee.status || 'active')}>
+                      {(employee.status || 'active').replace('_', ' ')}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
