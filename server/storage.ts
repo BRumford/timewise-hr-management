@@ -316,12 +316,12 @@ export class DatabaseStorage implements IStorage {
       cleanedEmployee.hireDate = new Date(cleanedEmployee.hireDate);
     }
     
-    // Remove undefined values completely
+    // Remove undefined values completely and ensure proper typing
     const finalEmployeeData = Object.fromEntries(
       Object.entries(cleanedEmployee).filter(([_, value]) => value !== undefined)
     ) as InsertEmployee;
     
-    const [newEmployee] = await db.insert(employees).values([finalEmployeeData]).returning();
+    const [newEmployee] = await db.insert(employees).values(finalEmployeeData).returning();
     
     // Automatically create a time card for the new employee
     const currentDate = new Date();
@@ -400,12 +400,12 @@ export class DatabaseStorage implements IStorage {
             cleanedData.hireDate = new Date(cleanedData.hireDate);
           }
           
-          // Remove undefined values completely
+          // Remove undefined values completely and ensure proper typing
           const finalData = Object.fromEntries(
             Object.entries(cleanedData).filter(([_, value]) => value !== undefined)
           ) as InsertEmployee;
           
-          const [created] = await db.insert(employees).values([finalData]).returning();
+          const [created] = await db.insert(employees).values(finalData).returning();
           importedEmployees.push(created);
         }
       } catch (error) {
