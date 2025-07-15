@@ -104,7 +104,15 @@ export default function Employees() {
                 employee[header] = new Date(value);
                 break;
               case 'salary':
-                employee[header] = parseFloat(value) || 0;
+                // Convert to string as database expects decimal as string
+                employee[header] = parseFloat(value).toString();
+                break;
+              case 'supervisorId':
+                employee[header] = parseInt(value) || null;
+                break;
+              case 'certifications':
+                // Handle array fields
+                employee[header] = value.split(';').filter(cert => cert.trim());
                 break;
               default:
                 employee[header] = value;
@@ -160,8 +168,9 @@ export default function Employees() {
 
   const downloadTemplate = () => {
     const template = `employeeId,firstName,lastName,email,phoneNumber,address,department,position,employeeType,hireDate,salary,status
-EMP001,John,Doe,john.doe@school.edu,555-0123,123 Main St,Mathematics,Teacher,teacher,2024-01-15,50000,active
-EMP002,Jane,Smith,jane.smith@school.edu,555-0124,456 Oak Ave,Administration,Principal,administrator,2023-08-01,75000,active`;
+490001,John,Smith,john.smith@school.edu,555-0123,123 Main St,Mathematics,Teacher,teacher,2024-01-15,50000,active
+490002,Jane,Johnson,jane.johnson@school.edu,555-0124,456 Oak Ave,Administration,Principal,administrator,2023-08-01,75000,active
+490003,Bob,Williams,bob.williams@school.edu,555-0125,789 Pine St,Science,Teacher,teacher,2024-02-01,48000,active`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

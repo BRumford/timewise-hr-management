@@ -118,6 +118,15 @@ import {
   insertDistrictSettingsSchema,
   insertPayPeriodSchema,
 } from "@shared/schema";
+import { z } from "zod";
+
+// Custom schema for importing employees that handles string dates
+const employeeImportSchema = insertEmployeeSchema.extend({
+  hireDate: z.union([
+    z.string().transform((str) => new Date(str)),
+    z.date()
+  ])
+});
 import { 
   processDocument, 
   generateOnboardingChecklist, 
@@ -358,7 +367,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const errors = [];
 
       for (let i = 0; i < employees.length; i++) {
-        const validation = insertEmployeeSchema.safeParse(employees[i]);
+        const employeeData = employees[i];
+        
+        // Validate the data using the import schema that handles string dates
+        const validation = employeeImportSchema.safeParse(employeeData);
         if (!validation.success) {
           errors.push({
             row: i + 1,
