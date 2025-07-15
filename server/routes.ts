@@ -1011,6 +1011,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/payroll/reports/benefits", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const report = await storage.getBenefitsReport(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate benefits report", error: (error as Error).message });
+    }
+  });
+
   app.get("/api/payroll/reports/employee/:employeeId", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { employeeId } = req.params;

@@ -308,9 +308,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
-    const cleanedEmployee = Object.fromEntries(
-      Object.entries(employee).filter(([_, value]) => value !== undefined)
-    ) as InsertEmployee;
+    // Clean and prepare employee data
+    const cleanedEmployee = { ...employee };
+    
+    // Ensure hireDate is properly converted to Date if it's a string
+    if (cleanedEmployee.hireDate && typeof cleanedEmployee.hireDate === 'string') {
+      cleanedEmployee.hireDate = new Date(cleanedEmployee.hireDate);
+    }
+    
+    // Remove undefined values
+    Object.keys(cleanedEmployee).forEach(key => {
+      if (cleanedEmployee[key as keyof InsertEmployee] === undefined) {
+        delete cleanedEmployee[key as keyof InsertEmployee];
+      }
+    });
     
     const [newEmployee] = await db.insert(employees).values([cleanedEmployee]).returning();
     
@@ -384,9 +395,19 @@ export class DatabaseStorage implements IStorage {
           importedEmployees.push(updated);
         } else {
           // Create new employee
-          const cleanedData = Object.fromEntries(
-            Object.entries(employeeData).filter(([_, value]) => value !== undefined)
-          ) as InsertEmployee;
+          const cleanedData = { ...employeeData };
+          
+          // Ensure hireDate is properly converted to Date if it's a string
+          if (cleanedData.hireDate && typeof cleanedData.hireDate === 'string') {
+            cleanedData.hireDate = new Date(cleanedData.hireDate);
+          }
+          
+          // Remove undefined values
+          Object.keys(cleanedData).forEach(key => {
+            if (cleanedData[key as keyof InsertEmployee] === undefined) {
+              delete cleanedData[key as keyof InsertEmployee];
+            }
+          });
           
           const [created] = await db.insert(employees).values([cleanedData]).returning();
           importedEmployees.push(created);
@@ -765,6 +786,89 @@ export class DatabaseStorage implements IStorage {
   async createPayrollBatch(batch: InsertPayrollBatch): Promise<PayrollBatch> {
     const [newBatch] = await db.insert(payrollBatches).values(batch).returning();
     return newBatch;
+  }
+
+  // Simple Benefits Report
+  async getBenefitsReport(startDate: Date, endDate: Date): Promise<any> {
+    const records = await this.getPayrollRecordsByPeriod(startDate, endDate);
+    
+    if (records.length === 0) {
+      return {
+        period: { startDate, endDate },
+        totalEmployees: 0,
+        totalBenefitDeductions: 0,
+        benefitTypes: [],
+        employeeBenefits: []
+      };
+    }
+
+    const benefitElections = await db.select()
+      .from(employeeBenefitElections)
+      .where(inArray(employeeBenefitElections.employeeId, records.map(r => r.employeeId)));
+
+    const employeeIds = Array.from(new Set(records.map(r => r.employeeId)));
+    const employees = await db.select()
+      .from(employees)
+      .where(inArray(employees.id, employeeIds));
+
+    const benefitsSummary = {
+      period: { startDate, endDate },
+      totalEmployees: employeeIds.length,
+      totalBenefitDeductions: records.reduce((sum, r) => sum + parseFloat(r.totalDeductions || '0'), 0),
+      benefitTypes: this.groupBenefitsByType(benefitElections),
+      employeeBenefits: this.getEmployeeBenefitsBreakdown(records, employees, benefitElections)
+    };
+
+    return benefitsSummary;
+  }
+
+  private groupBenefitsByType(elections: any[]) {
+    const benefitTypes: { [key: string]: any } = {};
+    
+    elections.forEach(election => {
+      if (!benefitTypes[election.benefitType]) {
+        benefitTypes[election.benefitType] = {
+          type: election.benefitType,
+          enrolledEmployees: 0,
+          totalContributions: 0
+        };
+      }
+      
+      benefitTypes[election.benefitType].enrolledEmployees++;
+      benefitTypes[election.benefitType].totalContributions += parseFloat(election.employeeContribution || '0');
+    });
+
+    return Object.values(benefitTypes);
+  }
+
+  private getEmployeeBenefitsBreakdown(records: any[], employees: any[], elections: any[]) {
+    const employeeMap = new Map(employees.map(e => [e.id, e]));
+    const electionMap = new Map();
+    
+    elections.forEach(election => {
+      if (!electionMap.has(election.employeeId)) {
+        electionMap.set(election.employeeId, []);
+      }
+      electionMap.get(election.employeeId).push(election);
+    });
+
+    return records.map(record => {
+      const employee = employeeMap.get(record.employeeId);
+      const employeeElections = electionMap.get(record.employeeId) || [];
+      
+      return {
+        employeeId: record.employeeId,
+        employeeName: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+        department: employee?.department || 'Unknown',
+        grossPay: parseFloat(record.grossPay || '0'),
+        totalDeductions: parseFloat(record.totalDeductions || '0'),
+        benefits: employeeElections.map((election: any) => ({
+          type: election.benefitType,
+          contribution: parseFloat(election.employeeContribution || '0'),
+          coverage: election.coverageType
+        }))
+      };
+    });
   }
 
   // Document management
