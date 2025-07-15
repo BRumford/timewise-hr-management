@@ -69,8 +69,8 @@ export default function Onboarding() {
     defaultValues: {
       title: "",
       description: "",
-      category: "",
-      formType: "digital",
+      category: "new_hire",
+      formType: "hr_form",
       applicableEmployeeTypes: [],
       isActive: true,
       isRequired: false,
@@ -80,7 +80,7 @@ export default function Onboarding() {
 
   const createFormMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest("/api/onboarding/forms", "POST", data);
+      return await apiRequest("POST", "/api/onboarding/forms", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding/forms"] });
@@ -102,7 +102,7 @@ export default function Onboarding() {
 
   const deleteFormMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/onboarding/forms/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/onboarding/forms/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding/forms"] });
