@@ -44,6 +44,7 @@ const formSchema = insertOnboardingFormSchema.extend({
 
 const workflowFormSchema = insertOnboardingWorkflowSchema.extend({
   targetCompletionDate: z.string().optional(),
+  workflowType: z.string(), // Adding workflow type field
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -93,6 +94,7 @@ export default function Onboarding() {
       employeeId: undefined,
       assignedTo: "",
       status: "started",
+      currentStep: "welcome",
       workflowType: "new_hire",
       targetCompletionDate: "",
       notes: "",
@@ -163,14 +165,18 @@ export default function Onboarding() {
 
   const startWorkflowMutation = useMutation({
     mutationFn: async (data: WorkflowFormData) => {
-      const workflowData = {
-        ...data,
+      console.log("Starting workflow with data:", data);
+      const { workflowType, ...workflowData } = data;
+      const finalData = {
+        ...workflowData,
         startDate: new Date().toISOString(),
         targetCompletionDate: data.targetCompletionDate ? new Date(data.targetCompletionDate).toISOString() : null,
       };
-      return await apiRequest("POST", "/api/onboarding", workflowData);
+      console.log("Processed workflow data:", finalData);
+      return await apiRequest("POST", "/api/onboarding", finalData);
     },
     onSuccess: () => {
+      console.log("Workflow started successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
       setIsStartWorkflowDialogOpen(false);
       workflowForm.reset();
@@ -180,6 +186,7 @@ export default function Onboarding() {
       });
     },
     onError: (error) => {
+      console.error("Error starting workflow:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -895,7 +902,11 @@ export default function Onboarding() {
             </DialogDescription>
           </DialogHeader>
           <Form {...workflowForm}>
-            <form onSubmit={workflowForm.handleSubmit((data) => startWorkflowMutation.mutate(data))} className="space-y-4">
+            <form onSubmit={workflowForm.handleSubmit((data) => {
+              console.log("Form submitted with data:", data);
+              console.log("Form errors:", workflowForm.formState.errors);
+              startWorkflowMutation.mutate(data);
+            })} className="space-y-4">
               <FormField
                 control={workflowForm.control}
                 name="employeeId"
