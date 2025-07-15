@@ -73,8 +73,8 @@ export default function LeaveManagement() {
     mutationFn: async (data: LeaveRequestFormData) => {
       const formattedData = {
         ...data,
-        startDate: new Date(data.startDate).toISOString(),
-        endDate: new Date(data.endDate).toISOString(),
+        startDate: data.startDate,
+        endDate: data.endDate,
       };
       return apiRequest("/api/leave-requests", "POST", formattedData);
     },
