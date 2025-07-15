@@ -114,6 +114,7 @@ export default function TimecardTemplates() {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-templates'] });
       setShowTemplateDialog(false);
       setEditingTemplate({});
+      setSelectedTemplate(null);
       toast({ title: "Success", description: "Template created successfully" });
     },
     onError: (error) => {
@@ -133,6 +134,7 @@ export default function TimecardTemplates() {
       queryClient.invalidateQueries({ queryKey: ['/api/timecard-templates'] });
       setShowTemplateDialog(false);
       setEditingTemplate({});
+      // Keep selectedTemplate for continued editing of fields
       toast({ title: "Success", description: "Template updated successfully" });
     },
     onError: (error) => {
@@ -332,6 +334,7 @@ export default function TimecardTemplates() {
         </div>
         <Button onClick={() => {
           setEditingTemplate({});
+          setSelectedTemplate(null);
           setShowTemplateDialog(true);
         }}>
           <Plus className="h-4 w-4 mr-2" />
@@ -364,7 +367,11 @@ export default function TimecardTemplates() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSelectedTemplate(template)}
+                        onClick={() => {
+                          setSelectedTemplate(template);
+                          setEditingTemplate(template);
+                          setShowTemplateDialog(true);
+                        }}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -576,7 +583,13 @@ export default function TimecardTemplates() {
               </div>
             </div>
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
+              <Button variant="outline" onClick={() => {
+                setShowTemplateDialog(false);
+                setEditingTemplate({});
+                if (!editingTemplate.id) {
+                  setSelectedTemplate(null);
+                }
+              }}>
                 Cancel
               </Button>
               <Button onClick={editingTemplate.id ? handleUpdateTemplate : handleCreateTemplate}>
