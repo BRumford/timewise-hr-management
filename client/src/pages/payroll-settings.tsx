@@ -28,7 +28,7 @@ const districtSettingsSchema = z.object({
   fiscalYearStart: z.string(),
   requireManagerApproval: z.boolean(),
   requirePayrollApproval: z.boolean(),
-  autoApprovalThreshold: z.number().min(0),
+  autoApprovalThreshold: z.string().transform((val) => parseFloat(val) || 0),
   enableEmailNotifications: z.boolean(),
   enableSmsNotifications: z.boolean(),
   reminderDaysBefore: z.number().min(1).max(7),
@@ -91,7 +91,7 @@ export default function PayrollSettings() {
       fiscalYearStart: "2024-07-01",
       requireManagerApproval: true,
       requirePayrollApproval: true,
-      autoApprovalThreshold: 0,
+      autoApprovalThreshold: "0.00",
       enableEmailNotifications: true,
       enableSmsNotifications: false,
       reminderDaysBefore: 3,
@@ -118,7 +118,14 @@ export default function PayrollSettings() {
   // Update district settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: DistrictSettings) => {
-      return await apiRequest('/api/district-settings', 'POST', data);
+      // Convert autoApprovalThreshold to string for backend
+      const formattedData = {
+        ...data,
+        autoApprovalThreshold: typeof data.autoApprovalThreshold === 'number' 
+          ? data.autoApprovalThreshold.toString() 
+          : data.autoApprovalThreshold
+      };
+      return await apiRequest('/api/district-settings', 'POST', formattedData);
     },
     onSuccess: () => {
       toast({
