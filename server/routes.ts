@@ -158,7 +158,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Role switch route for testing purposes
+  // Check if user can switch roles
+  app.get('/api/auth/can-switch-roles', async (req, res) => {
+    try {
+      const user = (req as any).user;
+      
+      // Define authorized users who can switch roles (developers/super admins)
+      const authorizedUsers = [
+        'demo_user',        // Demo user for testing
+        'admin_user',       // Main admin account
+        'developer_user',   // Developer account
+        // Add more user IDs as needed
+      ];
+      
+      // For development purposes, allow any user to switch roles
+      // In production, you'd only allow specific users
+      const canSwitch = authorizedUsers.includes(user.id) || process.env.NODE_ENV === 'development';
+      
+      res.json({ canSwitch, userId: user.id });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check role switch permission", error: (error as Error).message });
+    }
+  });
+
+  // Role switch route for authorized users only
   app.post('/api/auth/switch-role', async (req, res) => {
     try {
       const { role } = req.body;
@@ -167,6 +190,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = (req as any).user;
+      
+      // Define authorized users who can switch roles (developers/super admins)
+      const authorizedUsers = [
+        'demo_user',        // Demo user for testing
+        'admin_user',       // Main admin account
+        'developer_user',   // Developer account
+        // Add more user IDs as needed
+      ];
+      
+      // For development purposes, allow any user to switch roles
+      // In production, you'd only allow specific users
+      const canSwitch = authorizedUsers.includes(user.id) || process.env.NODE_ENV === 'development';
+      
+      if (!canSwitch) {
+        return res.status(403).json({ message: "You are not authorized to switch roles" });
+      }
+      
       const updatedUser = await storage.upsertUser({
         id: user.id,
         role: role

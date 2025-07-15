@@ -4,13 +4,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 
 export default function RoleSwitcher() {
   const { user } = useAuth();
   const [selectedRole, setSelectedRole] = useState<string>(user?.role || "employee");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Check if user can switch roles
+  const { data: canSwitchData } = useQuery({
+    queryKey: ['/api/auth/can-switch-roles'],
+    enabled: !!user,
+  });
+
+  // Don't show the switcher if user can't switch roles
+  if (!canSwitchData?.canSwitch) {
+    return null;
+  }
 
   const switchRoleMutation = useMutation({
     mutationFn: async (role: string) => {
