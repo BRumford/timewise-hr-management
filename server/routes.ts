@@ -958,6 +958,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Tax configuration routes
+  app.get("/api/tax-configs", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const configs = await storage.getTaxConfigs();
+      res.json(configs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch tax configurations", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/tax-configs", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const configData = req.body;
+      const config = await storage.createTaxConfig(configData);
+      res.status(201).json(config);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create tax configuration", error: (error as Error).message });
+    }
+  });
+
+  // Employee benefit elections routes
+  app.get("/api/benefit-elections", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const elections = await storage.getBenefitElections();
+      res.json(elections);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch benefit elections", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/benefit-elections", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const electionData = req.body;
+      const election = await storage.createBenefitElection(electionData);
+      res.status(201).json(election);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create benefit election", error: (error as Error).message });
+    }
+  });
+
   // Document routes
   app.get("/api/documents", requireRole(['admin', 'hr']), async (req, res) => {
     try {

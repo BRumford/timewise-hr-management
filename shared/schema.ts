@@ -109,14 +109,110 @@ export const payrollRecords = pgTable("payroll_records", {
   payPeriodStart: timestamp("pay_period_start").notNull(),
   payPeriodEnd: timestamp("pay_period_end").notNull(),
   grossPay: decimal("gross_pay", { precision: 10, scale: 2 }).notNull(),
-  deductions: decimal("deductions", { precision: 10, scale: 2 }).default("0"),
+  regularPay: decimal("regular_pay", { precision: 10, scale: 2 }).notNull(),
+  overtimePay: decimal("overtime_pay", { precision: 10, scale: 2 }).default("0"),
+  // Tax withholdings
+  federalTax: decimal("federal_tax", { precision: 10, scale: 2 }).default("0"),
+  stateTax: decimal("state_tax", { precision: 10, scale: 2 }).default("0"),
+  socialSecurityTax: decimal("social_security_tax", { precision: 10, scale: 2 }).default("0"),
+  medicareTax: decimal("medicare_tax", { precision: 10, scale: 2 }).default("0"),
+  stateDisabilityTax: decimal("state_disability_tax", { precision: 10, scale: 2 }).default("0"),
+  unemploymentTax: decimal("unemployment_tax", { precision: 10, scale: 2 }).default("0"),
+  // Benefit deductions
+  healthInsurance: decimal("health_insurance", { precision: 10, scale: 2 }).default("0"),
+  dentalInsurance: decimal("dental_insurance", { precision: 10, scale: 2 }).default("0"),
+  visionInsurance: decimal("vision_insurance", { precision: 10, scale: 2 }).default("0"),
+  retirement401k: decimal("retirement_401k", { precision: 10, scale: 2 }).default("0"),
+  pensionContribution: decimal("pension_contribution", { precision: 10, scale: 2 }).default("0"),
+  unionDues: decimal("union_dues", { precision: 10, scale: 2 }).default("0"),
+  // Other deductions
+  otherDeductions: decimal("other_deductions", { precision: 10, scale: 2 }).default("0"),
+  totalDeductions: decimal("total_deductions", { precision: 10, scale: 2 }).default("0"),
   netPay: decimal("net_pay", { precision: 10, scale: 2 }).notNull(),
   hoursWorked: decimal("hours_worked", { precision: 5, scale: 2 }),
   overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
   payrollDetails: jsonb("payroll_details"), // store detailed breakdown
   processed: boolean("processed").default(false),
   processedAt: timestamp("processed_at"),
+  payDate: timestamp("pay_date"),
+  status: varchar("status").notNull().default("draft"), // draft, processed, paid, cancelled
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tax withholding configurations
+export const taxWithholdingConfigs = pgTable("tax_withholding_configs", {
+  id: serial("id").primaryKey(),
+  taxType: varchar("tax_type").notNull(), // federal, state, social_security, medicare, etc.
+  employeeType: varchar("employee_type").notNull(), // certificated, classified, substitute, all
+  taxRate: decimal("tax_rate", { precision: 5, scale: 4 }).notNull(), // e.g., 0.0765 for 7.65%
+  maxTaxableIncome: decimal("max_taxable_income", { precision: 12, scale: 2 }), // Annual limit
+  minTaxableIncome: decimal("min_taxable_income", { precision: 12, scale: 2 }).default("0"),
+  isActive: boolean("is_active").default(true),
+  effectiveDate: timestamp("effective_date").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Employee benefit elections
+export const employeeBenefitElections = pgTable("employee_benefit_elections", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  benefitType: varchar("benefit_type").notNull(), // health, dental, vision, retirement, etc.
+  planName: varchar("plan_name").notNull(),
+  coverageType: varchar("coverage_type"), // individual, family, spouse, etc.
+  employeeContribution: decimal("employee_contribution", { precision: 10, scale: 2 }).notNull(),
+  employerContribution: decimal("employer_contribution", { precision: 10, scale: 2 }).default("0"),
+  deductionFrequency: varchar("deduction_frequency").notNull().default("bi-weekly"), // weekly, bi-weekly, monthly
+  isActive: boolean("is_active").default(true),
+  effectiveDate: timestamp("effective_date").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Employee tax withholding settings (W-4 information)
+export const employeeTaxWithholdings = pgTable("employee_tax_withholdings", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  filingStatus: varchar("filing_status").notNull(), // single, married_filing_jointly, married_filing_separately, head_of_household
+  allowances: integer("allowances").default(0), // Federal allowances
+  additionalWithholding: decimal("additional_withholding", { precision: 10, scale: 2 }).default("0"),
+  exemptFromFederal: boolean("exempt_from_federal").default(false),
+  exemptFromState: boolean("exempt_from_state").default(false),
+  exemptFromSocialSecurity: boolean("exempt_from_social_security").default(false),
+  exemptFromMedicare: boolean("exempt_from_medicare").default(false),
+  stateAllowances: integer("state_allowances").default(0),
+  stateAdditionalWithholding: decimal("state_additional_withholding", { precision: 10, scale: 2 }).default("0"),
+  effectiveDate: timestamp("effective_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payroll batches for processing multiple employees
+export const payrollBatches = pgTable("payroll_batches", {
+  id: serial("id").primaryKey(),
+  batchNumber: varchar("batch_number").notNull().unique(),
+  payPeriodStart: timestamp("pay_period_start").notNull(),
+  payPeriodEnd: timestamp("pay_period_end").notNull(),
+  payDate: timestamp("pay_date").notNull(),
+  employeeType: varchar("employee_type").notNull(), // certificated, classified, substitute, all
+  totalEmployees: integer("total_employees").default(0),
+  totalGrossPay: decimal("total_gross_pay", { precision: 12, scale: 2 }).default("0"),
+  totalNetPay: decimal("total_net_pay", { precision: 12, scale: 2 }).default("0"),
+  totalTaxes: decimal("total_taxes", { precision: 12, scale: 2 }).default("0"),
+  totalBenefits: decimal("total_benefits", { precision: 12, scale: 2 }).default("0"),
+  status: varchar("status").notNull().default("draft"), // draft, processing, completed, cancelled
+  processedBy: varchar("processed_by"),
+  processedAt: timestamp("processed_at"),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Document management table
@@ -546,7 +642,11 @@ export const insertLeaveRequestSchema = z.object({
   approvedBy: z.number().optional(),
   approvedAt: z.date().optional(),
 });
-export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({ id: true, createdAt: true });
+export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTaxWithholdingConfigSchema = createInsertSchema(taxWithholdingConfigs).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEmployeeBenefitElectionSchema = createInsertSchema(employeeBenefitElections).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEmployeeTaxWithholdingSchema = createInsertSchema(employeeTaxWithholdings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPayrollBatchSchema = createInsertSchema(payrollBatches).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOnboardingFormSchema = createInsertSchema(onboardingForms).omit({ id: true, createdAt: true, updatedAt: true });
@@ -573,6 +673,14 @@ export type LeaveRequest = typeof leaveRequests.$inferSelect;
 export type LeaveType = typeof leaveTypes.$inferSelect;
 export type InsertPayrollRecord = z.infer<typeof insertPayrollRecordSchema>;
 export type PayrollRecord = typeof payrollRecords.$inferSelect;
+export type InsertTaxWithholdingConfig = z.infer<typeof insertTaxWithholdingConfigSchema>;
+export type TaxWithholdingConfig = typeof taxWithholdingConfigs.$inferSelect;
+export type InsertEmployeeBenefitElection = z.infer<typeof insertEmployeeBenefitElectionSchema>;
+export type EmployeeBenefitElection = typeof employeeBenefitElections.$inferSelect;
+export type InsertEmployeeTaxWithholding = z.infer<typeof insertEmployeeTaxWithholdingSchema>;
+export type EmployeeTaxWithholding = typeof employeeTaxWithholdings.$inferSelect;
+export type InsertPayrollBatch = z.infer<typeof insertPayrollBatchSchema>;
+export type PayrollBatch = typeof payrollBatches.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertOnboardingWorkflow = z.infer<typeof insertOnboardingWorkflowSchema>;

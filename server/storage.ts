@@ -4,6 +4,10 @@ import {
   leaveRequests,
   leaveTypes,
   payrollRecords,
+  taxWithholdingConfigs,
+  employeeBenefitElections,
+  employeeTaxWithholdings,
+  payrollBatches,
   documents,
   onboardingWorkflows,
   onboardingForms,
@@ -25,6 +29,14 @@ import {
   type LeaveType,
   type PayrollRecord,
   type InsertPayrollRecord,
+  type TaxWithholdingConfig,
+  type InsertTaxWithholdingConfig,
+  type EmployeeBenefitElection,
+  type InsertEmployeeBenefitElection,
+  type EmployeeTaxWithholding,
+  type InsertEmployeeTaxWithholding,
+  type PayrollBatch,
+  type InsertPayrollBatch,
   type Document,
   type InsertDocument,
   type OnboardingWorkflow,
@@ -468,13 +480,70 @@ export class DatabaseStorage implements IStorage {
       .select({
         totalPayroll: sql<number>`sum(${payrollRecords.grossPay})`,
         employeeCount: count(payrollRecords.id),
-        totalDeductions: sql<number>`sum(${payrollRecords.deductions})`,
+        totalDeductions: sql<number>`sum(${payrollRecords.totalDeductions})`,
         totalNetPay: sql<number>`sum(${payrollRecords.netPay})`,
       })
       .from(payrollRecords)
       .where(gte(payrollRecords.payPeriodStart, currentMonth));
     
     return summary;
+  }
+
+  // Tax configuration management
+  async getTaxConfigs(): Promise<TaxWithholdingConfig[]> {
+    return await db.select().from(taxWithholdingConfigs).orderBy(desc(taxWithholdingConfigs.createdAt));
+  }
+
+  async createTaxConfig(config: InsertTaxWithholdingConfig): Promise<TaxWithholdingConfig> {
+    const [newConfig] = await db.insert(taxWithholdingConfigs).values(config).returning();
+    return newConfig;
+  }
+
+  async updateTaxConfig(id: number, config: Partial<InsertTaxWithholdingConfig>): Promise<TaxWithholdingConfig> {
+    const [updatedConfig] = await db
+      .update(taxWithholdingConfigs)
+      .set({ ...config, updatedAt: new Date() })
+      .where(eq(taxWithholdingConfigs.id, id))
+      .returning();
+    return updatedConfig;
+  }
+
+  // Employee benefit elections management
+  async getBenefitElections(): Promise<EmployeeBenefitElection[]> {
+    return await db.select().from(employeeBenefitElections).orderBy(desc(employeeBenefitElections.createdAt));
+  }
+
+  async createBenefitElection(election: InsertEmployeeBenefitElection): Promise<EmployeeBenefitElection> {
+    const [newElection] = await db.insert(employeeBenefitElections).values(election).returning();
+    return newElection;
+  }
+
+  async getBenefitElectionsByEmployee(employeeId: number): Promise<EmployeeBenefitElection[]> {
+    return await db.select().from(employeeBenefitElections).where(eq(employeeBenefitElections.employeeId, employeeId));
+  }
+
+  // Employee tax withholding management
+  async getEmployeeTaxWithholdings(): Promise<EmployeeTaxWithholding[]> {
+    return await db.select().from(employeeTaxWithholdings).orderBy(desc(employeeTaxWithholdings.createdAt));
+  }
+
+  async createEmployeeTaxWithholding(withholding: InsertEmployeeTaxWithholding): Promise<EmployeeTaxWithholding> {
+    const [newWithholding] = await db.insert(employeeTaxWithholdings).values(withholding).returning();
+    return newWithholding;
+  }
+
+  async getEmployeeTaxWithholdingsByEmployee(employeeId: number): Promise<EmployeeTaxWithholding[]> {
+    return await db.select().from(employeeTaxWithholdings).where(eq(employeeTaxWithholdings.employeeId, employeeId));
+  }
+
+  // Payroll batch management
+  async getPayrollBatches(): Promise<PayrollBatch[]> {
+    return await db.select().from(payrollBatches).orderBy(desc(payrollBatches.createdAt));
+  }
+
+  async createPayrollBatch(batch: InsertPayrollBatch): Promise<PayrollBatch> {
+    const [newBatch] = await db.insert(payrollBatches).values(batch).returning();
+    return newBatch;
   }
 
   // Document management
