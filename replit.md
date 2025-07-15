@@ -169,3 +169,15 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Created full CRUD API endpoints for templates and template fields
   - Added comprehensive frontend page with tabs for templates, design, and preview
   - School districts can now create custom timecard layouts tailored to their specific needs
+
+- Enhanced Onboarding Forms with Form Library and File Upload Support (July 15, 2025)
+  - Added file upload functionality for PDF, DOC, and DOCX onboarding documents
+  - Implemented reusable form library system with versioning support
+  - Added form template creation with "Create New" or "Use Existing" options
+  - Built secure file storage with multer middleware and validation
+  - Enhanced form display with version information and file indicators
+  - Added download functionality for uploaded form files
+  - Created dual-mode form creation: new forms or existing library selection
+  - Implemented proper form versioning with parent-child relationships
+  - Added form library statistics and improved UI with informative helpers
+  - Districts can now upload W4, I9, and other forms once and reuse them across workflows

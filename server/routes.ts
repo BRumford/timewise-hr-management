@@ -587,7 +587,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/onboarding/forms", async (req, res) => {
     try {
       const formData = insertOnboardingFormSchema.parse(req.body);
-      const form = await storage.createOnboardingForm(formData);
+      const form = await storage.createOnboardingForm({
+        ...formData,
+        version: "1.0",
+        isTemplate: true,
+      });
       
       await storage.createActivityLog({
         userId: formData.createdBy,
@@ -627,6 +631,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileName,
         fileSize,
         mimeType,
+        version: "1.0",
+        isTemplate: true,
       });
 
       await storage.createActivityLog({

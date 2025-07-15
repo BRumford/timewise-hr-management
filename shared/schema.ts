@@ -227,6 +227,9 @@ export const onboardingForms = pgTable("onboarding_forms", {
   fileName: varchar("file_name"), // Original file name
   fileSize: integer("file_size"), // File size in bytes
   mimeType: varchar("mime_type"), // File MIME type
+  version: varchar("version").default("1.0"), // Version number for form updates
+  parentFormId: integer("parent_form_id"), // Reference to original form for versioning
+  isTemplate: boolean("is_template").default(true), // Whether this is a reusable template
   isRequired: boolean("is_required").default(false), // Whether form is required for onboarding
   isActive: boolean("is_active").default(true), // Whether form is currently active
   applicableEmployeeTypes: text("applicable_employee_types").array().default([]), // teacher, administrator, etc.

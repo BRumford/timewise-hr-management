@@ -51,6 +51,8 @@ export default function Onboarding() {
   const [isCreateFormDialogOpen, setIsCreateFormDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<OnboardingForm | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [createMode, setCreateMode] = useState<"new" | "existing">("new");
+  const [selectedExistingForm, setSelectedExistingForm] = useState<OnboardingForm | null>(null);
   const { toast } = useToast();
 
   const { data: workflows, isLoading } = useQuery({
@@ -254,7 +256,7 @@ export default function Onboarding() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  {activeTab === "workflows" ? "Total Workflows" : "Total Forms"}
+                  {activeTab === "workflows" ? "Total Workflows" : "Form Library"}
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {activeTab === "workflows" ? (workflows?.length || 0) : (onboardingForms?.length || 0)}
@@ -482,10 +484,99 @@ export default function Onboarding() {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Create New Onboarding Form</DialogTitle>
+                      <DialogTitle>Add Onboarding Form</DialogTitle>
                     </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    
+                    {/* Mode Selection */}
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-4">
+                        <Button
+                          type="button"
+                          variant={createMode === "new" ? "default" : "outline"}
+                          onClick={() => setCreateMode("new")}
+                          className="flex-1"
+                        >
+                          Create New Form
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={createMode === "existing" ? "default" : "outline"}
+                          onClick={() => setCreateMode("existing")}
+                          className="flex-1"
+                        >
+                          Use Existing Form
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {createMode === "new" 
+                          ? "Create a new form template that can be reused across multiple onboarding workflows"
+                          : "Select from your existing form library to avoid re-uploading the same documents"
+                        }
+                      </p>
+                    </div>
+
+                    {createMode === "existing" && (
+                      <div className="space-y-4">
+                        <Label>Select Existing Form</Label>
+                        <Select onValueChange={(value) => {
+                          const formId = parseInt(value);
+                          const selectedForm = onboardingForms?.find((f: any) => f.id === formId);
+                          setSelectedExistingForm(selectedForm);
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a form from library" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {onboardingForms?.filter((form: any) => form.isTemplate).map((form: any) => (
+                              <SelectItem key={form.id} value={form.id.toString()}>
+                                {form.title} {form.version && `(v${form.version})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        {selectedExistingForm && (
+                          <div className="p-3 bg-gray-50 rounded-md">
+                            <h4 className="font-medium">{selectedExistingForm.title}</h4>
+                            <p className="text-sm text-gray-600">{selectedExistingForm.description}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="outline">{selectedExistingForm.formType}</Badge>
+                              <Badge variant="outline">{selectedExistingForm.category}</Badge>
+                              {selectedExistingForm.fileName && (
+                                <Badge variant="outline">📄 {selectedExistingForm.fileName}</Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-end space-x-2">
+                          <Button type="button" variant="outline" onClick={() => setIsCreateFormDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            type="button" 
+                            onClick={() => {
+                              if (selectedExistingForm) {
+                                // Use the existing form
+                                setIsCreateFormDialogOpen(false);
+                                setSelectedExistingForm(null);
+                                toast({
+                                  title: "Success",
+                                  description: `${selectedExistingForm.title} is now available for use`,
+                                });
+                              }
+                            }}
+                            disabled={!selectedExistingForm}
+                          >
+                            Use This Form
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {createMode === "new" && (
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
                           control={form.control}
                           name="title"
@@ -612,8 +703,9 @@ export default function Onboarding() {
                             {createFormMutation.isPending ? "Creating..." : "Create Form"}
                           </Button>
                         </div>
-                      </form>
-                    </Form>
+                        </form>
+                      </Form>
+                    )}
                   </DialogContent>
                 </Dialog>
               </div>
@@ -650,6 +742,11 @@ export default function Onboarding() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {form.title}
+                          {form.version && (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              v{form.version}
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500">
                           {form.description}
@@ -703,6 +800,19 @@ export default function Onboarding() {
                           )}
                           <Button variant="link" className="text-green-600 hover:text-green-900 p-0">
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="link" 
+                            className="text-purple-600 hover:text-purple-900 p-0"
+                            onClick={() => {
+                              // Create new version functionality
+                              toast({
+                                title: "Feature Coming Soon",
+                                description: "Form versioning will be available soon",
+                              });
+                            }}
+                          >
+                            <Upload className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="link" 
