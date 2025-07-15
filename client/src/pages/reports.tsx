@@ -560,7 +560,10 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full" onClick={() => handleExport('summary')}>
+                  <Button className="w-full" onClick={() => {
+                    alert('Export button clicked!');
+                    handleExport('summary');
+                  }}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Payroll Summary Report
                   </Button>
@@ -650,7 +653,10 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full" onClick={() => handleExport('tax-liability')}>
+                  <Button className="w-full" onClick={() => {
+                    alert('Tax export button clicked!');
+                    handleExport('tax-liability');
+                  }}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Tax Liability Report
                   </Button>
@@ -688,7 +694,10 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full" onClick={() => handleExport('benefits')}>
+                  <Button className="w-full" onClick={() => {
+                    alert('Benefits export button clicked!');
+                    handleExport('benefits');
+                  }}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Benefits Report
                   </Button>
