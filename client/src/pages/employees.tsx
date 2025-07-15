@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Filter, Download, Upload, FileText, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, Search, Filter, Download, Upload, FileText, AlertCircle, CheckCircle, Edit, Eye, Trash2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -19,6 +19,10 @@ export default function Employees() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importErrors, setImportErrors] = useState<any[]>([]);
   const [importSuccess, setImportSuccess] = useState<string>("");
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -115,10 +119,7 @@ export default function Employees() {
         return employee;
       });
 
-      return await apiRequest('/api/employees/import', {
-        method: 'POST',
-        body: JSON.stringify({ employees }),
-      });
+      return await apiRequest('/api/employees/import', 'POST', { employees });
     },
     onSuccess: (data) => {
       setImportSuccess(`Successfully imported ${data.imported} employees`);
@@ -171,6 +172,47 @@ EMP002,Jane,Smith,jane.smith@school.edu,555-0124,456 Oak Ave,Administration,Prin
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+  };
+
+  const handleEditEmployee = (employee: any) => {
+    setSelectedEmployee(employee);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleViewEmployee = (employee: any) => {
+    setSelectedEmployee(employee);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleAddEmployee = () => {
+    setSelectedEmployee(null);
+    setIsAddDialogOpen(true);
+  };
+
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: async (employeeId: number) => {
+      await apiRequest(`/api/employees/${employeeId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+      toast({
+        title: "Success",
+        description: "Employee deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete employee",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteEmployee = (employee: any) => {
+    if (window.confirm(`Are you sure you want to delete ${employee.firstName} ${employee.lastName}?`)) {
+      deleteEmployeeMutation.mutate(employee.id);
+    }
   };
 
   if (isLoading) {
@@ -286,7 +328,7 @@ EMP002,Jane,Smith,jane.smith@school.edu,555-0124,456 Oak Ave,Administration,Prin
               </div>
             </DialogContent>
           </Dialog>
-          <Button className="bg-primary hover:bg-blue-700">
+          <Button className="bg-primary hover:bg-blue-700" onClick={handleAddEmployee}>
             <Plus className="mr-2" size={16} />
             Add Employee
           </Button>
@@ -379,12 +421,32 @@ EMP002,Jane,Smith,jane.smith@school.edu,555-0124,456 Oak Ave,Administration,Prin
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <Button variant="link" className="text-indigo-600 hover:text-indigo-900 p-0 mr-3">
-                        Edit
-                      </Button>
-                      <Button variant="link" className="text-red-600 hover:text-red-900 p-0">
-                        View
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewEmployee(employee)}
+                          className="text-blue-600 hover:text-blue-900 h-8 w-8 p-0"
+                        >
+                          <Eye size={16} />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditEmployee(employee)}
+                          className="text-green-600 hover:text-green-900 h-8 w-8 p-0"
+                        >
+                          <Edit size={16} />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteEmployee(employee)}
+                          className="text-red-600 hover:text-red-900 h-8 w-8 p-0"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -398,6 +460,104 @@ EMP002,Jane,Smith,jane.smith@school.edu,555-0124,456 Oak Ave,Administration,Prin
           </div>
         </CardContent>
       </Card>
+
+      {/* View Employee Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Employee Details</DialogTitle>
+            <DialogDescription>
+              Viewing information for {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedEmployee && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Employee ID</Label>
+                  <p className="text-sm text-gray-600">{selectedEmployee.employeeId}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Badge className={getStatusColor(selectedEmployee.status)}>
+                    {selectedEmployee.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Full Name</Label>
+                  <p className="text-sm text-gray-600">{selectedEmployee.firstName} {selectedEmployee.lastName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Email</Label>
+                  <p className="text-sm text-gray-600">{selectedEmployee.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Department</Label>
+                  <p className="text-sm text-gray-600">{selectedEmployee.department}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Position</Label>
+                  <p className="text-sm text-gray-600">{selectedEmployee.position}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Employee Type</Label>
+                  <p className="text-sm text-gray-600 capitalize">{selectedEmployee.employeeType.replace('_', ' ')}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Hire Date</Label>
+                  <p className="text-sm text-gray-600">{new Date(selectedEmployee.hireDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Salary</Label>
+                  <p className="text-sm text-gray-600">${parseFloat(selectedEmployee.salary).toLocaleString()}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Phone</Label>
+                  <p className="text-sm text-gray-600">{selectedEmployee.phoneNumber || 'Not provided'}</p>
+                </div>
+              </div>
+              {selectedEmployee.address && (
+                <div>
+                  <Label className="text-sm font-medium">Address</Label>
+                  <p className="text-sm text-gray-600">{selectedEmployee.address}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Employee Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Employee</DialogTitle>
+            <DialogDescription>
+              Update information for {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-center py-8">
+            <p className="text-gray-500">Edit employee functionality coming soon...</p>
+            <p className="text-sm text-gray-400 mt-2">This feature will allow you to update employee details.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Employee Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Employee</DialogTitle>
+            <DialogDescription>
+              Create a new employee record in the system
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-center py-8">
+            <p className="text-gray-500">Add employee functionality coming soon...</p>
+            <p className="text-sm text-gray-400 mt-2">This feature will allow you to create new employee records.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
