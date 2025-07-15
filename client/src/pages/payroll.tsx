@@ -55,6 +55,17 @@ export default function Payroll() {
     effectiveDate: ''
   });
 
+  const [benefitData, setBenefitData] = useState({
+    employeeId: '',
+    benefitType: '',
+    planName: '',
+    coverageType: '',
+    employeeContribution: '',
+    employerContribution: '',
+    deductionFrequency: 'bi-weekly',
+    effectiveDate: ''
+  });
+
   const { data: payrollRecords, isLoading } = useQuery({
     queryKey: ["/api/payroll"],
   });
@@ -212,6 +223,29 @@ export default function Payroll() {
     }
   });
 
+  // Benefit election mutation
+  const createBenefitMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest('/api/benefit-elections', 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/benefit-elections'] });
+      setShowBenefitDialog(false);
+      setBenefitData({ employeeId: '', benefitType: '', planName: '', coverageType: '', employeeContribution: '', employerContribution: '', deductionFrequency: 'bi-weekly', effectiveDate: '' });
+      toast({
+        title: "Success",
+        description: "Benefit election created successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to create benefit election: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleProcessPayroll = () => {
     if (!processData.payPeriodStart || !processData.payPeriodEnd || !processData.payDate) {
       toast({
@@ -234,6 +268,18 @@ export default function Payroll() {
       return;
     }
     createTaxConfigMutation.mutate(taxConfig);
+  };
+
+  const handleCreateBenefit = () => {
+    if (!benefitData.employeeId || !benefitData.benefitType || !benefitData.planName || !benefitData.employeeContribution || !benefitData.effectiveDate) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    createBenefitMutation.mutate(benefitData);
   };
 
   if (isLoading || summaryLoading) {
@@ -406,6 +452,125 @@ export default function Payroll() {
           </Dialog>
         </div>
       </div>
+
+      {/* Benefit Dialog */}
+      <Dialog open={showBenefitDialog} onOpenChange={setShowBenefitDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Employee Benefit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="employeeId">Employee</Label>
+              <Select value={benefitData.employeeId} onValueChange={(value) => setBenefitData({...benefitData, employeeId: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees?.map((employee: any) => (
+                    <SelectItem key={employee.id} value={employee.id.toString()}>
+                      {employee.firstName} {employee.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="benefitType">Benefit Type</Label>
+              <Select value={benefitData.benefitType} onValueChange={(value) => setBenefitData({...benefitData, benefitType: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select benefit type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="health">Health Insurance</SelectItem>
+                  <SelectItem value="dental">Dental Insurance</SelectItem>
+                  <SelectItem value="vision">Vision Insurance</SelectItem>
+                  <SelectItem value="life">Life Insurance</SelectItem>
+                  <SelectItem value="retirement">Retirement/401k</SelectItem>
+                  <SelectItem value="hsa">Health Savings Account</SelectItem>
+                  <SelectItem value="parking">Parking</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="planName">Plan Name</Label>
+              <Input
+                id="planName"
+                placeholder="e.g., Blue Cross Blue Shield PPO"
+                value={benefitData.planName}
+                onChange={(e) => setBenefitData({...benefitData, planName: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="coverageType">Coverage Type</Label>
+              <Select value={benefitData.coverageType} onValueChange={(value) => setBenefitData({...benefitData, coverageType: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select coverage type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual</SelectItem>
+                  <SelectItem value="family">Family</SelectItem>
+                  <SelectItem value="spouse">Employee + Spouse</SelectItem>
+                  <SelectItem value="children">Employee + Children</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="employeeContribution">Employee Contribution ($)</Label>
+              <Input
+                id="employeeContribution"
+                type="number"
+                step="0.01"
+                placeholder="e.g., 150.00"
+                value={benefitData.employeeContribution}
+                onChange={(e) => setBenefitData({...benefitData, employeeContribution: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="employerContribution">Employer Contribution ($)</Label>
+              <Input
+                id="employerContribution"
+                type="number"
+                step="0.01"
+                placeholder="e.g., 300.00"
+                value={benefitData.employerContribution}
+                onChange={(e) => setBenefitData({...benefitData, employerContribution: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="deductionFrequency">Deduction Frequency</Label>
+              <Select value={benefitData.deductionFrequency} onValueChange={(value) => setBenefitData({...benefitData, deductionFrequency: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="annual">Annual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="effectiveDate">Effective Date</Label>
+              <Input
+                id="effectiveDate"
+                type="date"
+                value={benefitData.effectiveDate}
+                onChange={(e) => setBenefitData({...benefitData, effectiveDate: e.target.value})}
+              />
+            </div>
+            <Button 
+              onClick={handleCreateBenefit} 
+              className="w-full" 
+              disabled={createBenefitMutation.isPending}
+            >
+              {createBenefitMutation.isPending ? "Creating..." : "Create Benefit Election"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -605,10 +770,36 @@ export default function Payroll() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <Building className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium mb-2">Benefits Configuration</h3>
-                <p>Set up health insurance, retirement plans, and other employee benefits.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {benefitElections?.map((benefit: any) => (
+                  <Card key={benefit.id} className="border-l-4 border-l-green-500">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-gray-900 capitalize">
+                          {benefit.benefitType.replace('_', ' ')} - {benefit.planName}
+                        </h4>
+                        <Badge variant={benefit.isActive ? 'default' : 'secondary'}>
+                          {benefit.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1 text-sm text-gray-600">
+                        <p>Employee: {getEmployeeName(benefit.employeeId)}</p>
+                        <p>Coverage: {benefit.coverageType}</p>
+                        <p>Employee Contribution: ${benefit.employeeContribution}</p>
+                        <p>Employer Contribution: ${benefit.employerContribution || 0}</p>
+                        <p>Frequency: {benefit.deductionFrequency}</p>
+                        <p>Effective: {format(new Date(benefit.effectiveDate), 'MMM dd, yyyy')}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {(!benefitElections || benefitElections.length === 0) && (
+                  <div className="col-span-2 text-center py-8 text-gray-500">
+                    <Building className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <h3 className="text-lg font-medium mb-2">No Benefits Configured</h3>
+                    <p>Set up health insurance, retirement plans, and other employee benefits.</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
