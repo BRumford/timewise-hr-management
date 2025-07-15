@@ -57,6 +57,9 @@ import {
   type InsertDistrictSettings,
   type PayPeriod,
   type InsertPayPeriod,
+  customFieldLabels,
+  type CustomFieldLabel,
+  type InsertCustomFieldLabel,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne } from "drizzle-orm";
@@ -236,6 +239,14 @@ export interface IStorage {
   getPayPeriodsByDateRange(startDate: Date, endDate: Date): Promise<PayPeriod[]>;
   getPayPeriodsByStatus(status: string): Promise<PayPeriod[]>;
   getActivePayPeriods(): Promise<PayPeriod[]>;
+
+  // Custom field label operations
+  getCustomFieldLabels(): Promise<CustomFieldLabel[]>;
+  getCustomFieldLabel(fieldName: string): Promise<CustomFieldLabel | undefined>;
+  createCustomFieldLabel(label: InsertCustomFieldLabel): Promise<CustomFieldLabel>;
+  updateCustomFieldLabel(id: number, label: Partial<InsertCustomFieldLabel>): Promise<CustomFieldLabel>;
+  deleteCustomFieldLabel(id: number): Promise<void>;
+  initializeDefaultFieldLabels(): Promise<void>;
   generatePayPeriods(startDate: Date, endDate: Date, frequency: string): Promise<PayPeriod[]>;
 }
 
@@ -1320,6 +1331,73 @@ export class DatabaseStorage implements IStorage {
     }
 
     return periods;
+  }
+
+  // Custom field label operations
+  async getCustomFieldLabels(): Promise<CustomFieldLabel[]> {
+    return await db.select().from(customFieldLabels).orderBy(customFieldLabels.category, customFieldLabels.displayOrder);
+  }
+
+  async getCustomFieldLabel(fieldName: string): Promise<CustomFieldLabel | undefined> {
+    const [label] = await db.select().from(customFieldLabels).where(eq(customFieldLabels.fieldName, fieldName));
+    return label;
+  }
+
+  async createCustomFieldLabel(label: InsertCustomFieldLabel): Promise<CustomFieldLabel> {
+    const [newLabel] = await db.insert(customFieldLabels).values(label).returning();
+    return newLabel;
+  }
+
+  async updateCustomFieldLabel(id: number, label: Partial<InsertCustomFieldLabel>): Promise<CustomFieldLabel> {
+    const [updated] = await db.update(customFieldLabels).set({
+      ...label,
+      updatedAt: new Date(),
+    }).where(eq(customFieldLabels.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCustomFieldLabel(id: number): Promise<void> {
+    await db.delete(customFieldLabels).where(eq(customFieldLabels.id, id));
+  }
+
+  async initializeDefaultFieldLabels(): Promise<void> {
+    // Check if labels already exist
+    const existingLabels = await this.getCustomFieldLabels();
+    if (existingLabels.length > 0) {
+      return; // Already initialized
+    }
+
+    // Default field labels for employee form
+    const defaultLabels: InsertCustomFieldLabel[] = [
+      // General Information
+      { fieldName: 'employeeId', displayLabel: 'Employee ID', category: 'general', displayOrder: 1, isRequired: true },
+      { fieldName: 'firstName', displayLabel: 'First Name', category: 'general', displayOrder: 2, isRequired: true },
+      { fieldName: 'lastName', displayLabel: 'Last Name', category: 'general', displayOrder: 3, isRequired: true },
+      { fieldName: 'status', displayLabel: 'Status', category: 'general', displayOrder: 4, isRequired: true },
+      
+      // Contact Information
+      { fieldName: 'email', displayLabel: 'Email Address', category: 'contact', displayOrder: 1, isRequired: true },
+      { fieldName: 'phoneNumber', displayLabel: 'Phone Number', category: 'contact', displayOrder: 2, isRequired: false },
+      { fieldName: 'address', displayLabel: 'Address', category: 'contact', displayOrder: 3, isRequired: false },
+      
+      // Employment Information
+      { fieldName: 'department', displayLabel: 'Department', category: 'employment', displayOrder: 1, isRequired: true },
+      { fieldName: 'position', displayLabel: 'Position', category: 'employment', displayOrder: 2, isRequired: true },
+      { fieldName: 'employeeType', displayLabel: 'Employee Type', category: 'employment', displayOrder: 3, isRequired: true },
+      { fieldName: 'hireDate', displayLabel: 'Hire Date', category: 'employment', displayOrder: 4, isRequired: true },
+      { fieldName: 'salary', displayLabel: 'Salary', category: 'employment', displayOrder: 5, isRequired: true },
+      { fieldName: 'payGrade', displayLabel: 'Pay Grade', category: 'employment', displayOrder: 6, isRequired: false },
+      { fieldName: 'supervisorId', displayLabel: 'Supervisor ID', category: 'employment', displayOrder: 7, isRequired: false },
+      
+      // Certification Information
+      { fieldName: 'educationLevel', displayLabel: 'Education Level', category: 'certification', displayOrder: 1, isRequired: false },
+      { fieldName: 'certifications', displayLabel: 'Certifications', category: 'certification', displayOrder: 2, isRequired: false },
+    ];
+
+    // Insert all default labels
+    for (const label of defaultLabels) {
+      await this.createCustomFieldLabel(label);
+    }
   }
 }
 

@@ -2238,6 +2238,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Custom field labels routes
+  app.get("/api/custom-field-labels", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const labels = await storage.getCustomFieldLabels();
+      res.json(labels);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch custom field labels", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/custom-field-labels", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const label = await storage.createCustomFieldLabel(req.body);
+      res.json(label);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create custom field label", error: (error as Error).message });
+    }
+  });
+
+  app.put("/api/custom-field-labels/:id", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const label = await storage.updateCustomFieldLabel(id, req.body);
+      res.json(label);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update custom field label", error: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/custom-field-labels/:id", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCustomFieldLabel(id);
+      res.json({ message: "Custom field label deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete custom field label", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/custom-field-labels/initialize", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      await storage.initializeDefaultFieldLabels();
+      res.json({ message: "Default field labels initialized successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to initialize default field labels", error: (error as Error).message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

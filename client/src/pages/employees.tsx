@@ -59,6 +59,27 @@ export default function Employees() {
     queryKey: ["/api/employees"],
   });
 
+  // Fetch custom field labels
+  const { data: fieldLabels } = useQuery({
+    queryKey: ["/api/custom-field-labels"],
+  });
+
+  // Initialize default field labels if none exist
+  const initializeFieldLabelsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/custom-field-labels/initialize", "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-field-labels"] });
+    },
+  });
+
+  // Helper function to get field label
+  const getFieldLabel = (fieldName: string, defaultLabel: string) => {
+    const label = fieldLabels?.find((l: any) => l.fieldName === fieldName);
+    return label ? label.displayLabel : defaultLabel;
+  };
+
   // Form for editing employees
   const editForm = useForm<EditEmployeeFormData>({
     resolver: zodResolver(editEmployeeSchema),
@@ -662,9 +683,9 @@ export default function Employees() {
                   name="employeeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Employee ID</FormLabel>
+                      <FormLabel>{getFieldLabel("employeeId", "Employee ID")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter employee ID" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("employeeId", "Employee ID").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -675,11 +696,11 @@ export default function Employees() {
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
+                      <FormLabel>{getFieldLabel("status", "Status")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder={`Select ${getFieldLabel("status", "Status").toLowerCase()}`} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -698,9 +719,9 @@ export default function Employees() {
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>First Name</FormLabel>
+                      <FormLabel>{getFieldLabel("firstName", "First Name")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter first name" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("firstName", "First Name").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -711,9 +732,9 @@ export default function Employees() {
                   name="lastName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Last Name</FormLabel>
+                      <FormLabel>{getFieldLabel("lastName", "Last Name")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter last name" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("lastName", "Last Name").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -724,9 +745,9 @@ export default function Employees() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{getFieldLabel("email", "Email")}</FormLabel>
                       <FormControl>
-                        <Input {...field} type="email" placeholder="Enter email address" />
+                        <Input {...field} type="email" placeholder={`Enter ${getFieldLabel("email", "Email").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -737,9 +758,9 @@ export default function Employees() {
                   name="phoneNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
+                      <FormLabel>{getFieldLabel("phoneNumber", "Phone Number")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter phone number" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("phoneNumber", "Phone Number").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -750,9 +771,9 @@ export default function Employees() {
                   name="department"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Department</FormLabel>
+                      <FormLabel>{getFieldLabel("department", "Department")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter department" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("department", "Department").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -763,9 +784,9 @@ export default function Employees() {
                   name="position"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Position</FormLabel>
+                      <FormLabel>{getFieldLabel("position", "Position")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter position" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("position", "Position").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -776,11 +797,11 @@ export default function Employees() {
                   name="employeeType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Employee Type</FormLabel>
+                      <FormLabel>{getFieldLabel("employeeType", "Employee Type")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select employee type" />
+                            <SelectValue placeholder={`Select ${getFieldLabel("employeeType", "Employee Type").toLowerCase()}`} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -799,7 +820,7 @@ export default function Employees() {
                   name="hireDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Hire Date</FormLabel>
+                      <FormLabel>{getFieldLabel("hireDate", "Hire Date")}</FormLabel>
                       <FormControl>
                         <Input {...field} type="date" />
                       </FormControl>
@@ -812,9 +833,9 @@ export default function Employees() {
                   name="salary"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Salary</FormLabel>
+                      <FormLabel>{getFieldLabel("salary", "Salary")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter salary" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("salary", "Salary").toLowerCase()}`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -825,9 +846,9 @@ export default function Employees() {
                   name="payGrade"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Pay Grade</FormLabel>
+                      <FormLabel>{getFieldLabel("payGrade", "Pay Grade")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter pay grade (optional)" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("payGrade", "Pay Grade").toLowerCase()} (optional)`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -838,9 +859,9 @@ export default function Employees() {
                   name="educationLevel"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Education Level</FormLabel>
+                      <FormLabel>{getFieldLabel("educationLevel", "Education Level")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter education level (optional)" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("educationLevel", "Education Level").toLowerCase()} (optional)`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -851,9 +872,9 @@ export default function Employees() {
                   name="supervisorId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Supervisor ID</FormLabel>
+                      <FormLabel>{getFieldLabel("supervisorId", "Supervisor ID")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Enter supervisor ID (optional)" />
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("supervisorId", "Supervisor ID").toLowerCase()} (optional)`} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -865,9 +886,9 @@ export default function Employees() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>{getFieldLabel("address", "Address")}</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Enter address (optional)" />
+                      <Textarea {...field} placeholder={`Enter ${getFieldLabel("address", "Address").toLowerCase()} (optional)`} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -878,9 +899,9 @@ export default function Employees() {
                 name="certifications"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Certifications</FormLabel>
+                    <FormLabel>{getFieldLabel("certifications", "Certifications")}</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Enter certifications, separated by commas (optional)" />
+                      <Textarea {...field} placeholder={`Enter ${getFieldLabel("certifications", "Certifications").toLowerCase()}, separated by commas (optional)`} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

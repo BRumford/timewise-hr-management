@@ -13,7 +13,8 @@ import {
   UserCheck,
   DollarSign,
   Mail,
-  Layout
+  Layout,
+  Tag
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import RoleSwitcher from "@/components/auth/role-switcher";
@@ -32,6 +33,7 @@ const menuItems = [
   { path: "/letters", icon: Mail, label: "Letters", roles: ["admin", "hr"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["admin", "hr"] },
+  { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["admin", "hr"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr"] },
 ];
 

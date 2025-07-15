@@ -364,6 +364,20 @@ export const districtSettings = pgTable("district_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Custom field labels table for employee forms
+export const customFieldLabels = pgTable("custom_field_labels", {
+  id: serial("id").primaryKey(),
+  fieldName: varchar("field_name").notNull().unique(), // e.g., "firstName", "lastName", "department"
+  displayLabel: varchar("display_label").notNull(), // e.g., "First Name", "Given Name", "Department"
+  description: text("description"), // Optional description for the field
+  isRequired: boolean("is_required").default(false), // Whether field is required
+  isVisible: boolean("is_visible").default(true), // Whether field is visible in forms
+  category: varchar("category").notNull().default("general"), // general, contact, employment, certification
+  displayOrder: integer("display_order").default(0), // Order for displaying fields
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Pay periods table
 export const payPeriods = pgTable("pay_periods", {
   id: serial("id").primaryKey(),
@@ -536,6 +550,7 @@ export const insertTimecardTemplateSchema = createInsertSchema(timecardTemplates
 export const insertTimecardTemplateFieldSchema = createInsertSchema(timecardTemplateFields).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDistrictSettingsSchema = createInsertSchema(districtSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPayPeriodSchema = createInsertSchema(payPeriods).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCustomFieldLabelSchema = createInsertSchema(customFieldLabels).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -576,3 +591,5 @@ export type InsertDistrictSettings = z.infer<typeof insertDistrictSettingsSchema
 export type DistrictSettings = typeof districtSettings.$inferSelect;
 export type InsertPayPeriod = z.infer<typeof insertPayPeriodSchema>;
 export type PayPeriod = typeof payPeriods.$inferSelect;
+export type InsertCustomFieldLabel = z.infer<typeof insertCustomFieldLabelSchema>;
+export type CustomFieldLabel = typeof customFieldLabels.$inferSelect;
