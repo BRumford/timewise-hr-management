@@ -510,12 +510,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const workflowData = insertOnboardingWorkflowSchema.parse(req.body);
       
-      // Generate AI-powered checklist
+      // Generate AI-powered checklist or fallback to default
       const employee = await storage.getEmployee(workflowData.employeeId);
       if (employee) {
-        const checklist = await generateOnboardingChecklist(employee.employeeType, employee.department);
-        workflowData.requiredDocuments = checklist.requiredDocuments;
-        workflowData.currentStep = checklist.steps[0]?.step || "start";
+        try {
+          const checklist = await generateOnboardingChecklist(employee.employeeType, employee.department);
+          workflowData.requiredDocuments = checklist.requiredDocuments;
+          workflowData.currentStep = checklist.steps[0]?.step || "welcome";
+        } catch (aiError) {
+          console.warn("AI checklist generation failed, using default:", (aiError as Error).message);
+          // Fallback to default checklist
+          workflowData.requiredDocuments = ["Employee Handbook", "Tax Forms", "Benefits Enrollment", "Emergency Contact"];
+          workflowData.currentStep = "welcome";
+        }
       }
 
       const workflow = await storage.createOnboardingWorkflow(workflowData);
@@ -530,6 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(workflow);
     } catch (error) {
+      console.error("Onboarding workflow creation error:", error);
       res.status(400).json({ message: "Failed to create onboarding workflow", error: (error as Error).message });
     }
   });

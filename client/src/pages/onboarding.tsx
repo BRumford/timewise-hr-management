@@ -165,28 +165,24 @@ export default function Onboarding() {
 
   const startWorkflowMutation = useMutation({
     mutationFn: async (data: WorkflowFormData) => {
-      console.log("Starting workflow with data:", data);
       const { workflowType, ...workflowData } = data;
       const finalData = {
         ...workflowData,
         startDate: new Date().toISOString(),
         targetCompletionDate: data.targetCompletionDate ? new Date(data.targetCompletionDate).toISOString() : null,
       };
-      console.log("Processed workflow data:", finalData);
       return await apiRequest("POST", "/api/onboarding", finalData);
     },
     onSuccess: () => {
-      console.log("Workflow started successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
       setIsStartWorkflowDialogOpen(false);
       workflowForm.reset();
       toast({
         title: "Success",
-        description: "Onboarding workflow started successfully",
+        description: "Onboarding workflow started successfully with AI-powered checklist",
       });
     },
     onError: (error) => {
-      console.error("Error starting workflow:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -902,11 +898,7 @@ export default function Onboarding() {
             </DialogDescription>
           </DialogHeader>
           <Form {...workflowForm}>
-            <form onSubmit={workflowForm.handleSubmit((data) => {
-              console.log("Form submitted with data:", data);
-              console.log("Form errors:", workflowForm.formState.errors);
-              startWorkflowMutation.mutate(data);
-            })} className="space-y-4">
+            <form onSubmit={workflowForm.handleSubmit((data) => startWorkflowMutation.mutate(data))} className="space-y-4">
               <FormField
                 control={workflowForm.control}
                 name="employeeId"
