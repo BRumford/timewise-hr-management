@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, User, Filter, Plus, Check, X, Edit, ArrowRight, FileText, Users, AlertCircle, Download } from "lucide-react";
+import { Calendar, Clock, User, Filter, Plus, Check, X, Edit, ArrowRight, FileText, Users, AlertCircle, Download, GraduationCap, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -96,6 +96,31 @@ const downloadCSV = (data: any[], filename: string) => {
   document.body.removeChild(link);
 };
 
+// Helper function to categorize employees
+const getCertificatedEmployees = (employees: Employee[]) => {
+  return employees.filter(emp => 
+    emp.employeeType === 'teacher' || 
+    emp.employeeType === 'administrator' || 
+    emp.employeeType === 'counselor' || 
+    emp.employeeType === 'librarian' ||
+    emp.employeeType === 'principal' ||
+    emp.employeeType === 'vice_principal'
+  );
+};
+
+const getClassifiedEmployees = (employees: Employee[]) => {
+  return employees.filter(emp => 
+    emp.employeeType === 'support_staff' || 
+    emp.employeeType === 'secretary' || 
+    emp.employeeType === 'custodian' ||
+    emp.employeeType === 'food_service' ||
+    emp.employeeType === 'maintenance' ||
+    emp.employeeType === 'paraprofessional' ||
+    emp.employeeType === 'bus_driver' ||
+    emp.employeeType === 'security'
+  );
+};
+
 export default function TimeCards() {
   const [filter, setFilter] = useState<string>("all");
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
@@ -106,6 +131,7 @@ export default function TimeCards() {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"certificated" | "classified">("certificated");
   const { toast } = useToast();
 
   const { data: timeCards = [], isLoading } = useQuery({
@@ -119,6 +145,31 @@ export default function TimeCards() {
   const { data: pendingTimeCards = [] } = useQuery({
     queryKey: ["/api/time-cards/pending"],
   });
+
+  // Create employee lookup for time cards
+  const employeeMap = new Map(employees.map((emp: Employee) => [emp.id, emp]));
+  
+  // Get time cards with employee information
+  const timeCardsWithEmployees = timeCards.map((timeCard: TimeCard) => ({
+    ...timeCard,
+    employee: employeeMap.get(timeCard.employeeId)
+  })).filter((timeCard: any) => timeCard.employee);
+
+  // Separate time cards by employee type
+  const certificatedEmployees = getCertificatedEmployees(employees);
+  const classifiedEmployees = getClassifiedEmployees(employees);
+  
+  const certificatedTimeCards = timeCardsWithEmployees.filter((timeCard: any) => 
+    certificatedEmployees.some(emp => emp.id === timeCard.employeeId)
+  );
+  
+  const classifiedTimeCards = timeCardsWithEmployees.filter((timeCard: any) => 
+    classifiedEmployees.some(emp => emp.id === timeCard.employeeId)
+  );
+
+  // Get current data based on active tab
+  const currentTimeCards = activeTab === "certificated" ? certificatedTimeCards : classifiedTimeCards;
+  const currentEmployees = activeTab === "certificated" ? certificatedEmployees : classifiedEmployees;
 
   const form = useForm<TimeCardForm>({
     resolver: zodResolver(timeCardFormSchema),
@@ -265,7 +316,7 @@ export default function TimeCards() {
     }
   };
 
-  const filteredTimeCards = timeCards.filter((timeCard: TimeCard) => {
+  const filteredTimeCards = currentTimeCards.filter((timeCard: any) => {
     const statusMatch = filter === "all" || timeCard.status === filter;
     const employeeMatch = employeeFilter === "all" || timeCard.employeeId.toString() === employeeFilter;
     return statusMatch && employeeMatch;
@@ -279,11 +330,11 @@ export default function TimeCards() {
     createTimeCard.mutate(data);
   };
 
-  // Statistics
-  const totalTimeCards = timeCards.length;
-  const pendingCount = pendingTimeCards.length;
-  const approvedCount = timeCards.filter((tc: TimeCard) => tc.status === "admin_approved").length;
-  const processedCount = timeCards.filter((tc: TimeCard) => tc.status === "payroll_processed").length;
+  // Statistics for current tab
+  const totalTimeCards = currentTimeCards.length;
+  const pendingCount = currentTimeCards.filter((tc: any) => tc.status === "secretary_submitted").length;
+  const approvedCount = currentTimeCards.filter((tc: any) => tc.status === "admin_approved").length;
+  const processedCount = currentTimeCards.filter((tc: any) => tc.status === "payroll_processed").length;
 
   if (isLoading) {
     return (
@@ -333,9 +384,9 @@ export default function TimeCards() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {employees.map((employee: Employee) => (
+                            {currentEmployees.map((employee: Employee) => (
                               <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {employee.firstName} {employee.lastName}
+                                {employee.firstName} {employee.lastName} ({employee.employeeType})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -489,6 +540,32 @@ export default function TimeCards() {
         </Card>
       </div>
 
+      {/* Employee Type Tabs */}
+      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+        <Button
+          variant={activeTab === "certificated" ? "default" : "ghost"}
+          onClick={() => {
+            setActiveTab("certificated");
+            setEmployeeFilter("all");
+          }}
+          className="flex-1"
+        >
+          <GraduationCap className="mr-2 h-4 w-4" />
+          Certificated Employees ({certificatedTimeCards.length})
+        </Button>
+        <Button
+          variant={activeTab === "classified" ? "default" : "ghost"}
+          onClick={() => {
+            setActiveTab("classified");
+            setEmployeeFilter("all");
+          }}
+          className="flex-1"
+        >
+          <Briefcase className="mr-2 h-4 w-4" />
+          Classified Employees ({classifiedTimeCards.length})
+        </Button>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center space-x-2">
@@ -519,7 +596,7 @@ export default function TimeCards() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              {employees.map((employee: Employee) => (
+              {currentEmployees.map((employee: Employee) => (
                 <SelectItem key={employee.id} value={employee.id.toString()}>
                   {employee.firstName} {employee.lastName}
                 </SelectItem>
