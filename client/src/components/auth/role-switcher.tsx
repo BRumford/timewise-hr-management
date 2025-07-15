@@ -20,9 +20,14 @@ export default function RoleSwitcher() {
 
   const switchRoleMutation = useMutation({
     mutationFn: async (role: string) => {
-      return await apiRequest('/api/auth/switch-role', 'POST', { role });
+      console.log('Switching role to:', role);
+      const response = await apiRequest('/api/auth/switch-role', 'POST', { role });
+      const result = await response.json();
+      console.log('Role switch response:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Role switch successful:', data);
       // Invalidate and refetch user data
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       
@@ -35,6 +40,7 @@ export default function RoleSwitcher() {
       window.location.reload();
     },
     onError: (error) => {
+      console.error('Role switch error:', error);
       toast({
         title: "Role Switch Failed",
         description: error.message || "Failed to switch role",
@@ -44,6 +50,11 @@ export default function RoleSwitcher() {
   });
 
   const handleRoleSwitch = () => {
+    console.log('handleRoleSwitch called with:', {
+      selectedRole,
+      userRole: user?.role,
+      isEqual: selectedRole === user?.role
+    });
     if (selectedRole !== user?.role) {
       switchRoleMutation.mutate(selectedRole);
     }
