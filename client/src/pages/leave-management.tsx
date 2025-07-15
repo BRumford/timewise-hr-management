@@ -18,9 +18,13 @@ import { z } from "zod";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-const leaveRequestFormSchema = insertLeaveRequestSchema.extend({
+const leaveRequestFormSchema = z.object({
+  employeeId: z.number().min(1, "Employee selection is required"),
+  leaveTypeId: z.number().min(1, "Leave type selection is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
+  reason: z.string().min(1, "Reason is required"),
+  substituteRequired: z.boolean().default(false),
 });
 
 type LeaveRequestFormData = z.infer<typeof leaveRequestFormSchema>;

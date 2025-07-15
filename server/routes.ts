@@ -542,9 +542,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leave-requests", async (req, res) => {
+  app.post("/api/leave-requests", isAuthenticated, async (req, res) => {
     try {
       const user = (req as any).user;
+      console.log("Leave request body:", JSON.stringify(req.body, null, 2));
+      console.log("User:", user);
       const requestData = insertLeaveRequestSchema.parse(req.body);
       
       // If user is an employee, ensure they can only create requests for themselves
@@ -588,6 +590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(leaveRequest);
     } catch (error) {
+      console.error("Leave request creation error:", error);
       res.status(400).json({ message: "Failed to create leave request", error: (error as Error).message });
     }
   });
