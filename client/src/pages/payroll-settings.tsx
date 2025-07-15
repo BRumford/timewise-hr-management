@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ export default function PayrollSettings() {
   // District settings form
   const settingsForm = useForm<DistrictSettings>({
     resolver: zodResolver(districtSettingsSchema),
-    defaultValues: districtSettings || {
+    defaultValues: {
       districtName: "",
       districtCode: "",
       payrollFrequency: "bi-weekly",
@@ -97,6 +97,13 @@ export default function PayrollSettings() {
       reminderDaysBefore: 3,
     },
   });
+
+  // Reset form when district settings data is loaded
+  useEffect(() => {
+    if (districtSettings) {
+      settingsForm.reset(districtSettings);
+    }
+  }, [districtSettings, settingsForm]);
 
   // Pay period generation form
   const generationForm = useForm<PayPeriodGeneration>({
@@ -277,7 +284,7 @@ export default function PayrollSettings() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Payroll Frequency</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select frequency" />
@@ -322,7 +329,11 @@ export default function PayrollSettings() {
                               min="1" 
                               max="31" 
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(value ? parseInt(value) : undefined);
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -341,7 +352,11 @@ export default function PayrollSettings() {
                               min="1" 
                               max="31" 
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(value ? parseInt(value) : undefined);
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -360,7 +375,11 @@ export default function PayrollSettings() {
                               min="1" 
                               max="31" 
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(value ? parseInt(value) : undefined);
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
