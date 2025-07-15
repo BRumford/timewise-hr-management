@@ -502,6 +502,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Leave requests import/export routes
+  app.get("/api/leave-requests/export", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const leaveRequests = await storage.getLeaveRequests();
+      const employees = await storage.getEmployees();
+      const leaveTypes = await storage.getLeaveTypes();
+      
+      // Transform data for CSV export
+      const csvData = leaveRequests.map(request => {
+        const employee = employees.find(emp => emp.id === request.employeeId);
+        const leaveType = leaveTypes.find(type => type.id === request.leaveTypeId);
+        const approver = request.approvedBy ? employees.find(emp => emp.id === request.approvedBy) : null;
+        
+        return {
+          id: request.id,
+          employeeId: request.employeeId,
+          employeeName: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+          leaveType: leaveType ? leaveType.name : 'Unknown',
+          startDate: request.startDate ? new Date(request.startDate).toISOString().split('T')[0] : '',
+          endDate: request.endDate ? new Date(request.endDate).toISOString().split('T')[0] : '',
+          reason: request.reason || '',
+          status: request.status,
+          substituteRequired: request.substituteRequired,
+          approvedBy: approver ? `${approver.firstName} ${approver.lastName}` : '',
+          approvedAt: request.approvedAt ? new Date(request.approvedAt).toISOString().split('T')[0] : '',
+          createdAt: request.createdAt ? new Date(request.createdAt).toISOString().split('T')[0] : '',
+        };
+      });
+      
+      res.json(csvData);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export leave requests", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/leave-requests/import", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { data } = req.body;
+      const results = {
+        success: [] as string[],
+        errors: [] as { row: number; error: string }[],
+        updated: 0,
+        created: 0
+      };
+
+      const employees = await storage.getEmployees();
+      const leaveTypes = await storage.getLeaveTypes();
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        try {
+          // Find employee by name or ID
+          let employee = employees.find(emp => emp.id === parseInt(row.employeeId));
+          if (!employee && row.employeeName) {
+            const [firstName, lastName] = row.employeeName.split(' ');
+            employee = employees.find(emp => emp.firstName === firstName && emp.lastName === lastName);
+          }
+
+          if (!employee) {
+            results.errors.push({
+              row: i + 1,
+              error: `Employee not found: ${row.employeeName || row.employeeId}`
+            });
+            continue;
+          }
+
+          // Find leave type
+          let leaveType = leaveTypes.find(type => type.id === parseInt(row.leaveTypeId));
+          if (!leaveType && row.leaveType) {
+            leaveType = leaveTypes.find(type => type.name === row.leaveType);
+          }
+
+          if (!leaveType) {
+            results.errors.push({
+              row: i + 1,
+              error: `Leave type not found: ${row.leaveType || row.leaveTypeId}`
+            });
+            continue;
+          }
+
+          // Validate dates
+          const startDate = new Date(row.startDate);
+          const endDate = new Date(row.endDate);
+          
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            results.errors.push({
+              row: i + 1,
+              error: `Invalid date format. Use YYYY-MM-DD format.`
+            });
+            continue;
+          }
+
+          const leaveRequestData = {
+            employeeId: employee.id,
+            leaveTypeId: leaveType.id,
+            startDate: startDate,
+            endDate: endDate,
+            reason: row.reason || '',
+            status: row.status || 'pending',
+            substituteRequired: row.substituteRequired === 'true' || row.substituteRequired === true,
+          };
+
+          // Check if updating existing request
+          if (row.id && row.id !== '') {
+            const existingRequest = await storage.getLeaveRequest(parseInt(row.id));
+            if (existingRequest) {
+              await storage.updateLeaveRequest(parseInt(row.id), leaveRequestData);
+              results.updated++;
+              results.success.push(`Updated leave request for ${employee.firstName} ${employee.lastName}`);
+            } else {
+              const newRequest = await storage.createLeaveRequest(leaveRequestData);
+              results.created++;
+              results.success.push(`Created leave request for ${employee.firstName} ${employee.lastName}`);
+            }
+          } else {
+            const newRequest = await storage.createLeaveRequest(leaveRequestData);
+            results.created++;
+            results.success.push(`Created leave request for ${employee.firstName} ${employee.lastName}`);
+          }
+
+        } catch (error) {
+          results.errors.push({
+            row: i + 1,
+            error: (error as Error).message
+          });
+        }
+      }
+
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to import leave requests", error: (error as Error).message });
+    }
+  });
+
   app.get("/api/leave-requests", async (req, res) => {
     try {
       const user = (req as any).user;

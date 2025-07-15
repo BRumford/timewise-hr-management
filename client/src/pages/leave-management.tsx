@@ -1,30 +1,33 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertLeaveRequestSchema, type InsertLeaveRequest } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, Clock, CheckCircle, XCircle, User, AlertCircle } from "lucide-react";
+import { Plus, Calendar, Clock, CheckCircle, XCircle, User, AlertCircle, Download, Upload, FileText } from "lucide-react";
 import { format, differenceInDays, addDays } from "date-fns";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-const leaveRequestFormSchema = z.object({
-  employeeId: z.number().min(1, "Employee selection is required"),
-  leaveTypeId: z.number().min(1, "Leave type selection is required"),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
-  reason: z.string().min(1, "Reason is required"),
-  substituteRequired: z.boolean().default(false),
+const leaveRequestFormSchema = insertLeaveRequestSchema.extend({
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+}).refine((data) => {
+  return data.startDate <= data.endDate;
+}, {
+  message: "Start date must be before or equal to end date",
+  path: ["endDate"],
 });
 
 type LeaveRequestFormData = z.infer<typeof leaveRequestFormSchema>;
@@ -33,32 +36,34 @@ export default function LeaveManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importErrors, setImportErrors] = useState<any[]>([]);
+  const [importSuccess, setImportSuccess] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, canViewAllRecords } = useAuth();
 
-  const { data: leaveRequests, isLoading } = useQuery({
+  const { data: leaveRequests, isLoading: isLoadingRequests } = useQuery({
     queryKey: ["/api/leave-requests"],
-  });
-
-  const { data: employees } = useQuery({
-    queryKey: ["/api/employees"],
-    enabled: canViewAllRecords, // Only fetch if user can view all records
   });
 
   const { data: leaveTypes } = useQuery({
     queryKey: ["/api/leave-types"],
   });
 
-  // Fetch custom field labels
+  const { data: employees } = useQuery({
+    queryKey: ["/api/employees"],
+  });
+
   const { data: fieldLabels } = useQuery({
     queryKey: ["/api/custom-field-labels"],
   });
 
-  // Helper function to get field label
   const getFieldLabel = (fieldName: string, defaultLabel: string) => {
-    const label = fieldLabels?.find((l: any) => l.fieldName === fieldName);
-    return label ? label.displayLabel : defaultLabel;
+    const label = fieldLabels?.find((fl: any) => fl.fieldName === fieldName);
+    return label?.displayLabel || defaultLabel;
   };
 
   const form = useForm<LeaveRequestFormData>({
@@ -66,8 +71,8 @@ export default function LeaveManagement() {
     defaultValues: {
       employeeId: user?.employee?.id || 0,
       leaveTypeId: 0,
-      startDate: "",
-      endDate: "",
+      startDate: new Date(),
+      endDate: new Date(),
       reason: "",
       substituteRequired: false,
     },
@@ -100,17 +105,51 @@ export default function LeaveManagement() {
     },
   });
 
-  const approveLeaveRequestMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      return apiRequest(`/api/leave-requests/${requestId}/approve`, "POST");
-    },
-    onSuccess: () => {
+  // Export functionality
+  const exportLeaveRequests = async () => {
+    try {
+      const data = await apiRequest("/api/leave-requests/export", "GET");
+      
+      // Convert JSON to CSV
+      const csvContent = convertToCSV(data);
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `leave-requests-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
       toast({
         title: "Success",
-        description: "Leave request approved and timecards generated",
+        description: "Leave requests exported successfully",
       });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export leave requests",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Import functionality
+  const importLeaveRequestsMutation = useMutation({
+    mutationFn: async (data: any[]) => {
+      return apiRequest("/api/leave-requests/import", "POST", { data });
+    },
+    onSuccess: (result) => {
+      setImportSuccess(`Successfully imported ${result.created} new leave requests and updated ${result.updated} existing ones`);
+      setImportErrors(result.errors || []);
       queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-cards"] });
+      setImportFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     },
     onError: (error) => {
       toast({
@@ -121,36 +160,97 @@ export default function LeaveManagement() {
     },
   });
 
-  const rejectLeaveRequestMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      return apiRequest(`/api/leave-requests/${requestId}/reject`, "POST");
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Leave request rejected",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const convertToCSV = (data: any[]) => {
+    if (!data || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => {
+        const value = row[header];
+        // Escape quotes and wrap in quotes if contains comma
+        const escaped = String(value).replace(/"/g, '""');
+        return escaped.includes(',') ? `"${escaped}"` : escaped;
+      }).join(','))
+    ];
+    
+    return csvRows.join('\n');
+  };
+
+  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+    setImportErrors([]);
+    setImportSuccess('');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target?.result as string;
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+        
+        const data = lines.slice(1)
+          .filter(line => line.trim())
+          .map(line => {
+            const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            const row: any = {};
+            headers.forEach((header, index) => {
+              row[header] = values[index] || '';
+            });
+            return row;
+          });
+
+        importLeaveRequestsMutation.mutate(data);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to parse CSV file",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const downloadTemplate = () => {
+    const template = `id,employeeId,employeeName,leaveType,startDate,endDate,reason,status,substituteRequired
+,6,John Doe,Sick Leave,2025-01-15,2025-01-16,Medical appointment,pending,false
+,7,Jane Smith,Vacation,2025-02-01,2025-02-05,Family vacation,pending,true`;
+    
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'leave-requests-template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const onSubmit = (data: LeaveRequestFormData) => {
     createLeaveRequestMutation.mutate(data);
   };
 
+  const getEmployeeName = (employeeId: number) => {
+    const employee = employees?.find((emp: any) => emp.id === employeeId);
+    return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+  };
+
+  const getLeaveTypeName = (leaveTypeId: number) => {
+    const leaveType = leaveTypes?.find((type: any) => type.id === leaveTypeId);
+    return leaveType ? leaveType.name : 'Unknown';
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'approved':
+        return 'bg-green-100 text-green-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
       default:
@@ -158,52 +258,21 @@ export default function LeaveManagement() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-600" />;
-      case 'rejected':
-        return <XCircle className="w-4 h-4 text-red-600" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
-  const getEmployeeName = (employeeId: number) => {
-    const employee = employees?.find((emp: any) => emp.id === employeeId);
-    return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
-  };
-
-  const getLeaveTypeName = (leaveTypeId: number) => {
-    const leaveType = leaveTypes?.find((type: any) => type.id === leaveTypeId);
-    return leaveType ? leaveType.name : 'Unknown Leave Type';
-  };
-
   const calculateLeaveDays = (startDate: string, endDate: string) => {
-    if (!startDate || !endDate) return 0;
     const start = new Date(startDate);
     const end = new Date(endDate);
-    return Math.max(0, differenceInDays(end, start) + 1);
+    return differenceInDays(end, start) + 1;
   };
 
-  if (isLoading) {
+  const openViewDialog = (request: any) => {
+    setSelectedRequest(request);
+    setIsViewDialogOpen(true);
+  };
+
+  if (isLoadingRequests) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="h-8 bg-gray-300 rounded w-48 animate-pulse"></div>
-          <div className="h-10 bg-gray-300 rounded w-32 animate-pulse"></div>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4 animate-pulse">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-16 bg-gray-300 rounded"></div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -212,23 +281,109 @@ export default function LeaveManagement() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Leave Management</h1>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-blue-700">
-              <Plus className="mr-2" size={16} />
-              New Leave Request
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Submit Leave Request</DialogTitle>
-              <DialogDescription>
-                Request time off and have it automatically integrated with your timecard system
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <>
+        <div className="flex gap-2">
+          {canViewAllRecords && (
+            <>
+              <Button
+                variant="outline"
+                onClick={exportLeaveRequests}
+                className="flex items-center gap-2"
+              >
+                <Download size={16} />
+                Export
+              </Button>
+              <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <Upload size={16} />
+                    Import
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Import Leave Requests</DialogTitle>
+                    <DialogDescription>
+                      Upload a CSV file to import leave requests. 
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 ml-1"
+                        onClick={downloadTemplate}
+                      >
+                        Download template
+                      </Button>
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="csv-file">CSV File</Label>
+                      <Input
+                        id="csv-file"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleImportFile}
+                        ref={fileInputRef}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    {importSuccess && (
+                      <Alert>
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertDescription>{importSuccess}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {importErrors.length > 0 && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="space-y-1">
+                            <p>Import errors:</p>
+                            {importErrors.slice(0, 5).map((error, index) => (
+                              <p key={index} className="text-sm">
+                                Row {error.row}: {error.error}
+                              </p>
+                            ))}
+                            {importErrors.length > 5 && (
+                              <p className="text-sm">
+                                ...and {importErrors.length - 5} more errors
+                              </p>
+                            )}
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsImportDialogOpen(false)}
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-blue-700">
+                <Plus className="mr-2" size={16} />
+                New Leave Request
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Submit Leave Request</DialogTitle>
+                <DialogDescription>
+                  Request time off and have it automatically integrated with your timecard system
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   {canViewAllRecords && (
                     <FormField
                       control={form.control}
@@ -240,22 +395,22 @@ export default function LeaveManagement() {
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder={`Select ${getFieldLabel("employeeId", "Employee").toLowerCase()}`} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {employees?.map((employee: any) => (
-                              <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {employee.firstName} {employee.lastName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {employees?.map((employee: any) => (
+                                <SelectItem key={employee.id} value={employee.id.toString()}>
+                                  {employee.firstName} {employee.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   )}
-                  
+
                   {!canViewAllRecords && user?.employee && (
                     <div className="space-y-2">
                       <FormLabel>{getFieldLabel("employeeId", "Employee")}</FormLabel>
@@ -265,34 +420,32 @@ export default function LeaveManagement() {
                       </div>
                     </div>
                   )}
-                </>
-                
-                <FormField
-                  control={form.control}
-                  name="leaveTypeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{getFieldLabel("leaveType", "Leave Type")}</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={`Select ${getFieldLabel("leaveType", "Leave Type").toLowerCase()}`} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {leaveTypes?.map((leaveType: any) => (
-                            <SelectItem key={leaveType.id} value={leaveType.id.toString()}>
-                              {leaveType.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
+
+                  <FormField
+                    control={form.control}
+                    name="leaveTypeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{getFieldLabel("leaveType", "Leave Type")}</FormLabel>
+                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={`Select ${getFieldLabel("leaveType", "Leave Type").toLowerCase()}`} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {leaveTypes?.map((leaveType: any) => (
+                              <SelectItem key={leaveType.id} value={leaveType.id.toString()}>
+                                {leaveType.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="startDate"
@@ -300,13 +453,17 @@ export default function LeaveManagement() {
                       <FormItem>
                         <FormLabel>{getFieldLabel("startDate", "Start Date")}</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input 
+                            type="date" 
+                            value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="endDate"
@@ -314,74 +471,77 @@ export default function LeaveManagement() {
                       <FormItem>
                         <FormLabel>{getFieldLabel("endDate", "End Date")}</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input 
+                            type="date"
+                            value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="reason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{getFieldLabel("reason", "Reason")}</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder={`Please provide a ${getFieldLabel("reason", "reason").toLowerCase()} for your leave request...`}
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="substituteRequired"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>{getFieldLabel("substituteRequired", "Substitute Required")}</FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Check if a substitute teacher is needed for this leave
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="flex justify-end space-x-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsCreateDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={createLeaveRequestMutation.isPending}
-                  >
-                    {createLeaveRequestMutation.isPending ? "Submitting..." : "Submit Request"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+
+                  <FormField
+                    control={form.control}
+                    name="reason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{getFieldLabel("reason", "Reason")}</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Enter reason for leave..."
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="substituteRequired"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>{getFieldLabel("substituteRequired", "Substitute Required")}</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Check if a substitute teacher is needed for this leave
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end space-x-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsCreateDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={createLeaveRequestMutation.isPending}
+                    >
+                      {createLeaveRequestMutation.isPending ? "Submitting..." : "Submit Request"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -491,70 +651,31 @@ export default function LeaveManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(request.status)}
-                        <Badge className={getStatusColor(request.status)}>
-                          {request.status}
-                        </Badge>
-                      </div>
+                      <Badge className={getStatusColor(request.status)}>
+                        {request.status}
+                      </Badge>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        {request.status === 'pending' && (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-green-600 hover:text-green-700"
-                              onClick={() => approveLeaveRequestMutation.mutate(request.id)}
-                              disabled={approveLeaveRequestMutation.isPending}
-                            >
-                              Approve
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => rejectLeaveRequestMutation.mutate(request.id)}
-                              disabled={rejectLeaveRequestMutation.isPending}
-                            >
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                        <Button 
-                          variant="link" 
-                          className="text-indigo-600 hover:text-indigo-900 p-0"
-                          onClick={() => {
-                            setSelectedRequest(request);
-                            setIsViewDialogOpen(true);
-                          }}
-                        >
-                          View Details
-                        </Button>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openViewDialog(request)}
+                      >
+                        View
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {(!leaveRequests || leaveRequests.length === 0) && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No leave requests found</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Leave Request Details</DialogTitle>
-            <DialogDescription>
-              Detailed information about the leave request
-            </DialogDescription>
           </DialogHeader>
           {selectedRequest && (
             <div className="space-y-4">
