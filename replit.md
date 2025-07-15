@@ -1,0 +1,130 @@
+# School District HR Management System
+
+## Overview
+
+This is a comprehensive human resources management system designed specifically for school districts. The application automates document processing, employee onboarding, payroll management, leave tracking, and compliance monitoring using AI-powered features. It's built as a full-stack web application with a React frontend and Express backend.
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Routing**: Wouter for client-side routing
+- **State Management**: TanStack Query (React Query) for server state management
+- **UI Components**: Radix UI primitives with shadcn/ui component library
+- **Styling**: Tailwind CSS with custom design system and CSS variables for theming
+- **Build Tool**: Vite for fast development and optimized production builds
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js framework
+- **Language**: TypeScript with ES modules
+- **Database**: PostgreSQL with Drizzle ORM for type-safe database operations
+- **Database Provider**: Neon serverless PostgreSQL
+- **Session Management**: Express sessions with PostgreSQL session store
+- **AI Integration**: OpenAI GPT-4o for document processing and intelligent automation
+
+## Key Components
+
+### Database Schema
+The application uses a comprehensive schema with the following main entities:
+- **Users**: Authentication and user management with role-based access
+- **Employees**: Complete employee information including personal details, employment data, and emergency contacts
+- **Leave Management**: Leave types, requests, and approval workflows
+- **Payroll**: Salary records, deductions, and payroll processing
+- **Documents**: AI-processed document storage with metadata and compliance tracking
+- **Onboarding**: Workflow management for new employee orientation
+- **Substitute Assignments**: Teacher substitute management and assignments
+- **Activity Logs**: Comprehensive audit trail for all system actions
+
+### AI-Powered Features
+- **Document Processing**: Automated analysis of HR documents (certifications, background checks, etc.)
+- **Compliance Monitoring**: Real-time tracking of document expiration dates and regulatory requirements
+- **Onboarding Automation**: Intelligent checklist generation based on employee type and department
+- **Payroll Analysis**: Anomaly detection in payroll data
+- **Substitute Recommendations**: AI-driven matching of substitute teachers to assignments
+
+### User Interface
+- **Dashboard**: Real-time overview of HR metrics, pending actions, and AI-generated insights
+- **Employee Management**: Complete CRUD operations for employee records
+- **Leave Management**: Request submission, approval workflows, and calendar integration
+- **Payroll**: Salary management, deduction tracking, and reporting
+- **Document Management**: Upload, processing, and compliance tracking
+- **Onboarding**: Workflow management and progress tracking
+- **Reports**: Comprehensive analytics and compliance reporting
+- **Settings**: System configuration and user preferences
+
+## Data Flow
+
+### Authentication Flow
+1. User authentication handled through session-based auth
+2. Role-based access control (HR, Admin, Employee roles)
+3. Session persistence in PostgreSQL
+
+### Document Processing Flow
+1. Document upload to the system
+2. AI analysis using OpenAI GPT-4o
+3. Metadata extraction and compliance checking
+4. Storage with processing results
+5. Automated notifications for required actions
+
+### Employee Onboarding Flow
+1. New employee record creation
+2. AI-generated onboarding checklist based on role/department
+3. Workflow step tracking and completion
+4. Automated document requirements and deadline management
+
+### Leave Request Flow
+1. Employee submits leave request
+2. Automatic routing to appropriate approvers
+3. AI-powered substitute teacher recommendations
+4. Calendar integration and conflict detection
+5. Approval workflow with notifications
+
+## External Dependencies
+
+### Core Dependencies
+- **Database**: Neon PostgreSQL with connection pooling
+- **AI Services**: OpenAI API for document processing and intelligent automation
+- **UI Components**: Radix UI ecosystem for accessible, unstyled components
+- **Styling**: Tailwind CSS for utility-first styling
+- **Date Handling**: date-fns for date manipulation and formatting
+- **Form Management**: React Hook Form with Zod validation
+
+### Development Dependencies
+- **Type Safety**: TypeScript with strict configuration
+- **Database Management**: Drizzle Kit for migrations and schema management
+- **Build Tools**: Vite for development and production builds
+- **Development Environment**: Replit-specific plugins for enhanced development experience
+
+## Deployment Strategy
+
+### Development Environment
+- **Local Development**: Vite dev server with hot module replacement
+- **Database**: Neon serverless PostgreSQL connection
+- **Environment Variables**: DATABASE_URL and OPENAI_API_KEY required
+- **Development Tools**: Replit integration with live preview and debugging
+
+### Production Build
+- **Frontend**: Vite production build with optimized bundling
+- **Backend**: esbuild compilation to ESM format
+- **Database**: Drizzle push for schema deployment
+- **Environment**: Node.js production server with Express
+
+### Configuration Management
+- **Database Configuration**: Drizzle config with PostgreSQL dialect
+- **Tailwind Configuration**: Custom design system with CSS variables
+- **TypeScript Configuration**: Strict type checking with path aliases
+- **Build Configuration**: Vite config with React plugin and development enhancements
+
+The system is designed to be scalable, maintainable, and specifically tailored for the complex needs of school district HR departments, with AI automation reducing manual workload while ensuring compliance and efficiency.
+
+## Recent Changes
+- Added comprehensive time cards functionality for employee hour tracking (July 15, 2025)
+  - Created time_cards database table with clock in/out, breaks, and approval workflow
+  - Implemented full CRUD operations for time card management
+  - Added time cards page with filtering, approval, and real-time statistics
+  - Integrated time cards navigation into sidebar menu
+  - Added support for draft, submitted, approved, and rejected statuses
