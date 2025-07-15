@@ -6,6 +6,8 @@ import {
   payrollRecords,
   documents,
   onboardingWorkflows,
+  onboardingForms,
+  onboardingFormSubmissions,
   substituteAssignments,
   timeCards,
   substituteTimeCards,
@@ -25,6 +27,10 @@ import {
   type InsertDocument,
   type OnboardingWorkflow,
   type InsertOnboardingWorkflow,
+  type OnboardingForm,
+  type InsertOnboardingForm,
+  type OnboardingFormSubmission,
+  type InsertOnboardingFormSubmission,
   type SubstituteAssignment,
   type TimeCard,
   type InsertTimeCard,
@@ -94,6 +100,27 @@ export interface IStorage {
   createOnboardingWorkflow(workflow: InsertOnboardingWorkflow): Promise<OnboardingWorkflow>;
   updateOnboardingWorkflow(id: number, workflow: Partial<InsertOnboardingWorkflow>): Promise<OnboardingWorkflow>;
   getOnboardingWorkflowByEmployee(employeeId: number): Promise<OnboardingWorkflow | undefined>;
+  
+  // Onboarding forms
+  getOnboardingForms(): Promise<OnboardingForm[]>;
+  getOnboardingForm(id: number): Promise<OnboardingForm | undefined>;
+  createOnboardingForm(form: InsertOnboardingForm): Promise<OnboardingForm>;
+  updateOnboardingForm(id: number, form: Partial<InsertOnboardingForm>): Promise<OnboardingForm>;
+  deleteOnboardingForm(id: number): Promise<void>;
+  getOnboardingFormsByType(formType: string): Promise<OnboardingForm[]>;
+  getOnboardingFormsByCategory(category: string): Promise<OnboardingForm[]>;
+  getOnboardingFormsByEmployeeType(employeeType: string): Promise<OnboardingForm[]>;
+  getActiveOnboardingForms(): Promise<OnboardingForm[]>;
+  
+  // Onboarding form submissions
+  getOnboardingFormSubmissions(): Promise<OnboardingFormSubmission[]>;
+  getOnboardingFormSubmission(id: number): Promise<OnboardingFormSubmission | undefined>;
+  createOnboardingFormSubmission(submission: InsertOnboardingFormSubmission): Promise<OnboardingFormSubmission>;
+  updateOnboardingFormSubmission(id: number, submission: Partial<InsertOnboardingFormSubmission>): Promise<OnboardingFormSubmission>;
+  getOnboardingFormSubmissionsByEmployee(employeeId: number): Promise<OnboardingFormSubmission[]>;
+  getOnboardingFormSubmissionsByForm(formId: number): Promise<OnboardingFormSubmission[]>;
+  getOnboardingFormSubmissionsByWorkflow(workflowId: number): Promise<OnboardingFormSubmission[]>;
+  getPendingOnboardingFormSubmissions(): Promise<OnboardingFormSubmission[]>;
   
   // Time cards
   getTimeCards(): Promise<TimeCard[]>;
@@ -472,6 +499,92 @@ export class DatabaseStorage implements IStorage {
   async getOnboardingWorkflowByEmployee(employeeId: number): Promise<OnboardingWorkflow | undefined> {
     const [workflow] = await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.employeeId, employeeId));
     return workflow;
+  }
+
+  // Onboarding forms methods
+  async getOnboardingForms(): Promise<OnboardingForm[]> {
+    return await db.select().from(onboardingForms).orderBy(onboardingForms.createdAt);
+  }
+
+  async getOnboardingForm(id: number): Promise<OnboardingForm | undefined> {
+    const [form] = await db.select().from(onboardingForms).where(eq(onboardingForms.id, id));
+    return form;
+  }
+
+  async createOnboardingForm(form: InsertOnboardingForm): Promise<OnboardingForm> {
+    const [newForm] = await db.insert(onboardingForms).values(form).returning();
+    return newForm;
+  }
+
+  async updateOnboardingForm(id: number, form: Partial<InsertOnboardingForm>): Promise<OnboardingForm> {
+    const [updatedForm] = await db
+      .update(onboardingForms)
+      .set({ ...form, updatedAt: new Date() })
+      .where(eq(onboardingForms.id, id))
+      .returning();
+    return updatedForm;
+  }
+
+  async deleteOnboardingForm(id: number): Promise<void> {
+    await db.delete(onboardingForms).where(eq(onboardingForms.id, id));
+  }
+
+  async getOnboardingFormsByType(formType: string): Promise<OnboardingForm[]> {
+    return await db.select().from(onboardingForms).where(eq(onboardingForms.formType, formType));
+  }
+
+  async getOnboardingFormsByCategory(category: string): Promise<OnboardingForm[]> {
+    return await db.select().from(onboardingForms).where(eq(onboardingForms.category, category));
+  }
+
+  async getOnboardingFormsByEmployeeType(employeeType: string): Promise<OnboardingForm[]> {
+    return await db.select().from(onboardingForms).where(
+      sql`${onboardingForms.applicableEmployeeTypes} @> ARRAY[${employeeType}]`
+    );
+  }
+
+  async getActiveOnboardingForms(): Promise<OnboardingForm[]> {
+    return await db.select().from(onboardingForms).where(eq(onboardingForms.isActive, true));
+  }
+
+  // Onboarding form submissions methods
+  async getOnboardingFormSubmissions(): Promise<OnboardingFormSubmission[]> {
+    return await db.select().from(onboardingFormSubmissions).orderBy(onboardingFormSubmissions.createdAt);
+  }
+
+  async getOnboardingFormSubmission(id: number): Promise<OnboardingFormSubmission | undefined> {
+    const [submission] = await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.id, id));
+    return submission;
+  }
+
+  async createOnboardingFormSubmission(submission: InsertOnboardingFormSubmission): Promise<OnboardingFormSubmission> {
+    const [newSubmission] = await db.insert(onboardingFormSubmissions).values(submission).returning();
+    return newSubmission;
+  }
+
+  async updateOnboardingFormSubmission(id: number, submission: Partial<InsertOnboardingFormSubmission>): Promise<OnboardingFormSubmission> {
+    const [updatedSubmission] = await db
+      .update(onboardingFormSubmissions)
+      .set({ ...submission, updatedAt: new Date() })
+      .where(eq(onboardingFormSubmissions.id, id))
+      .returning();
+    return updatedSubmission;
+  }
+
+  async getOnboardingFormSubmissionsByEmployee(employeeId: number): Promise<OnboardingFormSubmission[]> {
+    return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.employeeId, employeeId));
+  }
+
+  async getOnboardingFormSubmissionsByForm(formId: number): Promise<OnboardingFormSubmission[]> {
+    return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.formId, formId));
+  }
+
+  async getOnboardingFormSubmissionsByWorkflow(workflowId: number): Promise<OnboardingFormSubmission[]> {
+    return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.workflowId, workflowId));
+  }
+
+  async getPendingOnboardingFormSubmissions(): Promise<OnboardingFormSubmission[]> {
+    return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.status, "pending"));
   }
 
   // Time cards

@@ -7,6 +7,8 @@ import {
   insertPayrollRecordSchema,
   insertDocumentSchema,
   insertOnboardingWorkflowSchema,
+  insertOnboardingFormSchema,
+  insertOnboardingFormSubmissionSchema,
   insertTimeCardSchema,
   insertSubstituteTimeCardSchema,
   insertExtraPayContractSchema,
@@ -508,6 +510,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(workflow);
     } catch (error) {
       res.status(400).json({ message: "Failed to update onboarding workflow", error: (error as Error).message });
+    }
+  });
+
+  // Onboarding forms routes
+  app.get("/api/onboarding/forms", async (req, res) => {
+    try {
+      const forms = await storage.getOnboardingForms();
+      res.json(forms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch onboarding forms", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/onboarding/forms/active", async (req, res) => {
+    try {
+      const forms = await storage.getActiveOnboardingForms();
+      res.json(forms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch active onboarding forms", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/onboarding/forms/:id", async (req, res) => {
+    try {
+      const form = await storage.getOnboardingForm(parseInt(req.params.id));
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+      res.json(form);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch onboarding form", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/onboarding/forms", async (req, res) => {
+    try {
+      const formData = insertOnboardingFormSchema.parse(req.body);
+      const form = await storage.createOnboardingForm(formData);
+      
+      await storage.createActivityLog({
+        userId: formData.createdBy,
+        action: "create_onboarding_form",
+        entityType: "onboarding_form",
+        entityId: form.id,
+        description: `Created onboarding form "${form.title}"`,
+      });
+
+      res.status(201).json(form);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create onboarding form", error: (error as Error).message });
+    }
+  });
+
+  app.put("/api/onboarding/forms/:id", async (req, res) => {
+    try {
+      const formData = insertOnboardingFormSchema.partial().parse(req.body);
+      const form = await storage.updateOnboardingForm(parseInt(req.params.id), formData);
+      
+      await storage.createActivityLog({
+        userId: req.body.userId || "system",
+        action: "update_onboarding_form",
+        entityType: "onboarding_form",
+        entityId: form.id,
+        description: `Updated onboarding form "${form.title}"`,
+      });
+
+      res.json(form);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update onboarding form", error: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/onboarding/forms/:id", async (req, res) => {
+    try {
+      const formId = parseInt(req.params.id);
+      const form = await storage.getOnboardingForm(formId);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      await storage.deleteOnboardingForm(formId);
+      
+      await storage.createActivityLog({
+        userId: req.body.userId || "system",
+        action: "delete_onboarding_form",
+        entityType: "onboarding_form",
+        entityId: formId,
+        description: `Deleted onboarding form "${form.title}"`,
+      });
+
+      res.json({ message: "Form deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete onboarding form", error: (error as Error).message });
+    }
+  });
+
+  // Onboarding form submissions routes
+  app.get("/api/onboarding/submissions", async (req, res) => {
+    try {
+      const submissions = await storage.getOnboardingFormSubmissions();
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch form submissions", error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/onboarding/submissions/pending", async (req, res) => {
+    try {
+      const submissions = await storage.getPendingOnboardingFormSubmissions();
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pending submissions", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/onboarding/submissions", async (req, res) => {
+    try {
+      const submissionData = insertOnboardingFormSubmissionSchema.parse(req.body);
+      const submission = await storage.createOnboardingFormSubmission(submissionData);
+      
+      await storage.createActivityLog({
+        userId: req.body.userId || "system",
+        action: "create_form_submission",
+        entityType: "onboarding_submission",
+        entityId: submission.id,
+        description: `Form submission created for employee ${submissionData.employeeId}`,
+      });
+
+      res.status(201).json(submission);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create form submission", error: (error as Error).message });
+    }
+  });
+
+  app.put("/api/onboarding/submissions/:id", async (req, res) => {
+    try {
+      const submissionData = insertOnboardingFormSubmissionSchema.partial().parse(req.body);
+      const submission = await storage.updateOnboardingFormSubmission(parseInt(req.params.id), submissionData);
+      
+      await storage.createActivityLog({
+        userId: req.body.userId || "system",
+        action: "update_form_submission",
+        entityType: "onboarding_submission",
+        entityId: submission.id,
+        description: `Form submission updated with status ${submissionData.status}`,
+      });
+
+      res.json(submission);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update form submission", error: (error as Error).message });
     }
   });
 

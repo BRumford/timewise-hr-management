@@ -213,6 +213,46 @@ export const substituteTimeCards = pgTable("substitute_time_cards", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Onboarding forms table for custom district forms
+export const onboardingForms = pgTable("onboarding_forms", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  formType: varchar("form_type").notNull(), // hr_form, tax_form, benefits_form, emergency_contact, etc.
+  category: varchar("category").notNull(), // new_hire, annual_update, position_change, etc.
+  templateContent: text("template_content"), // HTML/text template with placeholders
+  fileUrl: varchar("file_url"), // URL to uploaded form file
+  fileName: varchar("file_name"), // Original file name
+  fileSize: integer("file_size"), // File size in bytes
+  mimeType: varchar("mime_type"), // File MIME type
+  isRequired: boolean("is_required").default(false), // Whether form is required for onboarding
+  isActive: boolean("is_active").default(true), // Whether form is currently active
+  applicableEmployeeTypes: text("applicable_employee_types").array().default([]), // teacher, administrator, etc.
+  department: varchar("department"), // If form is department-specific
+  instructions: text("instructions"), // Instructions for completing the form
+  dueDate: integer("due_date"), // Days after start date when form is due
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Onboarding form submissions table
+export const onboardingFormSubmissions = pgTable("onboarding_form_submissions", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").references(() => onboardingForms.id).notNull(),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  workflowId: integer("workflow_id").references(() => onboardingWorkflows.id).notNull(),
+  status: varchar("status").notNull().default("pending"), // pending, submitted, approved, rejected
+  submissionData: jsonb("submission_data"), // Form field data
+  fileUrls: text("file_urls").array().default([]), // URLs to uploaded files
+  submittedAt: timestamp("submitted_at"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Activity logs table
 export const activityLogs = pgTable("activity_logs", {
   id: serial("id").primaryKey(),
@@ -325,8 +365,19 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   employee: one(employees, { fields: [documents.employeeId], references: [employees.id] }),
 }));
 
-export const onboardingWorkflowsRelations = relations(onboardingWorkflows, ({ one }) => ({
+export const onboardingWorkflowsRelations = relations(onboardingWorkflows, ({ one, many }) => ({
   employee: one(employees, { fields: [onboardingWorkflows.employeeId], references: [employees.id] }),
+  formSubmissions: many(onboardingFormSubmissions),
+}));
+
+export const onboardingFormsRelations = relations(onboardingForms, ({ many }) => ({
+  submissions: many(onboardingFormSubmissions),
+}));
+
+export const onboardingFormSubmissionsRelations = relations(onboardingFormSubmissions, ({ one }) => ({
+  form: one(onboardingForms, { fields: [onboardingFormSubmissions.formId], references: [onboardingForms.id] }),
+  employee: one(employees, { fields: [onboardingFormSubmissions.employeeId], references: [employees.id] }),
+  workflow: one(onboardingWorkflows, { fields: [onboardingFormSubmissions.workflowId], references: [onboardingWorkflows.id] }),
 }));
 
 export const timeCardsRelations = relations(timeCards, ({ one }) => ({
@@ -368,6 +419,8 @@ export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({
 export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertOnboardingFormSchema = createInsertSchema(onboardingForms).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertOnboardingFormSubmissionSchema = createInsertSchema(onboardingFormSubmissions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTimeCardSchema = createInsertSchema(timeCards).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSubstituteTimeCardSchema = createInsertSchema(substituteTimeCards).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
@@ -389,6 +442,10 @@ export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertOnboardingWorkflow = z.infer<typeof insertOnboardingWorkflowSchema>;
 export type OnboardingWorkflow = typeof onboardingWorkflows.$inferSelect;
+export type InsertOnboardingForm = z.infer<typeof insertOnboardingFormSchema>;
+export type OnboardingForm = typeof onboardingForms.$inferSelect;
+export type InsertOnboardingFormSubmission = z.infer<typeof insertOnboardingFormSubmissionSchema>;
+export type OnboardingFormSubmission = typeof onboardingFormSubmissions.$inferSelect;
 export type SubstituteAssignment = typeof substituteAssignments.$inferSelect;
 export type InsertTimeCard = z.infer<typeof insertTimeCardSchema>;
 export type TimeCard = typeof timeCards.$inferSelect;
