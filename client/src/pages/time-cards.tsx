@@ -142,6 +142,17 @@ export default function TimeCards() {
     queryKey: ["/api/employees"],
   });
 
+  // Fetch custom field labels
+  const { data: fieldLabels } = useQuery({
+    queryKey: ["/api/custom-field-labels"],
+  });
+
+  // Helper function to get field label
+  const getFieldLabel = (fieldName: string, defaultLabel: string) => {
+    const label = fieldLabels?.find((l: any) => l.fieldName === fieldName);
+    return label ? label.displayLabel : defaultLabel;
+  };
+
   const { data: pendingTimeCards = [] } = useQuery({
     queryKey: ["/api/time-cards/pending"],
   });
@@ -376,7 +387,7 @@ export default function TimeCards() {
                     name="employeeId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Employee</FormLabel>
+                        <FormLabel>{getFieldLabel("employeeId", "Employee")}</FormLabel>
                         <Select onValueChange={(value) => field.onChange(parseInt(value))}>
                           <FormControl>
                             <SelectTrigger>
@@ -400,7 +411,7 @@ export default function TimeCards() {
                     name="date"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date</FormLabel>
+                        <FormLabel>{getFieldLabel("date", "Date")}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -415,7 +426,7 @@ export default function TimeCards() {
                     name="clockIn"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Clock In</FormLabel>
+                        <FormLabel>{getFieldLabel("clockIn", "Clock In")}</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} />
                         </FormControl>
@@ -428,7 +439,7 @@ export default function TimeCards() {
                     name="clockOut"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Clock Out</FormLabel>
+                        <FormLabel>{getFieldLabel("clockOut", "Clock Out")}</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} />
                         </FormControl>
@@ -443,7 +454,7 @@ export default function TimeCards() {
                     name="breakStart"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Break Start (Optional)</FormLabel>
+                        <FormLabel>{getFieldLabel("breakStart", "Break Start")} (Optional)</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} />
                         </FormControl>
@@ -456,7 +467,7 @@ export default function TimeCards() {
                     name="breakEnd"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Break End (Optional)</FormLabel>
+                        <FormLabel>{getFieldLabel("breakEnd", "Break End")} (Optional)</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} />
                         </FormControl>
@@ -470,7 +481,7 @@ export default function TimeCards() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notes</FormLabel>
+                      <FormLabel>{getFieldLabel("notes", "Notes")}</FormLabel>
                       <FormControl>
                         <Textarea {...field} />
                       </FormControl>

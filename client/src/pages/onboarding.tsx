@@ -74,6 +74,17 @@ export default function Onboarding() {
     queryKey: ["/api/employees"],
   });
 
+  // Fetch custom field labels
+  const { data: fieldLabels } = useQuery({
+    queryKey: ["/api/custom-field-labels"],
+  });
+
+  // Helper function to get field label
+  const getFieldLabel = (fieldName: string, defaultLabel: string) => {
+    const label = fieldLabels?.find((l: any) => l.fieldName === fieldName);
+    return label ? label.displayLabel : defaultLabel;
+  };
+
   const { data: onboardingForms, isLoading: isLoadingForms } = useQuery({
     queryKey: ["/api/onboarding/forms"],
   });

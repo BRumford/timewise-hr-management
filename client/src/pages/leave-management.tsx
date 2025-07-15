@@ -46,6 +46,17 @@ export default function LeaveManagement() {
     queryKey: ["/api/leave-types"],
   });
 
+  // Fetch custom field labels
+  const { data: fieldLabels } = useQuery({
+    queryKey: ["/api/custom-field-labels"],
+  });
+
+  // Helper function to get field label
+  const getFieldLabel = (fieldName: string, defaultLabel: string) => {
+    const label = fieldLabels?.find((l: any) => l.fieldName === fieldName);
+    return label ? label.displayLabel : defaultLabel;
+  };
+
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestFormSchema),
     defaultValues: {
@@ -220,11 +231,11 @@ export default function LeaveManagement() {
                       name="employeeId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Employee</FormLabel>
+                          <FormLabel>{getFieldLabel("employeeId", "Employee")}</FormLabel>
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select employee" />
+                                <SelectValue placeholder={`Select ${getFieldLabel("employeeId", "Employee").toLowerCase()}`} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -243,7 +254,7 @@ export default function LeaveManagement() {
                   
                   {!canViewAllRecords && user?.employee && (
                     <div className="space-y-2">
-                      <FormLabel>Employee</FormLabel>
+                      <FormLabel>{getFieldLabel("employeeId", "Employee")}</FormLabel>
                       <div className="p-3 bg-gray-50 rounded-md">
                         <p className="text-sm font-medium">{user.employee.firstName} {user.employee.lastName}</p>
                         <p className="text-sm text-gray-600">{user.employee.department} - {user.employee.position}</p>
@@ -257,11 +268,11 @@ export default function LeaveManagement() {
                   name="leaveTypeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Leave Type</FormLabel>
+                      <FormLabel>{getFieldLabel("leaveType", "Leave Type")}</FormLabel>
                       <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select leave type" />
+                            <SelectValue placeholder={`Select ${getFieldLabel("leaveType", "Leave Type").toLowerCase()}`} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -283,7 +294,7 @@ export default function LeaveManagement() {
                     name="startDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Start Date</FormLabel>
+                        <FormLabel>{getFieldLabel("startDate", "Start Date")}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -297,7 +308,7 @@ export default function LeaveManagement() {
                     name="endDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>End Date</FormLabel>
+                        <FormLabel>{getFieldLabel("endDate", "End Date")}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -312,10 +323,10 @@ export default function LeaveManagement() {
                   name="reason"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Reason</FormLabel>
+                      <FormLabel>{getFieldLabel("reason", "Reason")}</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Please provide a reason for your leave request..."
+                          placeholder={`Please provide a ${getFieldLabel("reason", "reason").toLowerCase()} for your leave request...`}
                           rows={3}
                           {...field}
                         />
@@ -339,7 +350,7 @@ export default function LeaveManagement() {
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel>Substitute Required</FormLabel>
+                        <FormLabel>{getFieldLabel("substituteRequired", "Substitute Required")}</FormLabel>
                         <p className="text-sm text-muted-foreground">
                           Check if a substitute teacher is needed for this leave
                         </p>
