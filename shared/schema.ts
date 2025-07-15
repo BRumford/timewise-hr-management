@@ -34,8 +34,19 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("employee"), // hr, admin, employee
+  passwordHash: varchar("password_hash"), // For password authentication
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Password reset tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Employee information table
@@ -693,3 +704,8 @@ export type InsertPayPeriod = z.infer<typeof insertPayPeriodSchema>;
 export type PayPeriod = typeof payPeriods.$inferSelect;
 export type InsertCustomFieldLabel = z.infer<typeof insertCustomFieldLabelSchema>;
 export type CustomFieldLabel = typeof customFieldLabels.$inferSelect;
+
+// Password reset types
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true, createdAt: true });
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

@@ -19,37 +19,50 @@ import ExtraPayActivities from "@/pages/extra-pay-activities";
 import Letters from "@/pages/letters";
 import TimecardTemplates from "@/pages/timecard-templates";
 import FieldLabels from "@/pages/field-labels";
+import Login from "@/pages/login";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
 function Router() {
   return (
-    <div className="min-h-screen flex">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <Header />
-        <main className="p-6">
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/employees" component={Employees} />
-            <Route path="/leave-management" component={LeaveManagement} />
-            <Route path="/time-cards" component={TimeCards} />
-            <Route path="/substitute-time-cards" component={SubstituteTimeCards} />
-            <Route path="/timecard-templates" component={TimecardTemplates} />
-            <Route path="/payroll" component={Payroll} />
-            <Route path="/payroll-settings" component={PayrollSettings} />
-            <Route path="/documents" component={Documents} />
-            <Route path="/onboarding" component={Onboarding} />
-            <Route path="/extra-pay-activities" component={ExtraPayActivities} />
-            <Route path="/letters" component={Letters} />
-            <Route path="/reports" component={Reports} />
-            <Route path="/settings" component={Settings} />
-            <Route path="/field-labels" component={FieldLabels} />
-            <Route component={NotFound} />
-          </Switch>
-        </main>
-      </div>
-    </div>
+    <Switch>
+      {/* Authentication routes (no sidebar/header) */}
+      <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      
+      {/* Main application routes (with sidebar/header) */}
+      <Route>
+        <div className="min-h-screen flex">
+          <Sidebar />
+          <div className="flex-1 ml-64">
+            <Header />
+            <main className="p-6">
+              <Switch>
+                <Route path="/" component={Dashboard} />
+                <Route path="/employees" component={Employees} />
+                <Route path="/leave-management" component={LeaveManagement} />
+                <Route path="/time-cards" component={TimeCards} />
+                <Route path="/substitute-time-cards" component={SubstituteTimeCards} />
+                <Route path="/timecard-templates" component={TimecardTemplates} />
+                <Route path="/payroll" component={Payroll} />
+                <Route path="/payroll-settings" component={PayrollSettings} />
+                <Route path="/documents" component={Documents} />
+                <Route path="/onboarding" component={Onboarding} />
+                <Route path="/extra-pay-activities" component={ExtraPayActivities} />
+                <Route path="/letters" component={Letters} />
+                <Route path="/reports" component={Reports} />
+                <Route path="/settings" component={Settings} />
+                <Route path="/field-labels" component={FieldLabels} />
+                <Route component={NotFound} />
+              </Switch>
+            </main>
+          </div>
+        </div>
+      </Route>
+    </Switch>
   );
 }
 

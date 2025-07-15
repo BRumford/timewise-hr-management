@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import type { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
 
 // Simple authentication middleware for demo purposes
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
@@ -2694,6 +2697,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Default field labels initialized successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to initialize default field labels", error: (error as Error).message });
+    }
+  });
+
+  // Password reset routes (public - no authentication required)
+  app.post("/api/password-reset/request", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // For security, don't reveal whether email exists
+        return res.json({ message: "If an account with this email exists, you will receive a password reset link." });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
+
+      // Store reset token
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        token: resetToken,
+        expiresAt,
+        used: false
+      });
+
+      // Send email (configure your email settings)
+      try {
+        const transporter = nodemailer.createTransporter({
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+          }
+        });
+
+        const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+        
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'noreply@hrpayroll.com',
+          to: email,
+          subject: 'Password Reset Request',
+          html: `
+            <h2>Password Reset Request</h2>
+            <p>You requested a password reset for your HR Payroll System account.</p>
+            <p>Click the link below to reset your password:</p>
+            <a href="${resetUrl}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you did not request this reset, please ignore this email.</p>
+          `
+        });
+      } catch (emailError) {
+        console.error('Failed to send reset email:', emailError);
+        // Continue processing even if email fails
+      }
+
+      res.json({ message: "If an account with this email exists, you will receive a password reset link." });
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      res.status(500).json({ message: "Failed to process password reset request" });
+    }
+  });
+
+  app.post("/api/password-reset/verify", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Reset token is required" });
+      }
+
+      // Verify token
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Get user info
+      const user = await storage.getUser(resetToken.userId);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+
+      res.json({ 
+        valid: true, 
+        userId: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      });
+    } catch (error) {
+      console.error('Password reset verification error:', error);
+      res.status(500).json({ message: "Failed to verify reset token" });
+    }
+  });
+
+  app.post("/api/password-reset/confirm", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Reset token and new password are required" });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+
+      // Verify token
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Hash new password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update user password
+      await storage.updateUserPassword(resetToken.userId, passwordHash);
+
+      // Mark token as used
+      await storage.markTokenAsUsed(resetToken.id);
+
+      // Clean up expired tokens
+      await storage.cleanupExpiredTokens();
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error('Password reset confirmation error:', error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
 
