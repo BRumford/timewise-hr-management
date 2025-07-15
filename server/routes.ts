@@ -158,6 +158,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Role switch route for testing purposes
+  app.post('/api/auth/switch-role', async (req, res) => {
+    try {
+      const { role } = req.body;
+      if (!['employee', 'admin', 'hr'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be 'employee', 'admin', or 'hr'" });
+      }
+      
+      const user = (req as any).user;
+      const updatedUser = await storage.upsertUser({
+        id: user.id,
+        role: role
+      });
+      
+      // Update the session user
+      (req as any).user = updatedUser;
+      
+      res.json({ message: `Role switched to ${role}`, user: updatedUser });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to switch role", error: (error as Error).message });
+    }
+  });
+
   // Dashboard routes - different views for different roles
   app.get("/api/dashboard/stats", async (req, res) => {
     try {

@@ -16,6 +16,7 @@ import {
   Layout
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import RoleSwitcher from "@/components/auth/role-switcher";
 
 const menuItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr"] },
@@ -61,7 +62,7 @@ export default function Sidebar() {
   );
 
   return (
-    <div className="w-64 bg-white shadow-lg border-r border-gray-200 fixed left-0 top-0 h-full overflow-y-auto scrollbar-hide">
+    <div className="w-64 bg-white shadow-lg border-r border-gray-200 fixed left-0 top-0 h-full overflow-y-auto scrollbar-hide flex flex-col">
       {/* Logo and Brand */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
@@ -79,7 +80,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="p-4 space-y-2">
+      <nav className="p-4 space-y-2 flex-1">
         {visibleMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location === item.path;
@@ -98,6 +99,11 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Role Switcher */}
+      <div className="p-4 border-t border-gray-200">
+        <RoleSwitcher />
+      </div>
     </div>
   );
 }
