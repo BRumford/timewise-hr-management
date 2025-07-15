@@ -56,6 +56,8 @@ export interface IStorage {
   deleteEmployee(id: number): Promise<void>;
   getEmployeesByDepartment(department: string): Promise<Employee[]>;
   getEmployeesByType(type: string): Promise<Employee[]>;
+  bulkImportEmployees(employees: InsertEmployee[]): Promise<Employee[]>;
+  bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[]): Promise<Employee[]>;
   
   // Leave management
   getLeaveTypes(): Promise<LeaveType[]>;
@@ -217,6 +219,54 @@ export class DatabaseStorage implements IStorage {
 
   async getEmployeesByType(type: string): Promise<Employee[]> {
     return await db.select().from(employees).where(eq(employees.employeeType, type));
+  }
+
+  async bulkImportEmployees(employeeDataList: InsertEmployee[]): Promise<Employee[]> {
+    const importedEmployees = [];
+    
+    for (const employeeData of employeeDataList) {
+      try {
+        // Check if employee already exists by employeeId
+        const existingEmployee = await db.select().from(employees).where(eq(employees.employeeId, employeeData.employeeId));
+        
+        if (existingEmployee.length > 0) {
+          // Update existing employee
+          const [updated] = await db.update(employees).set({
+            ...employeeData,
+            updatedAt: new Date(),
+          }).where(eq(employees.employeeId, employeeData.employeeId)).returning();
+          importedEmployees.push(updated);
+        } else {
+          // Create new employee
+          const [created] = await db.insert(employees).values(employeeData).returning();
+          importedEmployees.push(created);
+        }
+      } catch (error) {
+        console.error(`Error importing employee ${employeeData.employeeId}:`, error);
+        // Continue with other employees
+      }
+    }
+    
+    return importedEmployees;
+  }
+
+  async bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[]): Promise<Employee[]> {
+    const updatedEmployees = [];
+    
+    for (const update of updates) {
+      try {
+        const [updated] = await db.update(employees).set({
+          ...update.data,
+          updatedAt: new Date(),
+        }).where(eq(employees.id, update.id)).returning();
+        updatedEmployees.push(updated);
+      } catch (error) {
+        console.error(`Error updating employee ${update.id}:`, error);
+        // Continue with other employees
+      }
+    }
+    
+    return updatedEmployees;
   }
 
   // Leave management

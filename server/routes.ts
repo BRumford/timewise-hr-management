@@ -119,6 +119,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Employee import/export routes
+  app.post('/api/employees/import', async (req, res) => {
+    try {
+      const { employees } = req.body;
+      
+      if (!Array.isArray(employees)) {
+        return res.status(400).json({ message: "Employees must be an array" });
+      }
+
+      // Validate each employee record
+      const validatedEmployees = [];
+      const errors = [];
+
+      for (let i = 0; i < employees.length; i++) {
+        const validation = insertEmployeeSchema.safeParse(employees[i]);
+        if (!validation.success) {
+          errors.push({
+            row: i + 1,
+            errors: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+          });
+        } else {
+          validatedEmployees.push(validation.data);
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ 
+          message: "Validation errors found", 
+          errors: errors.slice(0, 10) // Limit to first 10 errors
+        });
+      }
+
+      const importedEmployees = await storage.bulkImportEmployees(validatedEmployees);
+      
+      res.json({
+        message: "Employees imported successfully",
+        imported: importedEmployees.length,
+        employees: importedEmployees
+      });
+    } catch (error) {
+      console.error('Error importing employees:', error);
+      res.status(500).json({ message: "Failed to import employees" });
+    }
+  });
+
+  app.post('/api/employees/bulk-update', async (req, res) => {
+    try {
+      const { updates } = req.body;
+      
+      if (!Array.isArray(updates)) {
+        return res.status(400).json({ message: "Updates must be an array" });
+      }
+
+      // Validate each update record
+      const validatedUpdates = [];
+      const errors = [];
+
+      for (let i = 0; i < updates.length; i++) {
+        const update = updates[i];
+        if (!update.id || typeof update.id !== 'number') {
+          errors.push({
+            row: i + 1,
+            errors: ['id is required and must be a number']
+          });
+          continue;
+        }
+
+        const validation = insertEmployeeSchema.partial().safeParse(update.data);
+        if (!validation.success) {
+          errors.push({
+            row: i + 1,
+            errors: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+          });
+        } else {
+          validatedUpdates.push({ id: update.id, data: validation.data });
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ 
+          message: "Validation errors found", 
+          errors: errors.slice(0, 10) // Limit to first 10 errors
+        });
+      }
+
+      const updatedEmployees = await storage.bulkUpdateEmployees(validatedUpdates);
+      
+      res.json({
+        message: "Employees updated successfully",
+        updated: updatedEmployees.length,
+        employees: updatedEmployees
+      });
+    } catch (error) {
+      console.error('Error updating employees:', error);
+      res.status(500).json({ message: "Failed to update employees" });
+    }
+  });
+
+  app.get('/api/employees/export', async (req, res) => {
+    try {
+      const employees = await storage.getEmployees();
+      
+      // Convert to CSV format
+      const csvHeaders = [
+        'employeeId', 'firstName', 'lastName', 'email', 'phoneNumber', 'address',
+        'department', 'position', 'employeeType', 'hireDate', 'salary', 'status'
+      ];
+      
+      const csvRows = employees.map(emp => [
+        emp.employeeId,
+        emp.firstName,
+        emp.lastName,
+        emp.email,
+        emp.phoneNumber || '',
+        emp.address || '',
+        emp.department,
+        emp.position,
+        emp.employeeType,
+        emp.hireDate ? new Date(emp.hireDate).toISOString().split('T')[0] : '',
+        emp.salary || '',
+        emp.status || 'active'
+      ]);
+      
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="employees_${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csvContent);
+    } catch (error) {
+      console.error('Error exporting employees:', error);
+      res.status(500).json({ message: "Failed to export employees" });
+    }
+  });
+
   // Leave management routes
   app.get("/api/leave-types", async (req, res) => {
     try {
