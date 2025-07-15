@@ -77,33 +77,21 @@ export default function Reports() {
 
   const handleExport = async (reportType: string) => {
     try {
-      console.log('Starting export for:', reportType);
-      console.log('Date range:', dateRange);
-      
       const url = `/api/payroll/reports/${reportType}/export?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
-      console.log('Export URL:', url);
-      
       const response = await fetch(url, {
         method: 'GET',
-        credentials: 'include', // Include cookies for authentication
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Export error response:', errorText);
         throw new Error(`Export failed: ${response.status} ${response.statusText}`);
       }
       
       const blob = await response.blob();
-      console.log('Blob size:', blob.size);
-      console.log('Blob type:', blob.type);
-      
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -112,11 +100,9 @@ export default function Reports() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
-      
-      console.log('Export completed successfully');
     } catch (error) {
       console.error('Export error:', error);
-      alert(`Export failed: ${error.message}. Please try again.`);
+      alert(`Export failed. Please try again.`);
     }
   };
 
@@ -560,10 +546,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full" onClick={() => {
-                    alert('Export button clicked!');
-                    handleExport('summary');
-                  }}>
+                  <Button className="w-full" onClick={() => handleExport('summary')}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Payroll Summary Report
                   </Button>
@@ -653,10 +636,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full" onClick={() => {
-                    alert('Tax export button clicked!');
-                    handleExport('tax-liability');
-                  }}>
+                  <Button className="w-full" onClick={() => handleExport('tax-liability')}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Tax Liability Report
                   </Button>
@@ -694,10 +674,7 @@ export default function Reports() {
                 </div>
                 
                 <div className="mt-6">
-                  <Button className="w-full" onClick={() => {
-                    alert('Benefits export button clicked!');
-                    handleExport('benefits');
-                  }}>
+                  <Button className="w-full" onClick={() => handleExport('benefits')}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Benefits Report
                   </Button>
