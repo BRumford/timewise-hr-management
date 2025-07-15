@@ -59,6 +59,8 @@ export default function Onboarding() {
   const [createMode, setCreateMode] = useState<"new" | "existing">("new");
   const [selectedExistingForm, setSelectedExistingForm] = useState<OnboardingForm | null>(null);
   const [isStartWorkflowDialogOpen, setIsStartWorkflowDialogOpen] = useState(false);
+  
+  console.log("Dialog state:", isStartWorkflowDialogOpen);
   const { toast } = useToast();
 
   const { data: workflows, isLoading } = useQuery({
@@ -399,7 +401,13 @@ export default function Onboarding() {
                 </select>
                 <Button 
                   className="bg-primary hover:bg-blue-700"
-                  onClick={() => setIsStartWorkflowDialogOpen(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Start Onboarding button clicked");
+                    alert("Button clicked! Opening dialog...");
+                    setIsStartWorkflowDialogOpen(true);
+                  }}
                 >
                   <UserPlus className="mr-2 h-4 w-4" />
                   Start Onboarding
@@ -887,7 +895,7 @@ export default function Onboarding() {
 
       {/* Start Workflow Dialog */}
       <Dialog open={isStartWorkflowDialogOpen} onOpenChange={setIsStartWorkflowDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Start Onboarding Workflow</DialogTitle>
           </DialogHeader>
