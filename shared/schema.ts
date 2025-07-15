@@ -163,10 +163,21 @@ export const timeCards = pgTable("time_cards", {
   breakEnd: timestamp("break_end"),
   totalHours: decimal("total_hours", { precision: 5, scale: 2 }),
   overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
-  status: varchar("status").notNull().default("draft"), // draft, submitted, approved, rejected
+  status: varchar("status").notNull().default("draft"), // draft, secretary_submitted, employee_approved, admin_approved, payroll_processed, rejected
+  currentApprovalStage: varchar("current_approval_stage").default("secretary"), // secretary, employee, administrator, payroll
   notes: text("notes"),
-  approvedBy: integer("approved_by"),
-  approvedAt: timestamp("approved_at"),
+  secretaryNotes: text("secretary_notes"),
+  employeeNotes: text("employee_notes"),
+  adminNotes: text("admin_notes"),
+  payrollNotes: text("payroll_notes"),
+  submittedBy: integer("submitted_by"), // Secretary who submitted
+  approvedByEmployee: integer("approved_by_employee"),
+  approvedByAdmin: integer("approved_by_admin"),
+  processedByPayroll: integer("processed_by_payroll"),
+  submittedAt: timestamp("submitted_at"),
+  employeeApprovedAt: timestamp("employee_approved_at"),
+  adminApprovedAt: timestamp("admin_approved_at"),
+  payrollProcessedAt: timestamp("payroll_processed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -227,7 +238,10 @@ export const onboardingWorkflowsRelations = relations(onboardingWorkflows, ({ on
 
 export const timeCardsRelations = relations(timeCards, ({ one }) => ({
   employee: one(employees, { fields: [timeCards.employeeId], references: [employees.id] }),
-  approver: one(employees, { fields: [timeCards.approvedBy], references: [employees.id] }),
+  submitter: one(employees, { fields: [timeCards.submittedBy], references: [employees.id] }),
+  employeeApprover: one(employees, { fields: [timeCards.approvedByEmployee], references: [employees.id] }),
+  adminApprover: one(employees, { fields: [timeCards.approvedByAdmin], references: [employees.id] }),
+  payrollProcessor: one(employees, { fields: [timeCards.processedByPayroll], references: [employees.id] }),
 }));
 
 export const activityLogsRelations = relations(activityLogs, ({ one }) => ({

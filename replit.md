@@ -128,3 +128,11 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Added time cards page with filtering, approval, and real-time statistics
   - Integrated time cards navigation into sidebar menu
   - Added support for draft, submitted, approved, and rejected statuses
+  
+- Enhanced time cards with multi-step approval workflow (July 15, 2025)
+  - Implemented secretary-managed workflow: secretary → employee → administrator → payroll
+  - Added approval stage tracking with current_approval_stage column
+  - Created separate notes fields for each approval stage (secretary, employee, admin, payroll)
+  - Built comprehensive approval API endpoints with proper state transitions
+  - Enhanced frontend with stage-specific action buttons and approval dialogs
+  - Added real-time statistics for pending, approved, and processed time cards

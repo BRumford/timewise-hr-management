@@ -29,7 +29,7 @@ import {
   type InsertActivityLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, or, count, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, or, count, sql, ne } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for authentication)
@@ -90,6 +90,12 @@ export interface IStorage {
   getTimeCardsByEmployee(employeeId: number): Promise<TimeCard[]>;
   getPendingTimeCards(): Promise<TimeCard[]>;
   getTimeCardsByDateRange(startDate: Date, endDate: Date): Promise<TimeCard[]>;
+  getTimeCardsByApprovalStage(stage: string): Promise<TimeCard[]>;
+  submitTimeCardForApproval(id: number, submittedBy: number): Promise<TimeCard>;
+  approveTimeCardByEmployee(id: number, employeeId: number, notes?: string): Promise<TimeCard>;
+  approveTimeCardByAdmin(id: number, adminId: number, notes?: string): Promise<TimeCard>;
+  processTimeCardByPayroll(id: number, payrollId: number, notes?: string): Promise<TimeCard>;
+  rejectTimeCard(id: number, rejectedBy: number, notes?: string): Promise<TimeCard>;
   
   // Activity logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -358,8 +364,92 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(timeCards)
-      .where(eq(timeCards.status, "submitted"))
+      .where(ne(timeCards.status, "draft"))
       .orderBy(desc(timeCards.date));
+  }
+
+  async getTimeCardsByApprovalStage(stage: string): Promise<TimeCard[]> {
+    return await db
+      .select()
+      .from(timeCards)
+      .where(eq(timeCards.currentApprovalStage, stage))
+      .orderBy(desc(timeCards.date));
+  }
+
+  async submitTimeCardForApproval(id: number, submittedBy: number): Promise<TimeCard> {
+    const [updatedTimeCard] = await db
+      .update(timeCards)
+      .set({
+        status: "secretary_submitted",
+        currentApprovalStage: "employee",
+        submittedBy,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(timeCards.id, id))
+      .returning();
+    return updatedTimeCard;
+  }
+
+  async approveTimeCardByEmployee(id: number, employeeId: number, notes?: string): Promise<TimeCard> {
+    const [updatedTimeCard] = await db
+      .update(timeCards)
+      .set({
+        status: "employee_approved",
+        currentApprovalStage: "administrator",
+        approvedByEmployee: employeeId,
+        employeeApprovedAt: new Date(),
+        employeeNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(timeCards.id, id))
+      .returning();
+    return updatedTimeCard;
+  }
+
+  async approveTimeCardByAdmin(id: number, adminId: number, notes?: string): Promise<TimeCard> {
+    const [updatedTimeCard] = await db
+      .update(timeCards)
+      .set({
+        status: "admin_approved",
+        currentApprovalStage: "payroll",
+        approvedByAdmin: adminId,
+        adminApprovedAt: new Date(),
+        adminNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(timeCards.id, id))
+      .returning();
+    return updatedTimeCard;
+  }
+
+  async processTimeCardByPayroll(id: number, payrollId: number, notes?: string): Promise<TimeCard> {
+    const [updatedTimeCard] = await db
+      .update(timeCards)
+      .set({
+        status: "payroll_processed",
+        currentApprovalStage: "completed",
+        processedByPayroll: payrollId,
+        payrollProcessedAt: new Date(),
+        payrollNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(timeCards.id, id))
+      .returning();
+    return updatedTimeCard;
+  }
+
+  async rejectTimeCard(id: number, rejectedBy: number, notes?: string): Promise<TimeCard> {
+    const [updatedTimeCard] = await db
+      .update(timeCards)
+      .set({
+        status: "rejected",
+        notes: notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(timeCards.id, id))
+      .returning();
+    return updatedTimeCard;
   }
 
   async getTimeCardsByDateRange(startDate: Date, endDate: Date): Promise<TimeCard[]> {

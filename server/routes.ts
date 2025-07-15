@@ -476,6 +476,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/time-cards/approval-stage/:stage", async (req, res) => {
+    try {
+      const timeCards = await storage.getTimeCardsByApprovalStage(req.params.stage);
+      res.json(timeCards);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch time cards by approval stage", error: error.message });
+    }
+  });
+
+  app.post("/api/time-cards/:id/submit", async (req, res) => {
+    try {
+      const { submittedBy } = req.body;
+      const timeCard = await storage.submitTimeCardForApproval(parseInt(req.params.id), submittedBy);
+      res.json(timeCard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to submit time card for approval", error: error.message });
+    }
+  });
+
+  app.post("/api/time-cards/:id/approve-employee", async (req, res) => {
+    try {
+      const { employeeId, notes } = req.body;
+      const timeCard = await storage.approveTimeCardByEmployee(parseInt(req.params.id), employeeId, notes);
+      res.json(timeCard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve time card by employee", error: error.message });
+    }
+  });
+
+  app.post("/api/time-cards/:id/approve-admin", async (req, res) => {
+    try {
+      const { adminId, notes } = req.body;
+      const timeCard = await storage.approveTimeCardByAdmin(parseInt(req.params.id), adminId, notes);
+      res.json(timeCard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve time card by admin", error: error.message });
+    }
+  });
+
+  app.post("/api/time-cards/:id/process-payroll", async (req, res) => {
+    try {
+      const { payrollId, notes } = req.body;
+      const timeCard = await storage.processTimeCardByPayroll(parseInt(req.params.id), payrollId, notes);
+      res.json(timeCard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to process time card by payroll", error: error.message });
+    }
+  });
+
+  app.post("/api/time-cards/:id/reject", async (req, res) => {
+    try {
+      const { rejectedBy, notes } = req.body;
+      const timeCard = await storage.rejectTimeCard(parseInt(req.params.id), rejectedBy, notes);
+      res.json(timeCard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject time card", error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
