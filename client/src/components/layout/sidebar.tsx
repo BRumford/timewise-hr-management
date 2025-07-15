@@ -26,9 +26,9 @@ const menuItems = [
   { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["admin", "hr"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["admin", "hr"] },
-  { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr"] },
+  { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr", "employee"] },
   { path: "/letters", icon: Mail, label: "Letters", roles: ["admin", "hr"] },
-  { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
+  { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr", "employee"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["admin", "hr"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr", "employee"] },
 ];
