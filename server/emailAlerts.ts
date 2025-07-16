@@ -19,7 +19,7 @@ class EmailAlerts {
     try {
       // In a production environment, you would configure this with actual SMTP settings
       // For now, we'll use a mock configuration
-      this.transporter = nodemailer.createTransporter({
+      this.transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
         secure: false,
@@ -69,6 +69,10 @@ class EmailAlerts {
     } catch (emailError) {
       console.error('Failed to send error alert email:', emailError);
     }
+  }
+
+  async sendAuthenticationError(error: Error, userId: string) {
+    await this.sendSecurityAlert('authentication_error', 'high', `Authentication failed for user: ${userId}`, { error: error.message });
   }
 
   async sendSecurityAlert(eventType: string, severity: string, description: string, metadata?: any) {

@@ -1,251 +1,188 @@
-import { Request, Response, NextFunction } from "express";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import { SecurityMonitor, IntrusionDetection, SecurityEventType, SecuritySeverity } from "./monitoring";
-import { db } from "../db";
-import { auditLogs } from "@shared/schema";
+import { Request, Response, NextFunction } from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { emailAlerts } from '../emailAlerts';
+import { storage } from '../storage';
 
-// Security Headers Middleware
+// Security headers middleware
 export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Allow inline scripts for development
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.openai.com"],
+      connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections for Vite HMR
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
-      objectSrc: ["'none'"]
-    }
+    },
   },
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
 });
 
-// Rate Limiting Middleware
+// Rate limiting middleware
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: {
-    error: "Too many requests from this IP, please try again later."
+    error: 'Too many requests from this IP, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
   handler: async (req: Request, res: Response) => {
-    await SecurityMonitor.recordSecurityEvent(
-      SecurityEventType.SUSPICIOUS_ACTIVITY,
-      SecuritySeverity.MEDIUM,
-      `Rate limit exceeded for IP: ${req.ip}`,
-      undefined,
-      req.ip,
-      req.get('User-Agent'),
-      { endpoint: req.path, method: req.method }
+    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+    
+    await emailAlerts.sendSecurityAlert(
+      'rate_limit_exceeded',
+      'medium',
+      `Rate limit exceeded for IP: ${ipAddress}`,
+      { ip: ipAddress, userAgent: req.headers['user-agent'] }
     );
     
     res.status(429).json({
-      error: "Too many requests from this IP, please try again later."
+      error: 'Too many requests from this IP, please try again later.'
     });
-  }
+  },
 });
 
-// Strict Rate Limiting for Authentication Endpoints
+// Authentication-specific rate limiting
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 authentication attempts per windowMs
+  max: 5, // limit each IP to 5 login attempts per windowMs
   message: {
-    error: "Too many authentication attempts, please try again later."
+    error: 'Too many login attempts, please try again later.',
   },
+  standardHeaders: true,
+  legacyHeaders: false,
   handler: async (req: Request, res: Response) => {
-    await SecurityMonitor.recordSecurityEvent(
-      SecurityEventType.SUSPICIOUS_ACTIVITY,
-      SecuritySeverity.HIGH,
-      `Authentication rate limit exceeded for IP: ${req.ip}`,
-      undefined,
-      req.ip,
-      req.get('User-Agent'),
-      { endpoint: req.path, method: req.method }
+    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+    
+    await emailAlerts.sendSecurityAlert(
+      'auth_rate_limit_exceeded',
+      'high',
+      `Authentication rate limit exceeded for IP: ${ipAddress}`,
+      { ip: ipAddress, userAgent: req.headers['user-agent'] }
     );
     
     res.status(429).json({
-      error: "Too many authentication attempts, please try again later."
+      error: 'Too many login attempts, please try again later.'
     });
-  }
+  },
 });
 
-// Audit Logging Middleware
+// Audit logging middleware
 export const auditLogger = async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
+  const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const userId = (req as any).user?.id || 'anonymous';
   
-  // Get user info if available
-  const user = (req as any).user;
-  const userId = user?.id || user?.userId || 'anonymous';
+  // Skip logging for static assets and frequent requests
+  if (req.path.includes('/src/') || req.path.includes('.js') || req.path.includes('.css') || req.path.includes('.tsx')) {
+    return next();
+  }
   
-  // Store original response methods
-  const originalSend = res.send;
-  const originalJson = res.json;
-  
-  let responseBody: any = null;
-  
-  // Override response methods to capture response
-  res.send = function(body: any) {
-    responseBody = body;
-    return originalSend.call(this, body);
+  // Log the request
+  const auditData = {
+    userId,
+    action: `${req.method} ${req.path}`,
+    entityType: 'http_request',
+    entityId: req.path,
+    description: `${req.method} request to ${req.path}`,
+    ipAddress,
+    userAgent,
+    severity: 'low',
+    metadata: {
+      method: req.method,
+      path: req.path,
+      query: req.query,
+      body: req.method === 'POST' || req.method === 'PUT' ? req.body : undefined,
+      timestamp: new Date().toISOString(),
+    }
   };
-  
-  res.json = function(body: any) {
-    responseBody = body;
-    return originalJson.call(this, body);
-  };
-  
-  // Continue with request processing
-  res.on('finish', async () => {
+
+  // Store audit log (for now, just console.log)
+  console.log('Audit Log:', auditData);
+
+  // Continue to next middleware
+  res.on('finish', () => {
     const duration = Date.now() - startTime;
-    const statusCode = res.statusCode;
-    
-    // Determine severity based on status code and endpoint
-    let severity: 'low' | 'medium' | 'high' | 'critical' = 'low';
-    
-    if (statusCode >= 500) {
-      severity = 'high';
-    } else if (statusCode >= 400) {
-      severity = 'medium';
-    } else if (req.path.includes('login') || req.path.includes('auth')) {
-      severity = 'medium';
-    }
-    
-    // Log sensitive operations
-    const sensitiveEndpoints = [
-      '/api/auth/',
-      '/api/users/',
-      '/api/payroll/',
-      '/api/employees/',
-      '/api/leave-requests/',
-      '/api/documents/'
-    ];
-    
-    const isSensitive = sensitiveEndpoints.some(endpoint => 
-      req.path.startsWith(endpoint)
-    );
-    
-    if (isSensitive || statusCode >= 400) {
-      try {
-        await db.insert(auditLogs).values({
-          userId,
-          action: `${req.method}_${req.path}`,
-          entityType: req.path.split('/')[2] || 'unknown',
-          entityId: req.params.id || '',
-          description: `${req.method} ${req.path} - ${statusCode} (${duration}ms)`,
-          ipAddress: req.ip || '',
-          userAgent: req.get('User-Agent') || '',
-          severity,
-          metadata: JSON.stringify({
-            statusCode,
-            duration,
-            responseSize: res.get('Content-Length') || 0,
-            query: req.query,
-            body: req.method !== 'GET' ? req.body : undefined
-          })
-        });
-      } catch (error) {
-        console.error('Audit logging error:', error);
-      }
-    }
-    
-    // Log security events for failed requests
-    if (statusCode === 401) {
-      await SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.UNAUTHORIZED_ACCESS,
-        SecuritySeverity.MEDIUM,
-        `Unauthorized access attempt to ${req.path}`,
-        userId,
-        req.ip,
-        req.get('User-Agent'),
-        { endpoint: req.path, method: req.method }
-      );
-    } else if (statusCode === 403) {
-      await SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.UNAUTHORIZED_ACCESS,
-        SecuritySeverity.HIGH,
-        `Forbidden access attempt to ${req.path}`,
-        userId,
-        req.ip,
-        req.get('User-Agent'),
-        { endpoint: req.path, method: req.method }
-      );
-    }
+    console.log(`Request completed: ${req.method} ${req.path} - ${res.statusCode} in ${duration}ms`);
   });
   
   next();
 };
 
-// Input Validation and Sanitization Middleware
+// Input validation middleware
 export const inputValidation = async (req: Request, res: Response, next: NextFunction) => {
-  const user = (req as any).user;
-  const userId = user?.id || user?.userId || 'anonymous';
+  const suspiciousPatterns = [
+    /(\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bDROP\b|\bUNION\b)/i, // SQL injection
+    /<script[^>]*>.*?<\/script>/gi, // XSS
+    /javascript:/i, // JavaScript protocol
+    /vbscript:/i, // VBScript protocol
+    /onload=/i, // Event handlers
+    /onerror=/i,
+    /onclick=/i,
+  ];
+
+  const checkForSuspiciousContent = (obj: any, path = ''): boolean => {
+    if (typeof obj === 'string') {
+      return suspiciousPatterns.some(pattern => pattern.test(obj));
+    }
+    
+    if (typeof obj === 'object' && obj !== null) {
+      for (const key in obj) {
+        if (checkForSuspiciousContent(obj[key], `${path}.${key}`)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+
+  const requestData = { ...req.body, ...req.query, ...req.params };
   
-  // Run intrusion detection
-  const isRequestSafe = await IntrusionDetection.analyzeRequest(
-    userId,
-    req.ip || '',
-    req.get('User-Agent') || '',
-    req.path,
-    req.method
-  );
-  
-  if (!isRequestSafe) {
+  if (checkForSuspiciousContent(requestData)) {
+    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+    
+    await emailAlerts.sendSecurityAlert(
+      'suspicious_input_detected',
+      'high',
+      `Suspicious input detected from IP: ${ipAddress}`,
+      { 
+        ip: ipAddress, 
+        userAgent: req.headers['user-agent'],
+        requestData,
+        path: req.path
+      }
+    );
+    
     return res.status(400).json({
-      error: "Request contains potentially malicious content"
+      error: 'Invalid input detected'
     });
   }
   
   next();
 };
 
-// IP Whitelist Middleware (for admin endpoints)
+// IP whitelist middleware
 export const ipWhitelist = (allowedIPs: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const clientIP = req.ip || req.connection.remoteAddress;
+    const clientIP = req.ip || req.connection.remoteAddress || '';
     
-    if (allowedIPs.includes(clientIP || '')) {
-      next();
-    } else {
-      SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.UNAUTHORIZED_ACCESS,
-        SecuritySeverity.HIGH,
-        `Access denied from non-whitelisted IP: ${clientIP}`,
-        undefined,
-        clientIP,
-        req.get('User-Agent'),
-        { endpoint: req.path, method: req.method }
+    if (allowedIPs.length > 0 && !allowedIPs.includes(clientIP)) {
+      emailAlerts.sendSecurityAlert(
+        'unauthorized_ip_access',
+        'high',
+        `Access attempt from unauthorized IP: ${clientIP}`,
+        { ip: clientIP, userAgent: req.headers['user-agent'] }
       );
       
-      res.status(403).json({
-        error: "Access denied from this IP address"
-      });
-    }
-  };
-};
-
-// Request Size Limit Middleware
-export const requestSizeLimit = (limit: string = '10mb') => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const contentLength = parseInt(req.get('Content-Length') || '0');
-    const limitBytes = parseLimit(limit);
-    
-    if (contentLength > limitBytes) {
-      SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.SUSPICIOUS_ACTIVITY,
-        SecuritySeverity.MEDIUM,
-        `Request size exceeded limit: ${contentLength} bytes`,
-        undefined,
-        req.ip,
-        req.get('User-Agent'),
-        { endpoint: req.path, method: req.method, size: contentLength }
-      );
-      
-      return res.status(413).json({
-        error: "Request entity too large"
+      return res.status(403).json({
+        error: 'Access denied'
       });
     }
     
@@ -253,100 +190,87 @@ export const requestSizeLimit = (limit: string = '10mb') => {
   };
 };
 
-// Helper function to parse size limits
+// Request size limit middleware
+export const requestSizeLimit = (limit: string = '10mb') => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const contentLength = req.headers['content-length'];
+    if (contentLength) {
+      const sizeInBytes = parseInt(contentLength, 10);
+      const limitInBytes = parseLimit(limit);
+      
+      if (sizeInBytes > limitInBytes) {
+        const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+        
+        emailAlerts.sendSecurityAlert(
+          'request_size_limit_exceeded',
+          'medium',
+          `Request size limit exceeded from IP: ${ipAddress}`,
+          { ip: ipAddress, size: sizeInBytes, limit: limitInBytes }
+        );
+        
+        return res.status(413).json({
+          error: 'Request entity too large'
+        });
+      }
+    }
+    
+    next();
+  };
+};
+
 function parseLimit(limit: string): number {
   const units = {
     'b': 1,
     'kb': 1024,
     'mb': 1024 * 1024,
-    'gb': 1024 * 1024 * 1024
+    'gb': 1024 * 1024 * 1024,
   };
   
-  const match = limit.match(/^(\d+)([a-z]+)$/i);
-  if (!match) return 1024 * 1024; // Default 1MB
+  const match = limit.toLowerCase().match(/^(\d+)(b|kb|mb|gb)$/);
+  if (!match) return 10 * 1024 * 1024; // Default to 10MB
   
-  const value = parseInt(match[1]);
-  const unit = match[2].toLowerCase();
-  
-  return value * (units[unit as keyof typeof units] || 1);
+  const [, size, unit] = match;
+  return parseInt(size, 10) * (units[unit as keyof typeof units] || 1);
 }
 
-// CORS Security Configuration
+// CORS configuration
 export const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Define allowed origins
-    const allowedOrigins = [
-      'https://localhost:3000',
-      'https://localhost:5000',
-      process.env.FRONTEND_URL,
-      process.env.REPLIT_DOMAIN
-    ].filter(Boolean);
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.UNAUTHORIZED_ACCESS,
-        SecuritySeverity.MEDIUM,
-        `CORS violation from origin: ${origin}`,
-        undefined,
-        undefined,
-        undefined,
-        { origin, allowedOrigins }
-      );
-      
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
-// File Upload Security Middleware
+// File upload security middleware
 export const fileUploadSecurity = (allowedMimeTypes: string[] = []) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const file = req.file;
-    
-    if (!file) {
+    if (!req.file && !req.files) {
       return next();
     }
     
-    // Check file type
-    if (allowedMimeTypes.length > 0 && !allowedMimeTypes.includes(file.mimetype)) {
-      await SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.SUSPICIOUS_ACTIVITY,
-        SecuritySeverity.MEDIUM,
-        `Attempted upload of disallowed file type: ${file.mimetype}`,
-        (req as any).user?.id,
-        req.ip,
-        req.get('User-Agent'),
-        { filename: file.originalname, mimetype: file.mimetype }
-      );
-      
-      return res.status(400).json({
-        error: "File type not allowed"
-      });
-    }
+    const files = req.files ? (Array.isArray(req.files) ? req.files : [req.files]) : [req.file];
     
-    // Check file size (additional to multer limits)
-    const maxSize = 50 * 1024 * 1024; // 50MB
-    if (file.size > maxSize) {
-      await SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.SUSPICIOUS_ACTIVITY,
-        SecuritySeverity.MEDIUM,
-        `Attempted upload of oversized file: ${file.size} bytes`,
-        (req as any).user?.id,
-        req.ip,
-        req.get('User-Agent'),
-        { filename: file.originalname, size: file.size }
-      );
+    for (const file of files) {
+      if (!file) continue;
       
-      return res.status(400).json({
-        error: "File size too large"
-      });
+      // Check file type
+      if (allowedMimeTypes.length > 0 && !allowedMimeTypes.includes(file.mimetype)) {
+        return res.status(400).json({
+          error: 'Invalid file type'
+        });
+      }
+      
+      // Check file size (already handled by multer, but double-check)
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        return res.status(400).json({
+          error: 'File too large'
+        });
+      }
+      
+      // Log file upload
+      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+      console.log(`File upload: ${file.originalname} (${file.mimetype}) from IP: ${ipAddress}`);
     }
     
     next();

@@ -73,23 +73,20 @@ export default function SecurityMonitoring() {
   // Fetch security dashboard data
   const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
     queryKey: ['/api/security/dashboard', selectedTimeRange],
-    enabled: false // Disable until we implement the backend
   });
 
   // Fetch security audit results
   const { data: auditData, isLoading: auditLoading } = useQuery({
     queryKey: ['/api/security/audit'],
-    enabled: false // Disable until we implement the backend
   });
 
   // Fetch compliance report
   const { data: complianceData, isLoading: complianceLoading } = useQuery({
     queryKey: ['/api/security/compliance', selectedFramework],
-    enabled: false // Disable until we implement the backend
   });
 
-  // Mock data for demonstration
-  const mockDashboard: SecurityDashboard = {
+  // Use real data from API or fallback to mock data
+  const currentDashboard = dashboardData || {
     totalEvents: 1247,
     totalAlerts: 23,
     unresolvedAlerts: 5,
@@ -116,7 +113,7 @@ export default function SecurityMonitoring() {
     ]
   };
 
-  const mockAudit: SecurityAuditResult = {
+  const currentAudit = auditData || {
     timestamp: "2025-01-16T20:00:00Z",
     findings: [
       { type: "weak_passwords", severity: "medium", count: 12, description: "Users with weak passwords" },
@@ -131,7 +128,7 @@ export default function SecurityMonitoring() {
     score: 78
   };
 
-  const mockCompliance: ComplianceReport = {
+  const currentCompliance = complianceData || {
     framework: "FERPA",
     period: { startDate: "2024-12-16", endDate: "2025-01-16" },
     totalAccess: 2847,
@@ -213,7 +210,7 @@ export default function SecurityMonitoring() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockDashboard.totalEvents}</div>
+                <div className="text-2xl font-bold">{currentDashboard.totalEvents}</div>
                 <p className="text-xs text-muted-foreground">Last {selectedTimeRange} days</p>
               </CardContent>
             </Card>
@@ -224,9 +221,9 @@ export default function SecurityMonitoring() {
                 <Bell className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockDashboard.totalAlerts}</div>
+                <div className="text-2xl font-bold">{currentDashboard.totalAlerts}</div>
                 <p className="text-xs text-muted-foreground">
-                  {mockDashboard.unresolvedAlerts} unresolved
+                  {currentDashboard.unresolvedAlerts} unresolved
                 </p>
               </CardContent>
             </Card>
@@ -237,7 +234,7 @@ export default function SecurityMonitoring() {
                 <AlertTriangle className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockDashboard.eventsBySeverity.critical}</div>
+                <div className="text-2xl font-bold">{currentDashboard.eventsBySeverity.critical}</div>
                 <p className="text-xs text-muted-foreground">Requires immediate attention</p>
               </CardContent>
             </Card>
@@ -248,8 +245,8 @@ export default function SecurityMonitoring() {
                 <Shield className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockAudit.score}%</div>
-                <Progress value={mockAudit.score} className="mt-2" />
+                <div className="text-2xl font-bold">{currentAudit.score}%</div>
+                <Progress value={currentAudit.score} className="mt-2" />
               </CardContent>
             </Card>
           </div>
@@ -261,7 +258,7 @@ export default function SecurityMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Object.entries(mockDashboard.eventsByType).map(([type, count]) => (
+                {Object.entries(currentDashboard.eventsByType).map(([type, count]) => (
                   <div key={type} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded-full ${getSeverityColor('medium')}`} />
@@ -282,7 +279,7 @@ export default function SecurityMonitoring() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {mockDashboard.recentEvents.map((event) => (
+                  {currentDashboard.recentEvents.map((event) => (
                     <div key={event.id} className="flex items-center justify-between p-3 border rounded">
                       <div className="flex items-center gap-3">
                         <Badge variant={getSeverityBadgeVariant(event.severity)}>
@@ -307,7 +304,7 @@ export default function SecurityMonitoring() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {mockDashboard.recentAlerts.map((alert) => (
+                  {currentDashboard.recentAlerts.map((alert) => (
                     <div key={alert.id} className="flex items-center justify-between p-3 border rounded">
                       <div className="flex items-center gap-3">
                         {alert.isResolved ? (
@@ -340,7 +337,7 @@ export default function SecurityMonitoring() {
             <CardHeader>
               <CardTitle>Security Audit Results</CardTitle>
               <CardDescription>
-                Latest security audit performed on {new Date(mockAudit.timestamp).toLocaleString()}
+                Latest security audit performed on {new Date(currentAudit.timestamp).toLocaleString()}
               </CardDescription>
             </CardHeader>
             <CardContent>

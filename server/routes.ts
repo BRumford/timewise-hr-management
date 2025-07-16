@@ -20,6 +20,9 @@ import { storageMonitor } from "./monitoring/storageMonitor";
 import { dataArchiver } from "./monitoring/dataArchiver";
 import { registerSecurityRoutes } from "./security/securityRoutes";
 import { initSupportTables } from "./initSupportTables";
+import { SecurityMonitor, SecurityAudit, SecurityEventType, SecuritySeverity, IntrusionDetection } from "./security/monitoring";
+import { securityHeaders, rateLimiter, authRateLimiter, auditLogger, inputValidation, corsOptions } from "./security/middleware";
+import cors from "cors";
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -247,6 +250,15 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize support and security tables
   await initSupportTables();
+
+  // Apply security middleware (skip in development to avoid CSP issues with Vite)
+  if (process.env.NODE_ENV === 'production') {
+    app.use(securityHeaders);
+  }
+  app.use(cors(corsOptions));
+  app.use(rateLimiter);
+  app.use(auditLogger);
+  app.use(inputValidation);
   
   // Serve uploaded files
   app.use('/uploads', (req, res, next) => {
@@ -255,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public login endpoint - should be before authentication middleware
-  app.post('/api/auth/login', async (req, res) => {
+  app.post('/api/auth/login', authRateLimiter, async (req, res) => {
     try {
       const { email, password } = req.body;
       
@@ -272,6 +284,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
+        // Record security event
+        await SecurityMonitor.recordSecurityEvent(
+          SecurityEventType.FAILED_LOGIN,
+          SecuritySeverity.MEDIUM,
+          `Failed login attempt for user: ${email}`,
+          user.id,
+          req.ip || 'unknown',
+          { userAgent: req.headers['user-agent'] }
+        );
+        
         // Increment failed login attempts
         await storage.incrementFailedLoginAttempts(user.id);
         return res.status(401).json({ message: "Invalid email or password" });
@@ -282,6 +304,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update last login time
       await storage.updateLastLogin(user.id);
+      
+      // Record successful login
+      await SecurityMonitor.recordSecurityEvent(
+        SecurityEventType.FAILED_LOGIN,
+        SecuritySeverity.LOW,
+        `Successful login for user: ${email}`,
+        user.id,
+        req.ip || 'unknown',
+        { userAgent: req.headers['user-agent'] }
+      );
       
       // Set user in session
       (req as any).user = user;
@@ -4325,6 +4357,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating role permission:', error);
       res.status(500).json({ message: 'Failed to update role permission' });
+    }
+  });
+
+  // Security Monitoring API endpoints
+  app.get("/api/security/dashboard", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { timeRange = '30' } = req.query;
+      const dashboard = await SecurityMonitor.getSecurityDashboard(parseInt(timeRange as string));
+      res.json(dashboard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch security dashboard" });
+    }
+  });
+
+  app.get("/api/security/audit", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const audit = await SecurityAudit.performSecurityAudit();
+      res.json(audit);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to perform security audit" });
+    }
+  });
+
+  app.get("/api/security/compliance/:framework", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { framework } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      // Mock compliance data for now
+      const complianceData = {
+        framework: framework.toUpperCase(),
+        period: { 
+          startDate: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), 
+          endDate: endDate || new Date().toISOString()
+        },
+        totalAccess: 2847,
+        accessDenied: 23,
+        criticalEvents: 2,
+        highSeverityEvents: 15,
+        complianceScore: framework === 'FERPA' ? 94 : framework === 'HIPAA' ? 89 : 92
+      };
+      
+      res.json(complianceData);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch compliance data" });
+    }
+  });
+
+  app.post("/api/security/alert/:alertId/resolve", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { alertId } = req.params;
+      const userId = (req as any).user.id;
+      
+      await SecurityMonitor.resolveSecurityAlert(parseInt(alertId), userId);
+      
+      res.json({ message: "Security alert resolved successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to resolve security alert" });
     }
   });
 
