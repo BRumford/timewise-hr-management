@@ -28,6 +28,7 @@ import {
   Users
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ArchivingSetupGuide from "./ArchivingSetupGuide";
 
 interface StorageUsage {
   totalSize: string;
@@ -227,9 +228,10 @@ export default function StorageMonitor() {
       )}
 
       <Tabs defaultValue="usage">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="usage">Usage</TabsTrigger>
           <TabsTrigger value="candidates">Archive Candidates</TabsTrigger>
+          <TabsTrigger value="setup">Setup Guide</TabsTrigger>
           <TabsTrigger value="config">Configuration</TabsTrigger>
           <TabsTrigger value="estimates">Savings</TabsTrigger>
         </TabsList>
@@ -394,6 +396,10 @@ export default function StorageMonitor() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="setup" className="space-y-4">
+          <ArchivingSetupGuide />
         </TabsContent>
 
         <TabsContent value="config" className="space-y-4">
