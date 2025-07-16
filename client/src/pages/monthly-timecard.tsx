@@ -64,6 +64,11 @@ interface MonthlyTimecardData {
 export default function MonthlyTimecard() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  
+  // Debug template changes
+  useEffect(() => {
+    console.log('selectedTemplate changed to:', selectedTemplate);
+  }, [selectedTemplate]);
   const [selectedSite, setSelectedSite] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -155,9 +160,17 @@ export default function MonthlyTimecard() {
 
   // Reset selected employee when site filter changes (but not when loading a timecard)
   useEffect(() => {
+    console.log('Site filter useEffect triggered:', {
+      selectedSite,
+      selectedEmployee,
+      hasTimecardData: !!timecardData,
+      filteredEmployeesLength: filteredEmployees.length
+    });
+    
     if (selectedSite && selectedSite !== 'all' && selectedEmployee && !timecardData) {
       const employeeInFilteredList = filteredEmployees.find((emp: Employee) => emp.id === selectedEmployee);
       if (!employeeInFilteredList) {
+        console.log('Resetting employee and template due to site filter');
         setSelectedEmployee(null);
         setSelectedTemplate(null);
       }
