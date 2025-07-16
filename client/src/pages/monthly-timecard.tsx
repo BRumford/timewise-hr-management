@@ -99,9 +99,18 @@ export default function MonthlyTimecard() {
   });
 
   // Fetch template fields for selected template
-  const { data: templateFields = [] } = useQuery({
+  const { data: templateFields = [], isLoading: templateFieldsLoading, error: templateFieldsError } = useQuery({
     queryKey: ["/api/timecard-template-fields", selectedTemplate],
     enabled: !!selectedTemplate,
+  });
+
+  // Debug template fields
+  console.log('Template fields debug:', {
+    selectedTemplate,
+    templateFields,
+    templateFieldsLength: templateFields.length,
+    templateFieldsLoading,
+    templateFieldsError
   });
 
   // Fetch dropdown options for timecard fields
@@ -144,15 +153,16 @@ export default function MonthlyTimecard() {
   // Get employee data
   const selectedEmployeeData = employees.find((emp: Employee) => emp.id === selectedEmployee);
 
-  // Reset selected employee when site filter changes
+  // Reset selected employee when site filter changes (but not when loading a timecard)
   useEffect(() => {
-    if (selectedSite && selectedSite !== 'all' && selectedEmployee) {
+    if (selectedSite && selectedSite !== 'all' && selectedEmployee && !timecardData) {
       const employeeInFilteredList = filteredEmployees.find((emp: Employee) => emp.id === selectedEmployee);
       if (!employeeInFilteredList) {
         setSelectedEmployee(null);
+        setSelectedTemplate(null);
       }
     }
-  }, [selectedSite, filteredEmployees, selectedEmployee]);
+  }, [selectedSite, filteredEmployees, selectedEmployee, timecardData]);
 
   // Initialize form data when template changes
   useEffect(() => {
@@ -721,10 +731,10 @@ export default function MonthlyTimecard() {
         </Card>
       )}
 
-      {selectedEmployee && selectedTemplate && templateFields.length > 0 && (
+      {selectedEmployee && selectedTemplate && (
         <>
           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            Form is rendering! Employee: {selectedEmployee}, Template: {selectedTemplate}, Fields: {templateFields.length}
+            Form is rendering! Employee: {selectedEmployee}, Template: {selectedTemplate}, Fields: {templateFields.length}, Loading: {templateFieldsLoading ? 'Yes' : 'No'}
           </div>
           {/* Paper-style Timecard Form */}
           <Card className="bg-white border-2 border-gray-400" data-testid="timecard-form">
