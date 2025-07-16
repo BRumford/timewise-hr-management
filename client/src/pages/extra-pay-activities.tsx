@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, FileText, Calendar, User, Building, Clock } from "lucide-react";
+import { Plus, DollarSign, FileText, Calendar, User, Building, Clock, Edit } from "lucide-react";
 import { format } from "date-fns";
 import { 
   insertExtraPayContractSchema, 
@@ -29,6 +29,8 @@ export default function ExtraPayActivities() {
   const queryClient = useQueryClient();
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [editingContract, setEditingContract] = useState<ExtraPayContract | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Queries
   const { data: contracts = [], isLoading: contractsLoading } = useQuery<ExtraPayContract[]>({
@@ -47,15 +49,35 @@ export default function ExtraPayActivities() {
   const contractForm = useForm({
     resolver: zodResolver(insertExtraPayContractSchema),
     defaultValues: {
-      employeeId: "",
-      contractType: "",
+      title: "",
       description: "",
-      rate: "",
+      amount: "",
       startDate: "",
       endDate: "",
-      totalHours: "",
+      status: "active",
+      contractType: "",
       department: "",
-      approvalStatus: "pending"
+      requirements: "",
+      documentUrl: "",
+      createdBy: "demo_user"
+    }
+  });
+
+  // Edit form
+  const editForm = useForm({
+    resolver: zodResolver(insertExtraPayContractSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      amount: "",
+      startDate: "",
+      endDate: "",
+      status: "active",
+      contractType: "",
+      department: "",
+      requirements: "",
+      documentUrl: "",
+      createdBy: "demo_user"
     }
   });
 
@@ -123,12 +145,51 @@ export default function ExtraPayActivities() {
     }
   });
 
+  const updateContractMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      apiRequest(`/api/extra-pay-contracts/${id}`, 'PUT', data),
+    onSuccess: () => {
+      toast({ title: "Contract updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-contracts'] });
+      setIsEditDialogOpen(false);
+      setEditingContract(null);
+      editForm.reset();
+    },
+    onError: (error) => {
+      toast({ title: "Error updating contract", description: error.message, variant: "destructive" });
+    }
+  });
+
   const onContractSubmit = (data: any) => {
     createContractMutation.mutate(data);
   };
 
   const onRequestSubmit = (data: any) => {
     createRequestMutation.mutate(data);
+  };
+
+  const onEditSubmit = (data: any) => {
+    if (editingContract) {
+      updateContractMutation.mutate({ id: editingContract.id.toString(), data });
+    }
+  };
+
+  const handleEditContract = (contract: ExtraPayContract) => {
+    setEditingContract(contract);
+    editForm.reset({
+      title: contract.title,
+      description: contract.description || "",
+      amount: contract.amount,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      status: contract.status,
+      contractType: contract.contractType,
+      department: contract.department || "",
+      requirements: contract.requirements || "",
+      documentUrl: contract.documentUrl || "",
+      createdBy: contract.createdBy
+    });
+    setIsEditDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -150,7 +211,7 @@ export default function ExtraPayActivities() {
     return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
   };
 
-  const activeContracts = contracts.filter(c => c.approvalStatus === 'approved');
+  const activeContracts = contracts.filter(c => c.status === 'active');
 
   return (
     <div className="p-6 space-y-6">
@@ -176,24 +237,13 @@ export default function ExtraPayActivities() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={contractForm.control}
-                      name="employeeId"
+                      name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Employee</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select employee" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {employees.map((employee) => (
-                                <SelectItem key={employee.id} value={employee.id}>
-                                  {employee.firstName} {employee.lastName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Contract Title</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="e.g., Boys Basketball Coach" />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -239,12 +289,12 @@ export default function ExtraPayActivities() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={contractForm.control}
-                      name="rate"
+                      name="amount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Hourly Rate ($)</FormLabel>
+                          <FormLabel>Contract Amount ($)</FormLabel>
                           <FormControl>
-                            <Input {...field} type="number" step="0.01" placeholder="25.00" />
+                            <Input {...field} type="number" step="0.01" placeholder="1000.00" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -252,12 +302,12 @@ export default function ExtraPayActivities() {
                     />
                     <FormField
                       control={contractForm.control}
-                      name="totalHours"
+                      name="department"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Total Hours</FormLabel>
+                          <FormLabel>Department</FormLabel>
                           <FormControl>
-                            <Input {...field} type="number" placeholder="40" />
+                            <Input {...field} placeholder="Athletics, Maintenance, etc." />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -294,12 +344,12 @@ export default function ExtraPayActivities() {
                   </div>
                   <FormField
                     control={contractForm.control}
-                    name="department"
+                    name="requirements"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Department</FormLabel>
+                        <FormLabel>Requirements</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Athletics, Maintenance, etc." />
+                          <Textarea {...field} placeholder="List any specific requirements or qualifications..." />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -419,6 +469,149 @@ export default function ExtraPayActivities() {
               </Form>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Contract Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Extra Pay Contract</DialogTitle>
+              </DialogHeader>
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contract Title</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="e.g., Boys Basketball Coach" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="contractType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contract Type</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="coaching">Coaching</SelectItem>
+                              <SelectItem value="tutoring">Tutoring</SelectItem>
+                              <SelectItem value="supervision">Supervision</SelectItem>
+                              <SelectItem value="maintenance">Maintenance</SelectItem>
+                              <SelectItem value="after_school">After School</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={editForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="Describe the extra pay activity..." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contract Amount ($)</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" step="0.01" placeholder="1000.00" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="department"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Department</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Athletics, Maintenance, etc." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="startDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Start Date</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="date" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="endDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End Date</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="date" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={editForm.control}
+                    name="requirements"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Requirements</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="List any specific requirements or qualifications..." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={updateContractMutation.isPending}>
+                      {updateContractMutation.isPending ? "Updating..." : "Update Contract"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -450,12 +643,12 @@ export default function ExtraPayActivities() {
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
+                <CardTitle className="text-sm font-medium">Inactive Contracts</CardTitle>
                 <User className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {contracts.filter(c => c.approvalStatus === 'pending').length}
+                  {contracts.filter(c => c.status === 'inactive').length}
                 </div>
               </CardContent>
             </Card>
@@ -466,7 +659,7 @@ export default function ExtraPayActivities() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${contracts.reduce((sum, c) => sum + (parseFloat(c.rate) * parseFloat(c.totalHours)), 0).toFixed(2)}
+                  ${contracts.reduce((sum, c) => sum + parseFloat(c.amount), 0).toFixed(2)}
                 </div>
               </CardContent>
             </Card>
@@ -485,11 +678,10 @@ export default function ExtraPayActivities() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Employee</TableHead>
+                      <TableHead>Title</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Rate</TableHead>
-                      <TableHead>Hours</TableHead>
+                      <TableHead>Amount</TableHead>
                       <TableHead>Period</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
@@ -498,36 +690,33 @@ export default function ExtraPayActivities() {
                   <TableBody>
                     {contracts.map((contract) => (
                       <TableRow key={contract.id}>
-                        <TableCell className="font-medium">
-                          {getEmployeeName(contract.employeeId)}
-                        </TableCell>
+                        <TableCell className="font-medium">{contract.title}</TableCell>
                         <TableCell>{contract.contractType}</TableCell>
                         <TableCell className="max-w-xs truncate">{contract.description}</TableCell>
-                        <TableCell>${contract.rate}/hr</TableCell>
-                        <TableCell>{contract.totalHours}</TableCell>
+                        <TableCell>${contract.amount}</TableCell>
                         <TableCell>
                           {format(new Date(contract.startDate), 'MMM dd')} - {format(new Date(contract.endDate), 'MMM dd')}
                         </TableCell>
-                        <TableCell>{getStatusBadge(contract.approvalStatus)}</TableCell>
+                        <TableCell>{getStatusBadge(contract.status)}</TableCell>
                         <TableCell>
-                          {contract.approvalStatus === 'pending' && (
-                            <div className="flex gap-1">
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditContract(contract)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            {contract.status === 'active' && (
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => updateContractStatusMutation.mutate({ id: contract.id, status: 'approved' })}
+                                onClick={() => updateContractStatusMutation.mutate({ id: contract.id.toString(), status: 'inactive' })}
                               >
-                                Approve
+                                Deactivate
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => updateContractStatusMutation.mutate({ id: contract.id, status: 'rejected' })}
-                              >
-                                Reject
-                              </Button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
