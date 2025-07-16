@@ -184,13 +184,12 @@ export default function SubstituteTimeCards() {
     }
   }, [existingTimecard]);
 
-  // Auto-select default template when substitute is selected
+  // Reset template selection when substitute changes
   useEffect(() => {
-    if (selectedSubstitute && substituteTemplates.length > 0) {
-      const defaultTemplate = substituteTemplates.find(t => t.isDefault) || substituteTemplates[0];
-      setSelectedTemplate(defaultTemplate.id);
+    if (selectedSubstitute) {
+      setSelectedTemplate(null);
     }
-  }, [selectedSubstitute, substituteTemplates]);
+  }, [selectedSubstitute]);
 
   // Calculate payroll total when units or rate change
   useEffect(() => {
