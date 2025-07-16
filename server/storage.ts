@@ -2223,6 +2223,40 @@ export class DatabaseStorage implements IStorage {
     return timecard;
   }
 
+  async getAllMonthlyTimecards(): Promise<any[]> {
+    const timecards = await db.select().from(monthlyTimecards)
+      .orderBy(desc(monthlyTimecards.createdAt));
+    return timecards;
+  }
+
+  async approveMonthlyTimecard(id: number, approvedBy: string, notes?: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        status: 'approved',
+        approvedBy,
+        approvedAt: new Date(),
+        approvalNotes: notes,
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async rejectMonthlyTimecard(id: number, rejectedBy: string, reason: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        status: 'rejected',
+        rejectedBy,
+        rejectedAt: new Date(),
+        rejectionReason: reason,
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
   // Dropdown options methods
   async getDropdownOptions(category: string): Promise<DropdownOption[]> {
     return await db.select().from(dropdownOptions)

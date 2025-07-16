@@ -3836,6 +3836,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/monthly-timecards', isAuthenticated, async (req, res) => {
+    try {
+      const timecards = await storage.getAllMonthlyTimecards();
+      res.json(timecards);
+    } catch (error) {
+      console.error('Error fetching all monthly timecards:', error);
+      res.status(500).json({ message: 'Failed to fetch monthly timecards' });
+    }
+  });
+
   app.post('/api/monthly-timecards', isAuthenticated, async (req, res) => {
     try {
       const timecard = await storage.createMonthlyTimecard(req.body);
@@ -3843,6 +3853,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error creating monthly timecard:', error);
       res.status(500).json({ message: 'Failed to create monthly timecard' });
+    }
+  });
+
+  // Monthly Timecard Approval Routes
+  app.post('/api/monthly-timecards/:id/approve', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const { notes } = req.body;
+      const user = (req as any).user;
+      
+      const timecard = await storage.approveMonthlyTimecard(timecardId, user.id, notes);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error approving timecard:', error);
+      res.status(500).json({ message: 'Failed to approve timecard' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/:id/reject', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const { reason } = req.body;
+      const user = (req as any).user;
+      
+      const timecard = await storage.rejectMonthlyTimecard(timecardId, user.id, reason);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error rejecting timecard:', error);
+      res.status(500).json({ message: 'Failed to reject timecard' });
     }
   });
 

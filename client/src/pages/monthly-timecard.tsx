@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, User, Save, FileText, Building, Lock, Unlock, AlertTriangle, Download } from "lucide-react";
+import { Calendar, Clock, User, Save, FileText, Building, Lock, Unlock, AlertTriangle, Download, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { Employee } from "@shared/schema";
@@ -304,6 +304,40 @@ export default function MonthlyTimecard() {
     saveTimecardMutation.mutate(finalData);
   };
 
+  // Submit timecard for approval mutation
+  const submitTimecardMutation = useMutation({
+    mutationFn: async () => {
+      if (!timecardData?.id) {
+        throw new Error('Must save timecard before submitting');
+      }
+      
+      const submitPayload = {
+        status: 'submitted',
+        submittedBy: user?.id,
+        submittedAt: new Date().toISOString()
+      };
+
+      return await apiRequest(`/api/monthly-timecard/${timecardData.id}`, 'PUT', submitPayload);
+    },
+    onSuccess: (data) => {
+      setTimecardData(data);
+      toast({ title: "Success", description: "Timecard submitted for approval" });
+      queryClient.invalidateQueries({ queryKey: [`/api/monthly-timecard/${selectedEmployee}/${currentMonth}/${currentYear}`] });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: "Failed to submit timecard", variant: "destructive" });
+    },
+  });
+
+  // Submit timecard function
+  const submitTimecard = () => {
+    if (!timecardData?.id) {
+      toast({ title: "Error", description: "Please save the timecard before submitting", variant: "destructive" });
+      return;
+    }
+    submitTimecardMutation.mutate();
+  };
+
   // Lock timecard mutation
   const lockTimecard = useMutation({
     mutationFn: async (data: { id: number; lockReason?: string }) => {
@@ -581,6 +615,16 @@ export default function MonthlyTimecard() {
             <Save className="h-4 w-4 mr-2" />
             Save Timecard
           </Button>
+          {timecardData?.status === 'draft' && (
+            <Button 
+              onClick={submitTimecard} 
+              disabled={!timecardData?.id || timecardData?.isLocked || submitTimecardMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {submitTimecardMutation.isPending ? 'Submitting...' : 'Submit for Approval'}
+            </Button>
+          )}
         </div>
       </div>
 
