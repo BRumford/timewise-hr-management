@@ -32,7 +32,8 @@ export const globalErrorHandler = (
   } else if (err.statusCode >= 500) {
     emailAlerts.sendSystemError(err, err.context);
   } else {
-    emailAlerts.sendAPIError(err, endpoint, userId);
+    // For API errors, use the system error handler
+    emailAlerts.sendSystemError(err, err.context || endpoint);
   }
 
   // Send appropriate response

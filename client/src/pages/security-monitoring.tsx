@@ -583,7 +583,7 @@ export default function SecurityMonitoring() {
                       type="number"
                       value={securitySettings.passwordExpiration}
                       onChange={(e) => 
-                        setSecuritySettings(prev => ({ ...prev, passwordExpiration: parseInt(e.target.value) }))
+                        setSecuritySettings(prev => ({ ...prev, passwordExpiration: parseInt(e.target.value) || 90 }))
                       }
                     />
                   </div>
@@ -595,7 +595,7 @@ export default function SecurityMonitoring() {
                       type="number"
                       value={securitySettings.sessionTimeout}
                       onChange={(e) => 
-                        setSecuritySettings(prev => ({ ...prev, sessionTimeout: parseInt(e.target.value) }))
+                        setSecuritySettings(prev => ({ ...prev, sessionTimeout: parseInt(e.target.value) || 30 }))
                       }
                     />
                   </div>

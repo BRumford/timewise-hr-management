@@ -141,7 +141,7 @@ export const requirePermission = (requiredPermission: string) => {
       });
     }
 
-    if (!user.permissions.includes(requiredPermission)) {
+    if (!user.permissions || !user.permissions.includes(requiredPermission)) {
       return res.status(403).json({ 
         message: 'Insufficient permissions',
         code: 'PERMISSION_DENIED',
