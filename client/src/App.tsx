@@ -22,6 +22,7 @@ import Letters from "@/pages/letters";
 import TimecardTemplates from "@/pages/timecard-templates";
 import FieldLabels from "@/pages/field-labels";
 import Login from "@/pages/login";
+import EmployeeLogin from "@/pages/employee-login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import Retirees from "@/pages/retirees";
@@ -37,6 +38,7 @@ function Router() {
     <Switch>
       {/* Authentication routes (no sidebar/header) */}
       <Route path="/login" component={Login} />
+      <Route path="/employee-login" component={EmployeeLogin} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       

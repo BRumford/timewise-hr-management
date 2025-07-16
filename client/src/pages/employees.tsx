@@ -271,6 +271,33 @@ export default function Employees() {
     },
   });
 
+  const createUserAccountsMutation = useMutation({
+    mutationFn: async (defaultPassword?: string) => {
+      return await apiRequest("/api/admin/create-employee-accounts", "POST", { defaultPassword });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      toast({
+        title: "Success",
+        description: `Created ${data.created} user accounts. Default password: ${data.defaultPassword}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user accounts",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateUserAccounts = () => {
+    const defaultPassword = 'TempPassword123!';
+    if (window.confirm(`This will create login accounts for all employees who don't have one yet. The default password will be: ${defaultPassword}\n\nEmployees should change this password after their first login. Continue?`)) {
+      createUserAccountsMutation.mutate(defaultPassword);
+    }
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -470,6 +497,14 @@ export default function Employees() {
           >
             <Download className="mr-2" size={16} />
             {exportEmployeesMutation.isPending ? "Exporting..." : "Export CSV"}
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleCreateUserAccounts}
+            disabled={createUserAccountsMutation.isPending}
+          >
+            <Plus className="mr-2" size={16} />
+            {createUserAccountsMutation.isPending ? "Creating..." : "Create User Accounts"}
           </Button>
           <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
             <DialogTrigger asChild>

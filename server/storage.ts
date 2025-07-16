@@ -107,6 +107,10 @@ import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-or
 export interface IStorage {
   // User operations (required for authentication)
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  incrementFailedLoginAttempts(userId: string): Promise<void>;
+  resetFailedLoginAttempts(userId: string): Promise<void>;
+  updateLastLogin(userId: string): Promise<void>;
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Employee operations
@@ -120,6 +124,8 @@ export interface IStorage {
   getEmployeesByType(type: string): Promise<Employee[]>;
   bulkImportEmployees(employees: InsertEmployee[]): Promise<Employee[]>;
   bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[]): Promise<Employee[]>;
+  getEmployeesWithoutUserAccounts(): Promise<Employee[]>;
+  updateEmployeeUserId(employeeId: number, userId: string): Promise<void>;
   
   // Leave management
   getLeaveTypes(): Promise<LeaveType[]>;
@@ -313,6 +319,41 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async incrementFailedLoginAttempts(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        failedLoginAttempts: sql`${users.failedLoginAttempts} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async resetFailedLoginAttempts(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        failedLoginAttempts: 0,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateLastLogin(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        lastLoginAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -470,6 +511,23 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updatedEmployees;
+  }
+
+  async getEmployeesWithoutUserAccounts(): Promise<Employee[]> {
+    const result = await db.select().from(employees).where(
+      or(
+        eq(employees.userId, ''),
+        sql`${employees.userId} IS NULL`
+      )
+    );
+    return result.filter(emp => emp.email); // Only return employees with email addresses
+  }
+
+  async updateEmployeeUserId(employeeId: number, userId: string): Promise<void> {
+    await db.update(employees).set({ 
+      userId,
+      updatedAt: new Date()
+    }).where(eq(employees.id, employeeId));
   }
 
   // Leave management

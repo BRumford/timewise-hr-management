@@ -65,38 +65,54 @@ const personnelUpload = multer({
   }
 });
 
-// Simple authentication middleware for demo purposes
+// Authentication middleware - supports both session-based and demo mode
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // For demo, we'll simulate a logged-in user
-    // In production, this would check session or JWT token
-    const userId = "demo_user";
+    // Check if user is logged in via session (employee login)
+    let sessionUser = (req as any).user;
     
-    // Get the user from the database to get their current role
-    const user = await storage.getUser(userId);
-    
-    if (!user) {
-      // If user doesn't exist, create them with default role
-      const newUser = await storage.upsertUser({
-        id: userId,
-        role: "employee"
-      });
-      (req as any).user = {
-        id: newUser.id,
-        role: newUser.role,
-        claims: { sub: newUser.id }
-      };
-    } else {
-      (req as any).user = {
+    // If no session user, fall back to demo mode for development
+    if (!sessionUser) {
+      // For demo, we'll simulate a logged-in user
+      const userId = "demo_user";
+      
+      // Get or create demo user
+      let user = await storage.getUser(userId);
+      if (!user) {
+        user = await storage.upsertUser({
+          id: userId,
+          role: "hr", // Demo user has HR role
+          email: "demo@example.com",
+          firstName: "Demo",
+          lastName: "User"
+        });
+      }
+      
+      sessionUser = {
         id: user.id,
         role: user.role,
         claims: { sub: user.id }
       };
     }
     
+    // Get the current user from the database to ensure fresh data
+    const user = await storage.getUser(sessionUser.id);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Check if account is locked
+    if (user.accountLocked && user.lockedUntil && new Date() < user.lockedUntil) {
+      return res.status(401).json({ message: "Account is locked due to multiple failed login attempts" });
+    }
+
+    // Update the request with the current user data
+    (req as any).user = user;
     next();
   } catch (error) {
-    handleAuthError(error as Error, "demo_user");
+    console.error("Authentication error:", error);
+    handleAuthError(error as Error, "unknown");
+    res.status(500).json({ message: "Authentication error" });
   }
 };
 
@@ -238,7 +254,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     express.static(uploadDir)(req, res, next);
   });
 
-  // Apply authentication middleware to all API routes
+  // Public login endpoint - should be before authentication middleware
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email.toLowerCase());
+      if (!user || !user.passwordHash) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!isValidPassword) {
+        // Increment failed login attempts
+        await storage.incrementFailedLoginAttempts(user.id);
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Reset failed login attempts on successful login
+      await storage.resetFailedLoginAttempts(user.id);
+      
+      // Update last login time
+      await storage.updateLastLogin(user.id);
+      
+      // Set user in session
+      (req as any).user = user;
+      
+      res.json({ 
+        message: "Login successful", 
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: "Login failed", error: (error as Error).message });
+    }
+  });
+
+  // Employee registration endpoint (for creating initial accounts)
+  app.post('/api/auth/register-employee', async (req, res) => {
+    try {
+      const { employeeId, email, firstName, lastName, password, department, position, hireDate } = req.body;
+      
+      if (!employeeId || !email || !firstName || !lastName || !password || !department || !position || !hireDate) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
+      if (existingUser) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create user account
+      const user = await storage.upsertUser({
+        id: `emp_${employeeId}`,
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        role: 'employee',
+        passwordHash
+      });
+
+      // Create employee record
+      const employee = await storage.createEmployee({
+        userId: user.id,
+        employeeId,
+        firstName,
+        lastName,
+        email: email.toLowerCase(),
+        department,
+        position,
+        employeeType: 'teacher', // Default to teacher, can be updated later
+        hireDate: new Date(hireDate),
+        status: 'active'
+      });
+
+      res.json({ 
+        message: "Employee registered successfully", 
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        },
+        employee: {
+          id: employee.id,
+          employeeId: employee.employeeId,
+          firstName: employee.firstName,
+          lastName: employee.lastName
+        }
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ message: "Registration failed", error: (error as Error).message });
+    }
+  });
+
+  // Bulk create user accounts for existing employees
+  app.post('/api/admin/create-employee-accounts', async (req, res) => {
+    try {
+      const { defaultPassword = 'TempPassword123!' } = req.body;
+      
+      // Get all employees that don't have user accounts
+      const employees = await storage.getEmployeesWithoutUserAccounts();
+      
+      if (employees.length === 0) {
+        return res.json({ message: "All employees already have user accounts", created: 0 });
+      }
+
+      const passwordHash = await bcrypt.hash(defaultPassword, 12);
+      
+      let createdCount = 0;
+      const results = [];
+      
+      for (const employee of employees) {
+        try {
+          // Create user account
+          const user = await storage.upsertUser({
+            id: `emp_${employee.employeeId}`,
+            email: employee.email,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            role: 'employee',
+            passwordHash
+          });
+          
+          // Update employee record with user ID
+          await storage.updateEmployeeUserId(employee.id, user.id);
+          
+          createdCount++;
+          results.push({
+            employeeId: employee.employeeId,
+            email: employee.email,
+            name: `${employee.firstName} ${employee.lastName}`,
+            status: 'created'
+          });
+        } catch (error) {
+          results.push({
+            employeeId: employee.employeeId,
+            email: employee.email,
+            name: `${employee.firstName} ${employee.lastName}`,
+            status: 'failed',
+            error: (error as Error).message
+          });
+        }
+      }
+      
+      res.json({
+        message: `Created ${createdCount} user accounts`,
+        created: createdCount,
+        total: employees.length,
+        defaultPassword: defaultPassword,
+        results
+      });
+    } catch (error) {
+      console.error('Bulk account creation error:', error);
+      res.status(500).json({ message: "Failed to create employee accounts", error: (error as Error).message });
+    }
+  });
+
+  // Apply authentication middleware to all other API routes
   app.use('/api', isAuthenticated);
 
   // User profile route
