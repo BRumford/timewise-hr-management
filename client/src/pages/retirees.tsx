@@ -196,7 +196,7 @@ export default function Retirees() {
       retiree.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       retiree.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter = !benefitFilter || 
+    const matchesFilter = !benefitFilter || benefitFilter === "all" ||
       (benefitFilter === "pension" && retiree.pensionPlan) ||
       (benefitFilter === "health" && retiree.healthInsurance) ||
       (benefitFilter === "medicare" && (retiree.medicarePartA || retiree.medicarePartB || retiree.medicarePartD));
@@ -617,7 +617,7 @@ export default function Retirees() {
             <SelectValue placeholder="Filter by benefit" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Benefits</SelectItem>
+            <SelectItem value="all">All Benefits</SelectItem>
             <SelectItem value="pension">Has Pension</SelectItem>
             <SelectItem value="health">Has Health Insurance</SelectItem>
             <SelectItem value="medicare">Has Medicare</SelectItem>

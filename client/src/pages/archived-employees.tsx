@@ -297,7 +297,7 @@ export default function ArchivedEmployees() {
       employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.originalEmployeeId.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter = !departmentFilter || employee.department === departmentFilter;
+    const matchesFilter = !departmentFilter || departmentFilter === "all" || employee.department === departmentFilter;
 
     return matchesSearch && matchesFilter;
   });
@@ -619,7 +619,7 @@ export default function ArchivedEmployees() {
             <SelectValue placeholder="Filter by department" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Departments</SelectItem>
+            <SelectItem value="all">All Departments</SelectItem>
             {departments.map((dept) => (
               <SelectItem key={dept} value={dept}>{dept}</SelectItem>
             ))}

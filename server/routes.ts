@@ -22,6 +22,9 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { sql } from 'drizzle-orm';
+import { db } from './db';
+import * as schema from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
