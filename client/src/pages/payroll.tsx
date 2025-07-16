@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 export default function Payroll() {
   const { toast } = useToast();
@@ -378,7 +379,15 @@ export default function Payroll() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Payroll Management</h1>
+        <div className="flex items-center space-x-4">
+          <h1 className="text-3xl font-bold text-gray-900">Payroll Management</h1>
+          <Link href="/time-cards?filter=payroll_processing">
+            <Button variant="outline" size="sm">
+              <FileText className="mr-2" size={16} />
+              View Timecard Payroll
+            </Button>
+          </Link>
+        </div>
         <div className="flex space-x-2">
           <Dialog open={showProcessDialog} onOpenChange={setShowProcessDialog}>
             <DialogTrigger asChild>

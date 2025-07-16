@@ -29,6 +29,7 @@ import {
   Unlock
 } from "lucide-react";
 import { format } from "date-fns";
+import { useLocation, Link } from "wouter";
 
 interface MonthlyTimecard {
   id: number;
@@ -283,8 +284,14 @@ function EmployeeTimecardApproval() {
 
 // Admin Timecard Approval Component
 function AdminTimecardApproval() {
+  const [location] = useLocation();
+  const searchParams = new URLSearchParams(location.split('?')[1] || '');
+  const filterParam = searchParams.get('filter');
+  
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>(
+    filterParam === 'payroll_processing' ? 'submitted_to_payroll' : 'all'
+  );
   const [selectedTimecard, setSelectedTimecard] = useState<MonthlyTimecard | null>(null);
   const [selectedTimecardIds, setSelectedTimecardIds] = useState<number[]>([]);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
@@ -593,9 +600,34 @@ function AdminTimecardApproval() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Timecard Approval</h1>
-        <p className="text-gray-600">Review and approve monthly timecards submitted by employees</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Timecard Approval</h1>
+            <p className="text-gray-600">Review and approve monthly timecards submitted by employees</p>
+          </div>
+          {filterParam === 'payroll_processing' && (
+            <Link href="/payroll">
+              <Button variant="outline" size="sm">
+                <Building className="mr-2" size={16} />
+                Back to Payroll
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* Payroll Processing Alert */}
+      {filterParam === 'payroll_processing' && (
+        <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+          <div className="flex items-center">
+            <Building className="h-5 w-5 text-indigo-600 mr-2" />
+            <h3 className="font-semibold text-indigo-900">Payroll Processing View</h3>
+          </div>
+          <p className="text-sm text-indigo-700 mt-1">
+            Viewing timecards ready for payroll processing. These timecards have been approved by administrators and are ready for final payroll calculations.
+          </p>
+        </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

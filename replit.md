@@ -122,6 +122,14 @@ The application uses a comprehensive schema with the following main entities:
 The system is designed to be scalable, maintainable, and specifically tailored for the complex needs of school district HR departments, with AI automation reducing manual workload while ensuring compliance and efficiency.
 
 ## Recent Changes
+- Implemented Cross-Navigation Between Payroll and Timecard Systems (July 16, 2025)
+  - Added "View Timecard Payroll" button in Payroll page header linking to timecards with payroll filter
+  - Added "Back to Payroll" button in Time Cards page when accessed from payroll context
+  - URL parameter filtering automatically shows payroll processing timecards when linked from Payroll page
+  - Visual indicators show when users are in payroll processing view with descriptive alert banner
+  - Streamlined workflow between payroll management and timecard payroll processing sections
+  - Enhanced navigation allows seamless movement between related payroll functions
+
 - Added Secretary Leave Request Approval Authority (July 16, 2025)
   - Updated leave request approval endpoints to allow secretary role alongside admin and hr roles
   - Secretaries can now approve and reject leave requests directly from the Leave Management page
