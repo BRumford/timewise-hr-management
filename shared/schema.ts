@@ -280,7 +280,7 @@ export const timeCards = pgTable("time_cards", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull(),
   payPeriodId: integer("pay_period_id").references(() => payPeriods.id),
-  templateId: integer("template_id").references(() => timecardTemplates.id),
+
   date: timestamp("date").notNull(),
   clockIn: timestamp("clock_in"),
   clockOut: timestamp("clock_out"),
@@ -613,7 +613,6 @@ export const onboardingFormSubmissionsRelations = relations(onboardingFormSubmis
 export const timeCardsRelations = relations(timeCards, ({ one }) => ({
   employee: one(employees, { fields: [timeCards.employeeId], references: [employees.id] }),
   payPeriod: one(payPeriods, { fields: [timeCards.payPeriodId], references: [payPeriods.id] }),
-  template: one(timecardTemplates, { fields: [timeCards.templateId], references: [timecardTemplates.id] }),
   submitter: one(employees, { fields: [timeCards.submittedBy], references: [employees.id] }),
   employeeApprover: one(employees, { fields: [timeCards.approvedByEmployee], references: [employees.id] }),
   adminApprover: one(employees, { fields: [timeCards.approvedByAdmin], references: [employees.id] }),
@@ -716,7 +715,13 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOnboardingFormSchema = createInsertSchema(onboardingForms).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOnboardingFormSubmissionSchema = createInsertSchema(onboardingFormSubmissions).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertTimeCardSchema = createInsertSchema(timeCards).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTimeCardSchema = createInsertSchema(timeCards).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  date: z.coerce.date(),
+  clockIn: z.coerce.date().optional(),
+  clockOut: z.coerce.date().optional(),
+  breakStart: z.coerce.date().optional(),
+  breakEnd: z.coerce.date().optional(),
+});
 export const insertSubstituteTimeCardSchema = createInsertSchema(substituteTimeCards).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export const insertExtraPayContractSchema = createInsertSchema(extraPayContracts).omit({ id: true, createdAt: true, updatedAt: true });
