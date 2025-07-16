@@ -721,11 +721,13 @@ export default function MonthlyTimecard() {
         </Card>
       )}
 
-      {selectedEmployee && selectedTemplate && (
+      {selectedEmployee && selectedTemplate && templateFields.length > 0 && (
         <>
-
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            Form is rendering! Employee: {selectedEmployee}, Template: {selectedTemplate}, Fields: {templateFields.length}
+          </div>
           {/* Paper-style Timecard Form */}
-          <Card className="bg-white border-2 border-gray-400">
+          <Card className="bg-white border-2 border-gray-400" data-testid="timecard-form">
             <CardHeader className="bg-gray-50 border-b-2 border-gray-400">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
