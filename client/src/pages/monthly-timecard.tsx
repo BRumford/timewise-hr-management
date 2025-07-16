@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, Save, Download, ArrowLeft, ArrowRight } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { Calendar, Clock, User, Save, ArrowLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Employee } from "@shared/schema";
 
@@ -52,18 +49,7 @@ export default function MonthlyTimecard() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [timecardData, setTimecardData] = useState<MonthlyTimecard | null>(null);
   const { toast } = useToast();
-
-  // Create a safe date object for the current month
-  const getCurrentDate = () => {
-    try {
-      return new Date(currentYear, currentMonth - 1, 1);
-    } catch (error) {
-      console.error('Error creating date:', error);
-      return new Date(2024, 0, 1);
-    }
-  };
-
-  const currentDate = getCurrentDate();
+  const queryClient = useQueryClient();
 
   // Fetch employees for selection
   const { data: employees = [] } = useQuery({
@@ -91,61 +77,62 @@ export default function MonthlyTimecard() {
         description: "Monthly timecard saved successfully",
       });
       refetchTimecard();
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecard"] });
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to save timecard: " + (error as Error).message,
+        description: "Failed to save monthly timecard",
         variant: "destructive",
       });
-    },
+    }
   });
 
-  // Initialize timecard data when monthlyTimecard is fetched
+  // Initialize timecard data when monthlyTimecard is loaded
   useEffect(() => {
     if (monthlyTimecard) {
       setTimecardData(monthlyTimecard);
     } else if (selectedEmployee) {
-      // Initialize empty timecard for the month
-      const monthStart = startOfMonth(currentDate);
-      const monthEnd = endOfMonth(currentDate);
-      const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-      
-      const entries = days.map((day) => ({
-        id: 0,
-        timecardId: 0,
-        date: format(day, 'yyyy-MM-dd'),
-        regularHours: 0,
-        overtimeHours: 0,
-        extraHours: 0,
-        leaveHours: 0,
-        leaveType: '',
-        notes: ''
-      }));
-
-      setTimecardData({
+      // Create new timecard structure
+      const newTimecard: MonthlyTimecard = {
         id: 0,
         employeeId: selectedEmployee,
-        month: currentDate.getMonth() + 1,
-        year: currentDate.getFullYear(),
-        payPeriodStart: format(monthStart, 'yyyy-MM-dd'),
-        payPeriodEnd: format(monthEnd, 'yyyy-MM-dd'),
+        month: currentMonth,
+        year: currentYear,
+        payPeriodStart: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`,
+        payPeriodEnd: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${new Date(currentYear, currentMonth, 0).getDate()}`,
         status: 'draft',
-        entries
-      });
+        entries: []
+      };
+      setTimecardData(newTimecard);
     }
-  }, [monthlyTimecard, selectedEmployee, currentDate]);
+  }, [monthlyTimecard, selectedEmployee, currentMonth, currentYear]);
 
   // Update entry data
   const updateEntry = (date: string, field: string, value: any) => {
     if (!timecardData) return;
-    
-    const updatedEntries = timecardData.entries.map(entry => {
-      if (entry.date === date) {
-        return { ...entry, [field]: value };
-      }
-      return entry;
-    });
+
+    const updatedEntries = [...timecardData.entries];
+    const existingEntryIndex = updatedEntries.findIndex(entry => entry.date === date);
+
+    if (existingEntryIndex >= 0) {
+      updatedEntries[existingEntryIndex] = {
+        ...updatedEntries[existingEntryIndex],
+        [field]: value
+      };
+    } else {
+      updatedEntries.push({
+        id: 0,
+        timecardId: timecardData.id,
+        date,
+        regularHours: field === 'regularHours' ? value : 0,
+        overtimeHours: field === 'overtimeHours' ? value : 0,
+        extraHours: field === 'extraHours' ? value : 0,
+        leaveHours: field === 'leaveHours' ? value : 0,
+        leaveType: field === 'leaveType' ? value : '',
+        notes: field === 'notes' ? value : ''
+      });
+    }
 
     setTimecardData({
       ...timecardData,
@@ -193,21 +180,19 @@ export default function MonthlyTimecard() {
     }
   };
 
-  // Generate calendar days - with error handling
-  let days: Date[] = [];
-  try {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = new Date(monthStart);
-    startDate.setDate(startDate.getDate() - getDay(monthStart));
-    const endDate = new Date(monthEnd);
-    endDate.setDate(endDate.getDate() + (6 - getDay(monthEnd)));
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const days: Date[] = [];
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(currentYear, currentMonth - 1, i));
+    }
+    
+    return days;
+  };
 
-    days = eachDayOfInterval({ start: startDate, end: endDate });
-  } catch (error) {
-    console.error('Error generating calendar days:', error);
-    days = [];
-  }
+  const days = generateCalendarDays();
 
   // Calculate totals
   const calculateTotals = () => {
@@ -302,106 +287,100 @@ export default function MonthlyTimecard() {
                 
                 {/* Calendar days */}
                 {days.map((day) => {
-                  if (!day || isNaN(day.getTime())) {
-                    return null; // Skip invalid dates
-                  }
-                  
-                  const dateStr = format(day, 'yyyy-MM-dd');
+                  const dateStr = day.toISOString().split('T')[0];
                   const entry = getEntryForDate(dateStr);
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  const isToday = isSameDay(day, new Date());
+                  const today = new Date();
+                  const isToday = day.toDateString() === today.toDateString();
                   const hasHours = entry.regularHours > 0 || entry.overtimeHours > 0 || entry.extraHours > 0 || entry.leaveHours > 0;
                   
                   return (
                     <div
                       key={dateStr}
-                      className={`p-2 border rounded-lg min-h-[120px] ${
-                        isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                      } ${isToday ? 'ring-2 ring-blue-500' : ''} ${hasHours ? 'bg-blue-50' : ''}`}
+                      className={`p-2 border rounded-lg min-h-[120px] bg-white ${
+                        isToday ? 'ring-2 ring-blue-500' : ''
+                      } ${hasHours ? 'bg-blue-50' : ''}`}
                     >
                       <div className="text-sm font-medium mb-1">
-                        {format(day, 'd')}
+                        {day.getDate()}
                       </div>
                       
-                      {isCurrentMonth && (
-                        <div className="space-y-1">
-                          {/* Regular Hours */}
-                          <div className="flex items-center space-x-1">
-                            <span className="text-xs text-gray-500">Reg:</span>
-                            <Input
-                              type="number"
-                              step="0.25"
-                              min="0"
-                              max="24"
-                              value={entry.regularHours || ''}
-                              onChange={(e) => updateEntry(dateStr, 'regularHours', parseFloat(e.target.value) || 0)}
-                              className="h-6 text-xs p-1"
-                              placeholder="0"
-                            />
-                          </div>
-                          
-                          {/* Overtime Hours */}
-                          <div className="flex items-center space-x-1">
-                            <span className="text-xs text-gray-500">OT:</span>
-                            <Input
-                              type="number"
-                              step="0.25"
-                              min="0"
-                              max="24"
-                              value={entry.overtimeHours || ''}
-                              onChange={(e) => updateEntry(dateStr, 'overtimeHours', parseFloat(e.target.value) || 0)}
-                              className="h-6 text-xs p-1"
-                              placeholder="0"
-                            />
-                          </div>
-                          
-                          {/* Extra Hours */}
-                          <div className="flex items-center space-x-1">
-                            <span className="text-xs text-gray-500">Ex:</span>
-                            <Input
-                              type="number"
-                              step="0.25"
-                              min="0"
-                              max="24"
-                              value={entry.extraHours || ''}
-                              onChange={(e) => updateEntry(dateStr, 'extraHours', parseFloat(e.target.value) || 0)}
-                              className="h-6 text-xs p-1"
-                              placeholder="0"
-                            />
-                          </div>
-                          
-                          {/* Leave Hours */}
-                          <div className="flex items-center space-x-1">
-                            <span className="text-xs text-gray-500">Lv:</span>
-                            <Input
-                              type="number"
-                              step="0.25"
-                              min="0"
-                              max="24"
-                              value={entry.leaveHours || ''}
-                              onChange={(e) => updateEntry(dateStr, 'leaveHours', parseFloat(e.target.value) || 0)}
-                              className="h-6 text-xs p-1"
-                              placeholder="0"
-                            />
-                          </div>
-                          
-                          {/* Leave Type */}
-                          {entry.leaveHours > 0 && (
-                            <Select value={entry.leaveType} onValueChange={(value) => updateEntry(dateStr, 'leaveType', value)}>
-                              <SelectTrigger className="h-6 text-xs">
-                                <SelectValue placeholder="Type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {leaveTypes.map((type) => (
-                                  <SelectItem key={type.value} value={type.value}>
-                                    {type.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
+                      <div className="space-y-1">
+                        {/* Regular Hours */}
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-gray-500">Reg:</span>
+                          <Input
+                            type="number"
+                            step="0.25"
+                            min="0"
+                            max="24"
+                            value={entry.regularHours || ''}
+                            onChange={(e) => updateEntry(dateStr, 'regularHours', parseFloat(e.target.value) || 0)}
+                            className="h-6 text-xs p-1"
+                            placeholder="0"
+                          />
                         </div>
-                      )}
+                        
+                        {/* Overtime Hours */}
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-gray-500">OT:</span>
+                          <Input
+                            type="number"
+                            step="0.25"
+                            min="0"
+                            max="24"
+                            value={entry.overtimeHours || ''}
+                            onChange={(e) => updateEntry(dateStr, 'overtimeHours', parseFloat(e.target.value) || 0)}
+                            className="h-6 text-xs p-1"
+                            placeholder="0"
+                          />
+                        </div>
+                        
+                        {/* Extra Hours */}
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-gray-500">Ex:</span>
+                          <Input
+                            type="number"
+                            step="0.25"
+                            min="0"
+                            max="24"
+                            value={entry.extraHours || ''}
+                            onChange={(e) => updateEntry(dateStr, 'extraHours', parseFloat(e.target.value) || 0)}
+                            className="h-6 text-xs p-1"
+                            placeholder="0"
+                          />
+                        </div>
+                        
+                        {/* Leave Hours */}
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-gray-500">Lv:</span>
+                          <Input
+                            type="number"
+                            step="0.25"
+                            min="0"
+                            max="24"
+                            value={entry.leaveHours || ''}
+                            onChange={(e) => updateEntry(dateStr, 'leaveHours', parseFloat(e.target.value) || 0)}
+                            className="h-6 text-xs p-1"
+                            placeholder="0"
+                          />
+                        </div>
+                        
+                        {/* Leave Type */}
+                        {entry.leaveHours > 0 && (
+                          <Select value={entry.leaveType} onValueChange={(value) => updateEntry(dateStr, 'leaveType', value)}>
+                            <SelectTrigger className="h-6 text-xs">
+                              <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leaveTypes.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  {type.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -435,34 +414,6 @@ export default function MonthlyTimecard() {
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">{totals.total}</div>
                   <div className="text-sm text-gray-500">Total Hours</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Status and Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Timecard Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Badge variant={timecardData?.status === 'approved' ? 'default' : 'secondary'}>
-                    {timecardData?.status || 'Draft'}
-                  </Badge>
-                  <span className="text-sm text-gray-500">
-                    Pay Period: {format(new Date(timecardData?.payPeriodStart || ''), 'MMM dd')} - {format(new Date(timecardData?.payPeriodEnd || ''), 'MMM dd, yyyy')}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                  <Button size="sm">
-                    Submit for Approval
-                  </Button>
                 </div>
               </div>
             </CardContent>
