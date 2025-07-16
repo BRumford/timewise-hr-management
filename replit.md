@@ -324,6 +324,15 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Grand total calculations included in exported data for payroll processing verification
   - School districts can now easily export payroll data for accounting and compliance purposes
 
+- Added Site Filter for Monthly Timecard Employee Selection (July 16, 2025)
+  - Implemented site/location dropdown filter in monthly timecard page setup section
+  - Filter displays "All Sites" option plus unique department/site values from employee records
+  - Employee dropdown now shows filtered employees based on selected site for easier navigation
+  - Automatically resets employee selection when site filter changes to prevent invalid selections
+  - Secretaries can now filter employees by their specific site instead of scrolling through hundreds of employees
+  - Three-column setup layout accommodates site filter, employee selection, and template selection
+  - Improves workflow efficiency for district secretaries managing multiple school sites
+
 - Added Payroll Processing Section to Time Cards with Automatic Calculation (July 16, 2025)
   - Created comprehensive Payroll Processing section for admin-approved and payroll-processed time cards
   - Added five new database fields: payroll_addon, payroll_units, payroll_rate, payroll_total, payroll_processing_notes
