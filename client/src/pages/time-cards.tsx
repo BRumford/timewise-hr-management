@@ -19,6 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import type { TimeCard, Employee } from "@shared/schema";
 import { z } from "zod";
+import { useLocation } from "wouter";
 
 const timeCardFormSchema = insertTimeCardSchema.extend({
   date: z.string(),
@@ -320,6 +321,7 @@ export default function TimeCards() {
   const [endDate, setEndDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"certificated" | "classified">("certificated");
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const { data: timeCards = [], isLoading } = useQuery({
     queryKey: ["/api/time-cards"],
@@ -588,17 +590,19 @@ export default function TimeCards() {
             <Download className="mr-2 h-4 w-4" />
             {exportTimeCards.isPending ? "Exporting..." : "Export for Accounting"}
           </Button>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Time Card
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Create New Time Card</DialogTitle>
-            </DialogHeader>
+          <Button onClick={() => navigate("/monthly-timecard")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Time Card
+          </Button>
+        </div>
+      </div>
+
+      {/* Dialog for creating individual time cards (keeping for reference) */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create New Time Card</DialogTitle>
+          </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -725,8 +729,6 @@ export default function TimeCards() {
             </Form>
           </DialogContent>
         </Dialog>
-        </div>
-      </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
