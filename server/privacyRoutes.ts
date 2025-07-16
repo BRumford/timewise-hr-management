@@ -40,10 +40,15 @@ router.get("/privacy-policies/active", async (req, res) => {
 
 router.post("/privacy-policies", async (req: any, res) => {
   try {
-    const validatedData = insertPrivacyPolicySchema.parse({
+    // Transform string dates to Date objects
+    const requestData = {
       ...req.body,
-      createdBy: req.user.id
-    });
+      effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
+      expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : undefined,
+      createdBy: req.user?.id || 'system'
+    };
+    
+    const validatedData = insertPrivacyPolicySchema.parse(requestData);
     const policy = await privacyService.createPrivacyPolicy(validatedData);
     res.status(201).json(policy);
   } catch (error) {
@@ -55,7 +60,14 @@ router.post("/privacy-policies", async (req: any, res) => {
 router.put("/privacy-policies/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const validatedData = insertPrivacyPolicySchema.partial().parse(req.body);
+    // Transform string dates to Date objects
+    const requestData = {
+      ...req.body,
+      effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
+      expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : undefined,
+    };
+    
+    const validatedData = insertPrivacyPolicySchema.partial().parse(requestData);
     const policy = await privacyService.updatePrivacyPolicy(id, validatedData);
     res.json(policy);
   } catch (error) {
@@ -90,10 +102,15 @@ router.get("/terms-of-service/active", async (req, res) => {
 
 router.post("/terms-of-service", async (req: any, res) => {
   try {
-    const validatedData = insertTermsOfServiceSchema.parse({
+    // Transform string dates to Date objects
+    const requestData = {
       ...req.body,
-      createdBy: req.user.id
-    });
+      effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
+      expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : undefined,
+      createdBy: req.user?.id || 'system'
+    };
+    
+    const validatedData = insertTermsOfServiceSchema.parse(requestData);
     const terms = await privacyService.createTermsOfService(validatedData);
     res.status(201).json(terms);
   } catch (error) {
@@ -105,7 +122,14 @@ router.post("/terms-of-service", async (req: any, res) => {
 router.put("/terms-of-service/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const validatedData = insertTermsOfServiceSchema.partial().parse(req.body);
+    // Transform string dates to Date objects
+    const requestData = {
+      ...req.body,
+      effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : undefined,
+      expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : undefined,
+    };
+    
+    const validatedData = insertTermsOfServiceSchema.partial().parse(requestData);
     const terms = await privacyService.updateTermsOfService(id, validatedData);
     res.json(terms);
   } catch (error) {
