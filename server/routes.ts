@@ -16,6 +16,8 @@ import {
 import { systemHealthMonitor } from "./monitoring/systemHealth";
 import { emailAlerts } from "./emailAlerts";
 import { dataRetentionMonitor } from "./monitoring/dataRetention";
+import { storageMonitor } from "./monitoring/storageMonitor";
+import { dataArchiver } from "./monitoring/dataArchiver";
 
 // Simple authentication middleware for demo purposes
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
@@ -2803,6 +2805,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       handleCriticalError(error as Error, 'Failed to get retention policies');
       res.status(500).json({ message: "Failed to get retention policies", error: (error as Error).message });
+    }
+  }));
+
+  // Storage monitoring endpoints
+  app.get("/api/system/storage-usage", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const usage = await storageMonitor.getStorageUsage();
+      res.json(usage);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get storage usage');
+      res.status(500).json({ message: "Failed to get storage usage", error: (error as Error).message });
+    }
+  }));
+
+  app.get("/api/system/archive-candidates", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const candidates = await storageMonitor.getArchiveCandidates();
+      res.json(candidates);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get archive candidates');
+      res.status(500).json({ message: "Failed to get archive candidates", error: (error as Error).message });
+    }
+  }));
+
+  app.get("/api/system/storage-alerts", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const alerts = await storageMonitor.getStorageAlerts();
+      res.json(alerts);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get storage alerts');
+      res.status(500).json({ message: "Failed to get storage alerts", error: (error as Error).message });
+    }
+  }));
+
+  // Data archiving endpoints
+  app.get("/api/system/archive-config", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const config = await dataArchiver.getArchiveConfig();
+      res.json(config);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get archive config');
+      res.status(500).json({ message: "Failed to get archive config", error: (error as Error).message });
+    }
+  }));
+
+  app.post("/api/system/archive-config", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const updatedConfig = await dataArchiver.updateArchiveConfig(req.body);
+      res.json(updatedConfig);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to update archive config');
+      res.status(500).json({ message: "Failed to update archive config", error: (error as Error).message });
+    }
+  }));
+
+  app.post("/api/system/archive-records", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const { category, recordIds } = req.body;
+      const job = await dataArchiver.createArchiveJob(category, recordIds);
+      res.json(job);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to create archive job');
+      res.status(500).json({ message: "Failed to create archive job", error: (error as Error).message });
+    }
+  }));
+
+  app.get("/api/system/archive-jobs", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const jobs = await dataArchiver.getArchiveJobs();
+      res.json(jobs);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get archive jobs');
+      res.status(500).json({ message: "Failed to get archive jobs", error: (error as Error).message });
+    }
+  }));
+
+  app.post("/api/system/run-archiving", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const result = await dataArchiver.runAutomaticArchiving();
+      res.json(result);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to run archiving');
+      res.status(500).json({ message: "Failed to run archiving", error: (error as Error).message });
+    }
+  }));
+
+  app.get("/api/system/archive-estimates", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const estimates = await dataArchiver.estimateArchivingSavings();
+      res.json(estimates);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get archive estimates');
+      res.status(500).json({ message: "Failed to get archive estimates", error: (error as Error).message });
+    }
+  }));
+
+  // Storage estimation endpoint
+  app.post("/api/system/estimate-storage", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const { employeeCount } = req.body;
+      const estimate = await dataRetentionMonitor.estimateStorageForEmployees(employeeCount);
+      res.json(estimate);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to estimate storage');
+      res.status(500).json({ message: "Failed to estimate storage", error: (error as Error).message });
     }
   }));
 

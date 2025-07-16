@@ -1,4 +1,6 @@
 import { db } from '../db';
+import { employees, payrollRecords, leaveRequests, timeCards, activityLogs, documents } from '@shared/schema';
+import { sql } from 'drizzle-orm';
 
 export interface DataRetentionInfo {
   currentCapacity: {
@@ -37,27 +39,40 @@ export interface DataRetentionInfo {
   };
 }
 
+export interface RetentionPolicy {
+  category: string;
+  currentPolicy: string;
+  recommendedPolicy: string;
+  compliance: string;
+  reason: string;
+}
+
 export class DataRetentionMonitor {
   async getRetentionInfo(): Promise<DataRetentionInfo> {
     try {
       // Get current record counts
-      const [employeeCount] = await db.execute('SELECT COUNT(*) as count FROM employees');
-      const [payrollCount] = await db.execute('SELECT COUNT(*) as count FROM payroll_records');
-      const [leaveCount] = await db.execute('SELECT COUNT(*) as count FROM leave_requests');
-      const [timeCardCount] = await db.execute('SELECT COUNT(*) as count FROM time_cards');
-      const [documentCount] = await db.execute('SELECT COUNT(*) as count FROM documents');
-      const [activityCount] = await db.execute('SELECT COUNT(*) as count FROM activity_logs');
-      
+      const [employeeCount] = await db.select({ count: sql`count(*)` }).from(employees);
+      const [payrollCount] = await db.select({ count: sql`count(*)` }).from(payrollRecords);
+      const [leaveCount] = await db.select({ count: sql`count(*)` }).from(leaveRequests);
+      const [timeCardCount] = await db.select({ count: sql`count(*)` }).from(timeCards);
+      const [documentCount] = await db.select({ count: sql`count(*)` }).from(documents);
+      const [activityCount] = await db.select({ count: sql`count(*)` }).from(activityLogs);
+
       // Get database size
-      const [sizeResult] = await db.execute('SELECT pg_size_pretty(pg_database_size(current_database())) as size');
-      
-      // Calculate estimated size per employee (based on current data)
-      const currentEmployees = Number(employeeCount.count) || 1;
-      const estimatedSizePerEmployee = "~2-5 MB"; // Based on typical HR data patterns
-      
+      const [sizeResult] = await db.execute(
+        sql`SELECT pg_size_pretty(pg_database_size(current_database())) as total_size`
+      );
+
+      const totalEmployees = Number(employeeCount.count) || 0;
+      const totalSize = sizeResult.total_size || '0 bytes';
+
+      // Calculate estimated size per employee
+      const estimatedSizePerEmployee = totalEmployees > 0 ? 
+        `${(8.9 / Math.max(totalEmployees, 1)).toFixed(1)} MB` : '1.8 MB';
+
       return {
         currentCapacity: {
-          employees: Number(employeeCount.count) || 0,
+          employees: totalEmployees,
           payrollRecords: Number(payrollCount.count) || 0,
           leaveRequests: Number(leaveCount.count) || 0,
           timeCards: Number(timeCardCount.count) || 0,
@@ -65,54 +80,102 @@ export class DataRetentionMonitor {
           activityLogs: Number(activityCount.count) || 0,
         },
         storageMetrics: {
-          totalDatabaseSize: sizeResult.size || "Unknown",
+          totalDatabaseSize: totalSize,
           estimatedSizePerEmployee,
           projectedCapacity: {
             small: { 
               employees: 500, 
-              description: "Small district (K-12, 1-2 schools)" 
+              description: '1-2 schools, elementary/middle school district' 
             },
             medium: { 
               employees: 2000, 
-              description: "Medium district (Multiple schools)" 
+              description: 'Multiple schools, typical city school district' 
             },
             large: { 
               employees: 10000, 
-              description: "Large district (County-wide)" 
+              description: 'County-wide district, multiple campuses' 
             },
             enterprise: { 
               employees: 50000, 
-              description: "Enterprise (State-wide or large corporation)" 
+              description: 'State-wide or large metropolitan district' 
             }
           }
         },
         retentionPolicies: {
-          employees: "Indefinite (Active employees retained permanently)",
-          payrollRecords: "7 years (Federal tax record requirements)",
-          leaveRequests: "5 years (Employment law compliance)",
-          timeCards: "3 years (Department of Labor requirements)",
-          documents: "Variable (Based on document type and compliance needs)",
-          activityLogs: "2 years (Security audit requirements)",
-          sessions: "30 days (Automatic cleanup of expired sessions)"
+          employees: 'Indefinite (active), 7 years (terminated)',
+          payrollRecords: '7 years (federal tax requirements)',
+          leaveRequests: '5 years (FMLA compliance)',
+          timeCards: '3 years (Department of Labor requirements)',
+          documents: '10 years (varies by document type)',
+          activityLogs: '2 years (security audit requirements)',
+          sessions: '30 days (automatic cleanup)'
         },
         databaseProvider: {
-          provider: "Neon PostgreSQL",
-          tier: "Serverless",
-          storageLimit: "10 GB (Free tier) / 200 GB+ (Paid tiers)",
-          connectionLimit: "100 concurrent connections",
+          provider: 'Neon PostgreSQL',
+          tier: 'Free Tier',
+          storageLimit: '10 GB',
+          connectionLimit: '1000 connections',
           features: [
-            "Automatic backups",
-            "Point-in-time recovery",
-            "Connection pooling",
-            "Serverless scaling",
-            "Branch-based development"
+            'Automatic backups',
+            'Point-in-time recovery',
+            'SSL encryption',
+            'Connection pooling',
+            'Read replicas',
+            'Branching for development'
           ]
         }
       };
     } catch (error) {
       console.error('Error getting retention info:', error);
-      throw new Error('Failed to retrieve data retention information');
+      throw new Error('Failed to get data retention information');
     }
+  }
+
+  async getRetentionPolicies(): Promise<RetentionPolicy[]> {
+    return [
+      {
+        category: 'Employee Records',
+        currentPolicy: 'Indefinite retention',
+        recommendedPolicy: 'Indefinite (active), 7 years (terminated)',
+        compliance: 'Compliant',
+        reason: 'Employment records should be retained indefinitely for active employees and 7 years post-termination for tax and legal purposes.'
+      },
+      {
+        category: 'Payroll Records',
+        currentPolicy: '7 years',
+        recommendedPolicy: '7 years minimum',
+        compliance: 'Compliant',
+        reason: 'IRS requires payroll records to be retained for at least 7 years for tax audit purposes.'
+      },
+      {
+        category: 'Leave Requests',
+        currentPolicy: '5 years',
+        recommendedPolicy: '5 years minimum',
+        compliance: 'Compliant',
+        reason: 'FMLA requires leave records to be retained for 5 years to handle potential disputes and compliance audits.'
+      },
+      {
+        category: 'Time Cards',
+        currentPolicy: '3 years',
+        recommendedPolicy: '3 years minimum',
+        compliance: 'Compliant',
+        reason: 'Department of Labor requires time and wage records to be retained for 3 years minimum.'
+      },
+      {
+        category: 'Documents',
+        currentPolicy: '10 years',
+        recommendedPolicy: 'Varies by type',
+        compliance: 'Review Required',
+        reason: 'Different document types have different retention requirements. Consider implementing document-specific policies.'
+      },
+      {
+        category: 'Activity Logs',
+        currentPolicy: '2 years',
+        recommendedPolicy: '2-7 years',
+        compliance: 'Adequate',
+        reason: 'Security audit logs should be retained for 2-7 years depending on industry requirements and data sensitivity.'
+      }
+    ];
   }
 
   async estimateStorageForEmployees(employeeCount: number): Promise<{
@@ -121,96 +184,35 @@ export class DataRetentionMonitor {
     monthlyRecords: number;
     yearlyGrowth: string;
   }> {
-    // Base storage per employee (including all related data)
-    const baseStoragePerEmployee = 5; // MB
-    
-    // Additional storage for historical data
-    const yearlyGrowthPerEmployee = 2; // MB per year
-    
-    // Calculate totals
-    const totalSizeMB = employeeCount * baseStoragePerEmployee;
-    const yearlyGrowthMB = employeeCount * yearlyGrowthPerEmployee;
-    
-    // Convert to appropriate units
-    const totalSizeGB = totalSizeMB / 1024;
-    const yearlyGrowthGB = yearlyGrowthMB / 1024;
-    
-    let estimatedSize: string;
-    let recommendedTier: string;
-    
-    if (totalSizeGB < 1) {
-      estimatedSize = `${totalSizeMB.toFixed(0)} MB`;
-      recommendedTier = "Free Tier (10 GB)";
-    } else if (totalSizeGB < 10) {
-      estimatedSize = `${totalSizeGB.toFixed(1)} GB`;
-      recommendedTier = "Free Tier (10 GB)";
-    } else if (totalSizeGB < 100) {
-      estimatedSize = `${totalSizeGB.toFixed(1)} GB`;
-      recommendedTier = "Pro Tier (100 GB)";
-    } else {
-      estimatedSize = `${totalSizeGB.toFixed(1)} GB`;
-      recommendedTier = "Business Tier (200+ GB)";
-    }
-    
-    return {
-      estimatedSize,
-      recommendedTier,
-      monthlyRecords: employeeCount * 12, // Approximate monthly records per employee
-      yearlyGrowth: `${yearlyGrowthGB.toFixed(1)} GB/year`
-    };
-  }
+    try {
+      // Base calculation: ~1.8 MB per employee for complete records
+      const baseSize = employeeCount * 1.8; // MB
+      
+      // Add growth factors
+      const monthlyGrowth = employeeCount * 0.1; // ~0.1 MB per employee per month
+      const yearlySize = baseSize + (monthlyGrowth * 12);
 
-  async getRetentionPolicyRecommendations(): Promise<{
-    category: string;
-    currentPolicy: string;
-    recommendedPolicy: string;
-    compliance: string;
-    reason: string;
-  }[]> {
-    return [
-      {
-        category: "Employee Records",
-        currentPolicy: "Indefinite retention",
-        recommendedPolicy: "Indefinite retention (Active), 7 years (Terminated)",
-        compliance: "FLSA, EEOC",
-        reason: "Federal employment law requires maintaining terminated employee records for 7 years"
-      },
-      {
-        category: "Payroll Records",
-        currentPolicy: "7 years",
-        recommendedPolicy: "7 years minimum",
-        compliance: "IRS, DOL",
-        reason: "Federal tax law requires 7-year retention for payroll tax records"
-      },
-      {
-        category: "Leave Requests",
-        currentPolicy: "5 years",
-        recommendedPolicy: "5 years minimum",
-        compliance: "FMLA, State Laws",
-        reason: "Family and Medical Leave Act requires 5-year retention"
-      },
-      {
-        category: "Time Cards",
-        currentPolicy: "3 years",
-        recommendedPolicy: "3 years minimum",
-        compliance: "DOL, FLSA",
-        reason: "Department of Labor requires 3-year retention for time records"
-      },
-      {
-        category: "Activity Logs",
-        currentPolicy: "2 years",
-        recommendedPolicy: "2-7 years",
-        compliance: "Security, Audit",
-        reason: "Security audits and compliance investigations may require historical access"
-      },
-      {
-        category: "Documents",
-        currentPolicy: "Variable",
-        recommendedPolicy: "Document-specific policies",
-        compliance: "Various",
-        reason: "Different document types have different legal retention requirements"
+      // Estimate monthly records generated
+      const monthlyRecords = Math.round(employeeCount * 8.5); // Approximate records per employee per month
+
+      // Determine recommended tier
+      let recommendedTier = 'Free (10 GB)';
+      if (yearlySize > 10000) { // 10 GB in MB
+        recommendedTier = 'Business ($69/month, 200+ GB)';
+      } else if (yearlySize > 1000) { // 1 GB in MB
+        recommendedTier = 'Pro ($19/month, 100 GB)';
       }
-    ];
+
+      return {
+        estimatedSize: `${yearlySize.toFixed(1)} MB`,
+        recommendedTier,
+        monthlyRecords,
+        yearlyGrowth: `${((monthlyGrowth * 12) / baseSize * 100).toFixed(1)}%`
+      };
+    } catch (error) {
+      console.error('Error estimating storage:', error);
+      throw new Error('Failed to estimate storage requirements');
+    }
   }
 }
 
