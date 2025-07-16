@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Calendar, 
   Clock, 
@@ -62,7 +63,212 @@ interface Employee {
   employeeType: string;
 }
 
-export default function AdminTimecardApproval() {
+// Employee Timecard Approval Component
+function EmployeeTimecardApproval() {
+  const [selectedTimecard, setSelectedTimecard] = useState<MonthlyTimecard | null>(null);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvalNotes, setApprovalNotes] = useState('');
+  
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Fetch employee's own timecards only
+  const { data: timeCards = [] } = useQuery({
+    queryKey: ["/api/time-cards"],
+  });
+
+  // Filter to only timecards awaiting employee approval
+  const pendingTimecards = timeCards.filter((timecard: any) => 
+    timecard.status === 'submitted_to_employee' || timecard.currentApprovalStage === 'employee'
+  );
+
+  // Employee approve timecard mutation
+  const employeeApproveTimecard = useMutation({
+    mutationFn: async (data: { id: number; notes: string }) => {
+      return await apiRequest(`/api/time-cards/${data.id}/approve-employee`, "POST", { 
+        employeeId: user?.employee?.id, 
+        notes: data.notes 
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Timecard approved successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/time-cards"] });
+      setApprovalDialogOpen(false);
+      setApprovalNotes('');
+      setSelectedTimecard(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve timecard",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleApprove = () => {
+    if (!selectedTimecard) return;
+    employeeApproveTimecard.mutate({
+      id: selectedTimecard.id,
+      notes: approvalNotes
+    });
+  };
+
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Employee Timecard Approval</h1>
+        <p className="text-gray-600">Review and approve your own timecards</p>
+      </div>
+
+      {/* Statistics Card */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{pendingTimecards.length}</div>
+              <div className="text-sm text-gray-500">Pending Approval</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{timeCards.filter((t: any) => t.status === 'employee_approved').length}</div>
+              <div className="text-sm text-gray-500">Approved</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-600">{timeCards.length}</div>
+              <div className="text-sm text-gray-500">Total</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pending Timecards */}
+      <div className="space-y-4">
+        {pendingTimecards.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Timecards</h3>
+              <p className="text-gray-500">You have no timecards awaiting your approval.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          pendingTimecards.map((timecard: any) => (
+            <Card key={timecard.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">
+                      Timecard for {format(new Date(timecard.date), "MMMM dd, yyyy")}
+                    </h3>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {timecard.totalHours} hours
+                      </div>
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {format(new Date(timecard.date), "MMM dd, yyyy")}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Pending Approval
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Clock In:</span>
+                    <span className="ml-2">{timecard.clockIn ? format(new Date(timecard.clockIn), "HH:mm") : "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Clock Out:</span>
+                    <span className="ml-2">{timecard.clockOut ? format(new Date(timecard.clockOut), "HH:mm") : "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Break Start:</span>
+                    <span className="ml-2">{timecard.breakStart ? format(new Date(timecard.breakStart), "HH:mm") : "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Break End:</span>
+                    <span className="ml-2">{timecard.breakEnd ? format(new Date(timecard.breakEnd), "HH:mm") : "N/A"}</span>
+                  </div>
+                </div>
+
+                {timecard.notes && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium text-gray-700">Notes:</span>
+                    <p className="text-sm text-gray-600 mt-1">{timecard.notes}</p>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedTimecard(timecard)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedTimecard(timecard);
+                      setApprovalDialogOpen(true);
+                    }}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    Approve
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Approval Dialog */}
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Approve Timecard</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="approval-notes">Approval Notes (Optional)</Label>
+              <Textarea
+                id="approval-notes"
+                placeholder="Add any notes about this timecard approval..."
+                value={approvalNotes}
+                onChange={(e) => setApprovalNotes(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleApprove}
+                disabled={employeeApproveTimecard.isPending}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {employeeApproveTimecard.isPending ? "Approving..." : "Approve"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Admin Timecard Approval Component
+function AdminTimecardApproval() {
   const [selectedSite, setSelectedSite] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('submitted_to_admin');
   const [selectedTimecard, setSelectedTimecard] = useState<MonthlyTimecard | null>(null);
@@ -788,4 +994,15 @@ export default function AdminTimecardApproval() {
       </Dialog>
     </div>
   );
+}
+// Main component that switches between employee and admin views
+export default function TimeCards() {
+  const { user } = useAuth();
+  
+  // Show employee view for employee role, admin view for admin/hr roles
+  if (user?.role === "employee") {
+    return <EmployeeTimecardApproval />;
+  } else {
+    return <AdminTimecardApproval />;
+  }
 }
