@@ -507,3 +507,11 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Form supports all employee types (teacher, administrator, support staff, substitute)
   - Includes optional fields like certifications, supervisor ID, and education level
   - Successfully tested employee creation with immediate database persistence
+
+- Fixed Onboarding Workflow Creation API Request Errors (July 16, 2025)
+  - Resolved "failed to execute" error in onboarding workflow creation
+  - Fixed API request parameter order in startWorkflowMutation, deleteFormMutation, and createFormMutation
+  - Updated all apiRequest calls to use correct format: apiRequest(url, method, data)
+  - Onboarding workflow creation now works properly with graceful OpenAI quota fallback
+  - System successfully creates workflows with default checklist when AI generation fails
+  - All onboarding mutations now function correctly with proper error handling
