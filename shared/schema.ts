@@ -35,6 +35,12 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("employee"), // hr, admin, employee
   passwordHash: varchar("password_hash"), // For password authentication
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaSecret: varchar("mfa_secret"),
+  lastLoginAt: timestamp("last_login_at"),
+  failedLoginAttempts: integer("failed_login_attempts").default(0),
+  accountLocked: boolean("account_locked").default(false),
+  lockedUntil: timestamp("locked_until"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -930,3 +936,115 @@ export type InsertArchivedEmployee = z.infer<typeof insertArchivedEmployeeSchema
 export type ArchivedEmployee = typeof archivedEmployees.$inferSelect;
 export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
 export type PersonnelFile = typeof personnelFiles.$inferSelect;
+
+// Security and audit logging tables
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  action: varchar("action").notNull(),
+  resource: varchar("resource").notNull(),
+  resourceId: varchar("resource_id"),
+  details: jsonb("details"),
+  ipAddress: varchar("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  severity: varchar("severity").notNull().default("MEDIUM"), // LOW, MEDIUM, HIGH, CRITICAL
+  success: boolean("success").default(true),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const securityEvents = pgTable("security_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  action: varchar("action").notNull(),
+  ipAddress: varchar("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  details: jsonb("details"),
+  riskLevel: varchar("risk_level").notNull().default("MEDIUM"), // LOW, MEDIUM, HIGH, CRITICAL
+  resolved: boolean("resolved").default(false),
+  resolvedBy: varchar("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const securityAlerts = pgTable("security_alerts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  action: varchar("action").notNull(),
+  riskLevel: varchar("risk_level").notNull(),
+  ipAddress: varchar("ip_address").notNull(),
+  details: jsonb("details"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  status: varchar("status").notNull().default("PENDING"), // PENDING, ACKNOWLEDGED, RESOLVED
+  acknowledgedBy: varchar("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedBy: varchar("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("session_id").notNull().unique(),
+  userId: varchar("user_id").notNull(),
+  ipAddress: varchar("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  active: boolean("active").default(true),
+  lastActivity: timestamp("last_activity").defaultNow(),
+});
+
+export const secureFiles = pgTable("secure_files", {
+  id: serial("id").primaryKey(),
+  filename: varchar("filename").notNull(),
+  originalName: varchar("original_name").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  size: integer("size").notNull(),
+  encryptedPath: varchar("encrypted_path").notNull(),
+  checksum: varchar("checksum").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  scanStatus: varchar("scan_status").notNull().default("PENDING"), // PENDING, CLEAN, INFECTED, QUARANTINED
+  fileCategory: varchar("file_category").notNull(), // PERSONNEL, PAYROLL, MEDICAL, PROFILE
+  linkedResourceId: varchar("linked_resource_id"), // ID of linked employee, payroll record, etc.
+  accessCount: integer("access_count").default(0),
+  lastAccessed: timestamp("last_accessed"),
+  retentionDate: timestamp("retention_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dataEncryptionKeys = pgTable("data_encryption_keys", {
+  id: serial("id").primaryKey(),
+  keyName: varchar("key_name").notNull().unique(),
+  encryptedKey: varchar("encrypted_key").notNull(),
+  keyVersion: integer("key_version").notNull().default(1),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  rotatedAt: timestamp("rotated_at"),
+  active: boolean("active").default(true),
+  expiresAt: timestamp("expires_at"),
+});
+
+// Insert schemas and types for security tables
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export const insertSecurityEventSchema = createInsertSchema(securityEvents).omit({ id: true, createdAt: true });
+export const insertSecurityAlertSchema = createInsertSchema(securityAlerts).omit({ id: true, createdAt: true });
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ id: true, createdAt: true });
+export const insertSecureFileSchema = createInsertSchema(secureFiles).omit({ id: true, createdAt: true });
+export const insertDataEncryptionKeySchema = createInsertSchema(dataEncryptionKeys).omit({ id: true, createdAt: true });
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
+export type SecurityEvent = typeof securityEvents.$inferSelect;
+export type InsertSecurityAlert = z.infer<typeof insertSecurityAlertSchema>;
+export type SecurityAlert = typeof securityAlerts.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertSecureFile = z.infer<typeof insertSecureFileSchema>;
+export type SecureFile = typeof secureFiles.$inferSelect;
+export type InsertDataEncryptionKey = z.infer<typeof insertDataEncryptionKeySchema>;
+export type DataEncryptionKey = typeof dataEncryptionKeys.$inferSelect;

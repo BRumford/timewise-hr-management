@@ -20,6 +20,12 @@ import {
   extraPayRequests,
   districtSettings,
   payPeriods,
+  auditLogs,
+  securityEvents,
+  securityAlerts,
+  userSessions,
+  secureFiles,
+  dataEncryptionKeys,
   type User,
   type UpsertUser,
   type Employee,
@@ -73,6 +79,18 @@ import {
   type CustomFieldLabel,
   type InsertCustomFieldLabel,
   passwordResetTokens,
+  type AuditLog,
+  type InsertAuditLog,
+  type SecurityEvent,
+  type InsertSecurityEvent,
+  type SecurityAlert,
+  type InsertSecurityAlert,
+  type UserSession,
+  type InsertUserSession,
+  type SecureFile,
+  type InsertSecureFile,
+  type DataEncryptionKey,
+  type InsertDataEncryptionKey,
   type PasswordResetToken,
   type InsertPasswordResetToken,
 } from "@shared/schema";
@@ -1911,6 +1929,123 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  // Security-related methods
+  async createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog> {
+    const [log] = await db.insert(auditLogs).values(auditLog).returning();
+    return log;
+  }
+
+  async getAuditLogs(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    userId?: string;
+    action?: string;
+    resource?: string;
+  }): Promise<AuditLog[]> {
+    let query = db.select().from(auditLogs);
+    
+    const conditions = [];
+    if (filters.startDate) {
+      conditions.push(gte(auditLogs.timestamp, filters.startDate));
+    }
+    if (filters.endDate) {
+      conditions.push(lte(auditLogs.timestamp, filters.endDate));
+    }
+    if (filters.userId) {
+      conditions.push(eq(auditLogs.userId, filters.userId));
+    }
+    if (filters.action) {
+      conditions.push(eq(auditLogs.action, filters.action));
+    }
+    if (filters.resource) {
+      conditions.push(eq(auditLogs.resource, filters.resource));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query.orderBy(desc(auditLogs.timestamp));
+  }
+
+  async createSecurityEvent(securityEvent: InsertSecurityEvent): Promise<SecurityEvent> {
+    const [event] = await db.insert(securityEvents).values(securityEvent).returning();
+    return event;
+  }
+
+  async createSecurityAlert(securityAlert: InsertSecurityAlert): Promise<SecurityAlert> {
+    const [alert] = await db.insert(securityAlerts).values(securityAlert).returning();
+    return alert;
+  }
+
+  async createSession(session: InsertUserSession): Promise<UserSession> {
+    const [newSession] = await db.insert(userSessions).values(session).returning();
+    return newSession;
+  }
+
+  async getSession(sessionId: string): Promise<UserSession | undefined> {
+    const [session] = await db.select().from(userSessions)
+      .where(and(
+        eq(userSessions.sessionId, sessionId),
+        eq(userSessions.active, true),
+        gte(userSessions.expiresAt, new Date())
+      ));
+    return session;
+  }
+
+  async invalidateSession(sessionId: string): Promise<void> {
+    await db.update(userSessions)
+      .set({ active: false })
+      .where(eq(userSessions.sessionId, sessionId));
+  }
+
+  async logSecurityEvent(event: {
+    userId: string;
+    action: string;
+    ipAddress: string;
+    userAgent: string;
+    timestamp: Date;
+  }): Promise<void> {
+    await db.insert(securityEvents).values({
+      userId: event.userId,
+      action: event.action,
+      ipAddress: event.ipAddress,
+      userAgent: event.userAgent,
+      timestamp: event.timestamp,
+      riskLevel: 'MEDIUM'
+    });
+  }
+
+  async isMFARequired(userId: string): Promise<boolean> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return user?.mfaEnabled || false;
+  }
+
+  async verifyMFAToken(userId: string, token: string): Promise<boolean> {
+    // This would integrate with an MFA provider like Google Authenticator
+    // For now, return true for demo purposes
+    return true;
+  }
+
+  async createSecureFile(secureFile: InsertSecureFile): Promise<SecureFile> {
+    const [file] = await db.insert(secureFiles).values(secureFile).returning();
+    return file;
+  }
+
+  async getSecureFile(fileId: number): Promise<SecureFile | undefined> {
+    const [file] = await db.select().from(secureFiles).where(eq(secureFiles.id, fileId));
+    return file;
+  }
+
+  async updateFileAccessCount(fileId: number): Promise<void> {
+    await db.update(secureFiles)
+      .set({ 
+        accessCount: sql`${secureFiles.accessCount} + 1`,
+        lastAccessed: new Date()
+      })
+      .where(eq(secureFiles.id, fileId));
   }
 }
 

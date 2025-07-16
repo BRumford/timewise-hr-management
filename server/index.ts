@@ -8,10 +8,67 @@ import {
   reportAuthErrors, 
   reportAPIErrors 
 } from "./middleware/errorReporting";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
+import { auditMiddleware } from "./security/auditLogger";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Trust proxy for rate limiting
+app.set('trust proxy', 1);
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // For development
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://your-domain.com']
+    : ['http://localhost:5000', 'http://localhost:3000'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+}));
+
+// Rate limiting (more lenient for development)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Much higher limit for development
+  message: {
+    error: 'Too many requests from this IP, please try again later',
+    code: 'RATE_LIMIT_EXCEEDED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for certain paths in development
+    if (process.env.NODE_ENV === 'development') {
+      return req.path.startsWith('/src') || req.path.startsWith('/@') || req.path.includes('vite');
+    }
+    return false;
+  },
+});
+
+app.use(limiter);
+
+// Body parsing with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Audit logging middleware
+app.use(auditMiddleware);
 
 // Add error reporting middleware
 app.use(reportDatabaseErrors);

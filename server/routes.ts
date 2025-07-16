@@ -18,6 +18,7 @@ import { emailAlerts } from "./emailAlerts";
 import { dataRetentionMonitor } from "./monitoring/dataRetention";
 import { storageMonitor } from "./monitoring/storageMonitor";
 import { dataArchiver } from "./monitoring/dataArchiver";
+import { registerSecurityRoutes } from "./security/securityRoutes";
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -3287,6 +3288,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete file" });
     }
   }));
+
+  // Register security routes
+  registerSecurityRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

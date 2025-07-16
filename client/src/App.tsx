@@ -15,6 +15,7 @@ import Documents from "@/pages/documents";
 import Onboarding from "@/pages/onboarding";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
+import SecurityMonitoring from "@/pages/security-monitoring";
 import ExtraPayActivities from "@/pages/extra-pay-activities";
 import Letters from "@/pages/letters";
 import TimecardTemplates from "@/pages/timecard-templates";
@@ -57,6 +58,7 @@ function Router() {
                 <Route path="/letters" component={Letters} />
                 <Route path="/reports" component={Reports} />
                 <Route path="/settings" component={Settings} />
+                <Route path="/security-monitoring" component={SecurityMonitoring} />
                 <Route path="/field-labels" component={FieldLabels} />
                 <Route path="/retirees" component={Retirees} />
                 <Route path="/archived-employees" component={ArchivedEmployees} />
