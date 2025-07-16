@@ -14,17 +14,12 @@ export function useRolePermissions() {
   });
 
   const hasAccess = (pagePath: string): boolean => {
-    // Admin and HR roles have access to everything
-    if (role === 'admin' || role === 'hr') {
-      return true;
-    }
-    
     // Employee role has limited access
     if (role === 'employee') {
       return ['/', '/leave-management', '/time-cards'].includes(pagePath);
     }
     
-    // For other roles, check database permissions
+    // For all other roles (admin, hr, secretary), check database permissions
     const permission = permissions.find((p: RolePermission) => p.pagePath === pagePath);
     return permission ? permission.canAccess : false;
   };

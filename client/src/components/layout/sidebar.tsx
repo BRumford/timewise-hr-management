@@ -75,12 +75,7 @@ export default function Sidebar() {
 
   // Filter menu items based on user role and permissions
   const visibleMenuItems = menuItems.filter(item => {
-    // Admin and HR roles have access to everything by default
-    if (user?.role === 'admin' || user?.role === 'hr') {
-      return true;
-    }
-    
-    // Use role permissions system for other roles
+    // Use role permissions system for all roles
     return hasAccess(item.path);
   }).map(item => {
     // Customize the time-cards label based on user role
