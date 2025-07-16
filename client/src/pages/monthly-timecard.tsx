@@ -48,28 +48,22 @@ const leaveTypes = [
 
 export default function MonthlyTimecard() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
-  const [currentDate, setCurrentDate] = useState(() => {
-    const date = new Date();
-    // Ensure we have a valid date
-    if (isNaN(date.getTime())) {
-      return new Date(2024, 0, 1); // Fallback to Jan 1, 2024
-    }
-    return date;
-  });
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [timecardData, setTimecardData] = useState<MonthlyTimecard | null>(null);
   const { toast } = useToast();
 
-  // Safety check for current date
-  if (!currentDate || isNaN(currentDate.getTime())) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Error: Invalid Date</h1>
-          <p className="mt-2">Please refresh the page to try again.</p>
-        </div>
-      </div>
-    );
-  }
+  // Create a safe date object for the current month
+  const getCurrentDate = () => {
+    try {
+      return new Date(currentYear, currentMonth - 1, 1);
+    } catch (error) {
+      console.error('Error creating date:', error);
+      return new Date(2024, 0, 1);
+    }
+  };
+
+  const currentDate = getCurrentDate();
 
   // Fetch employees for selection
   const { data: employees = [] } = useQuery({
@@ -78,7 +72,7 @@ export default function MonthlyTimecard() {
 
   // Fetch or create monthly timecard for selected employee
   const { data: monthlyTimecard, refetch: refetchTimecard } = useQuery({
-    queryKey: ["/api/monthly-timecard", selectedEmployee, currentDate.getMonth() + 1, currentDate.getFullYear()],
+    queryKey: ["/api/monthly-timecard", selectedEmployee, currentMonth, currentYear],
     enabled: !!selectedEmployee,
   });
 
@@ -182,24 +176,20 @@ export default function MonthlyTimecard() {
 
   // Navigate months
   const previousMonth = () => {
-    try {
-      const newDate = subMonths(currentDate, 1);
-      if (!isNaN(newDate.getTime())) {
-        setCurrentDate(newDate);
-      }
-    } catch (error) {
-      console.error('Error navigating to previous month:', error);
+    if (currentMonth === 1) {
+      setCurrentMonth(12);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
     }
   };
 
   const nextMonth = () => {
-    try {
-      const newDate = addMonths(currentDate, 1);
-      if (!isNaN(newDate.getTime())) {
-        setCurrentDate(newDate);
-      }
-    } catch (error) {
-      console.error('Error navigating to next month:', error);
+    if (currentMonth === 12) {
+      setCurrentMonth(1);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
     }
   };
 
@@ -289,7 +279,7 @@ export default function MonthlyTimecard() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Clock className="h-5 w-5" />
-                  <span>{currentDate && !isNaN(currentDate.getTime()) ? format(currentDate, 'MMMM yyyy') : 'Invalid Date'}</span>
+                  <span>{new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button variant="outline" size="sm" onClick={previousMonth}>
