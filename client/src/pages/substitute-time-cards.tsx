@@ -68,6 +68,7 @@ export default function SubstituteTimeCards() {
   const [timecardData, setTimecardData] = useState<SubstituteTimecardData | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [payrollEntries, setPayrollEntries] = useState<any[]>([]);
+  const [dailyEntries, setDailyEntries] = useState<any[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -145,6 +146,9 @@ export default function SubstituteTimeCards() {
         
         // Initialize payroll entries (10 rows)
         initializePayrollEntries();
+        
+        // Initialize daily entries for the month
+        initializeDailyEntries();
       }
     }
   }, [selectedTemplate, selectedSubstitute, selectedSubstituteData, templates]);
@@ -184,6 +188,39 @@ export default function SubstituteTimeCards() {
       };
       return updated;
     });
+  };
+
+  // Initialize daily entries for the current month
+  const initializeDailyEntries = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    
+    const entries = Array.from({ length: daysInMonth }, (_, index) => {
+      const date = new Date(currentYear, currentMonth, index + 1);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayNumber = String(index + 1).padStart(2, '0');
+      
+      return {
+        date: `${currentMonth + 1}/${dayNumber}`,
+        dayName,
+        code: '',
+        hours: '',
+        personReplaced: '',
+        description: '',
+        funding: '',
+        site: ''
+      };
+    });
+    setDailyEntries(entries);
+  };
+
+  // Update daily entry
+  const updateDailyEntry = (index: number, field: string, value: string) => {
+    setDailyEntries(prev => prev.map((entry, i) => 
+      i === index ? { ...entry, [field]: value } : entry
+    ));
   };
 
   // Save timecard mutation
@@ -634,6 +671,112 @@ export default function SubstituteTimeCards() {
                 </div>
               )}
 
+              {/* Monthly Time Tracking Grid */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                  Monthly Time Record
+                </h3>
+                
+                {/* Time tracking table */}
+                <div className="border border-gray-400 rounded">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Month/Day</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Code</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Hours</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Person Replaced</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Description</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Funding</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Site</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailyEntries.map((entry, index) => (
+                        <tr key={index} className="even:bg-gray-50">
+                          <td className="border border-gray-400 px-2 py-1 text-xs">
+                            <div className="flex items-center space-x-1">
+                              <span className="font-medium">{entry.date}</span>
+                              <span className="text-gray-500">({entry.dayName})</span>
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Select onValueChange={(value) => updateDailyEntry(index, 'code', value)} value={entry.code}>
+                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-1">
+                                <SelectValue placeholder="Code" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {codeOptions.map((option) => (
+                                  <SelectItem key={option.id} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="number"
+                              step="0.25"
+                              value={entry.hours}
+                              onChange={(e) => updateDailyEntry(index, 'hours', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.personReplaced}
+                              onChange={(e) => updateDailyEntry(index, 'personReplaced', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="Name"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.description}
+                              onChange={(e) => updateDailyEntry(index, 'description', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="Description"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Select onValueChange={(value) => updateDailyEntry(index, 'funding', value)} value={entry.funding}>
+                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-1">
+                                <SelectValue placeholder="Funding" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {fundingOptions.map((option) => (
+                                  <SelectItem key={option.id} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Select onValueChange={(value) => updateDailyEntry(index, 'site', value)} value={entry.site}>
+                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-1">
+                                <SelectValue placeholder="Site" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {siteOptions.map((option) => (
+                                  <SelectItem key={option.id} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* Approval Section */}
               {groupedFields.approval && (
                 <div className="mb-6">
@@ -696,21 +839,21 @@ export default function SubstituteTimeCards() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">
-                      {calculateGrandTotal().toFixed(2)}
+                      {dailyEntries.reduce((sum, entry) => sum + (parseFloat(entry.hours) || 0), 0)}
                     </div>
-                    <div className="text-sm text-gray-500">Total Amount</div>
+                    <div className="text-sm text-gray-500">Total Hours</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">
-                      {payrollEntries.filter(entry => entry.units && parseFloat(entry.units) > 0).length}
+                      {dailyEntries.filter(entry => entry.hours && parseFloat(entry.hours) > 0).length}
                     </div>
-                    <div className="text-sm text-gray-500">Entries</div>
+                    <div className="text-sm text-gray-500">Days Worked</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-purple-600">
-                      {new Date().toLocaleDateString()}
+                      {new Date().getMonth() + 1}/{new Date().getFullYear()}
                     </div>
-                    <div className="text-sm text-gray-500">Date</div>
+                    <div className="text-sm text-gray-500">Pay Period</div>
                   </div>
                 </div>
               </div>
