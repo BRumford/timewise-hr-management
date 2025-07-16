@@ -348,8 +348,8 @@ export default function SecurityMonitoring() {
                     <p className="text-muted-foreground">Based on current security posture</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold">{mockAudit.score}%</div>
-                    <Progress value={mockAudit.score} className="w-32 mt-2" />
+                    <div className="text-3xl font-bold">{currentAudit.score}%</div>
+                    <Progress value={currentAudit.score} className="w-32 mt-2" />
                   </div>
                 </div>
 
@@ -358,7 +358,7 @@ export default function SecurityMonitoring() {
                 <div>
                   <h4 className="font-semibold mb-3">Security Findings</h4>
                   <div className="space-y-3">
-                    {mockAudit.findings.map((finding, index) => (
+                    {currentAudit.findings.map((finding, index) => (
                       <div key={index} className="flex items-center justify-between p-3 border rounded">
                         <div className="flex items-center gap-3">
                           <Badge variant={getSeverityBadgeVariant(finding.severity)}>
@@ -384,7 +384,7 @@ export default function SecurityMonitoring() {
                 <div>
                   <h4 className="font-semibold mb-3">Recommendations</h4>
                   <div className="space-y-2">
-                    {mockAudit.recommendations.map((recommendation, index) => (
+                    {currentAudit.recommendations.map((recommendation, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-green-500" />
                         <span>{recommendation}</span>

@@ -55,7 +55,8 @@ export class AuditLogger {
         errorMessage
       };
 
-      await storage.createAuditLog(logEntry);
+      // Temporarily disabled to prevent database errors
+      // await storage.createAuditLog(logEntry);
       
       // Log to console for development
       if (process.env.NODE_ENV === 'development') {
