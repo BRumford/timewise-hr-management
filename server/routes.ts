@@ -1478,6 +1478,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File upload endpoint for onboarding forms
   app.post("/api/onboarding/forms/upload", requireRole(['admin', 'hr']), upload.single('file'), async (req, res) => {
     try {
+      if (!req.body.formData) {
+        return res.status(400).json({ message: "Form data is required" });
+      }
+      
       const formData = JSON.parse(req.body.formData);
       const validatedData = insertOnboardingFormSchema.parse(formData);
 
