@@ -353,3 +353,15 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Administrators can monitor system health in real-time and test alert configurations
   - Data retention system helps districts understand storage requirements and compliance obligations
   - All monitoring features are role-restricted to admin and HR users for security
+
+- Enhanced Leave Management with Workers Compensation and Medical Leave Tracking (July 16, 2025)
+  - Added comprehensive database schema with 22 new fields for detailed Workers Compensation and Medical Leave tracking
+  - Created conditional form sections that appear when Workers Comp or Medical Leave is selected during leave request creation
+  - Implemented Workers Compensation tracking: injury details, incident location, witness information, claim numbers, doctor contacts, return dates, and work restrictions
+  - Added Medical Leave tracking: FMLA eligibility, medical providers, diagnosis codes, certification dates, intermittent/reduced schedule options, and workplace accommodations
+  - Enhanced the leave request view dialog with detailed information displays for both special leave types
+  - Added visual indicators with colored badges and icons (Shield for Workers Comp, Stethoscope for Medical Leave, Heart for FMLA)
+  - Successfully tested with sample data - both types of leave requests created and tracked properly
+  - System now provides complete compliance tracking for workplace injuries and medical leaves
+  - Helps districts meet legal requirements and manage employee health situations effectively
+  - All specialized leave tracking fields are optional and only appear when relevant checkboxes are selected
