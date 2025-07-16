@@ -41,6 +41,10 @@ export const users = pgTable("users", {
   failedLoginAttempts: integer("failed_login_attempts").default(0),
   accountLocked: boolean("account_locked").default(false),
   lockedUntil: timestamp("locked_until"),
+  lastFailedLogin: timestamp("last_failed_login"),
+  mfaBackupCodes: text("mfa_backup_codes"), // JSON string of backup codes
+  passwordChangedAt: timestamp("password_changed_at"),
+  passwordHistory: text("password_history"), // JSON string of previous password hashes
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -393,6 +397,74 @@ export const onboardingFormSubmissions = pgTable("onboarding_form_submissions", 
   reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User sessions table for session management
+export const userSessions = pgTable("user_sessions", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  deviceId: varchar("device_id"),
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at").notNull(),
+  lastAccessedAt: timestamp("last_accessed_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Security events table for monitoring
+export const securityEvents = pgTable("security_events", {
+  id: serial("id").primaryKey(),
+  eventType: varchar("event_type").notNull(),
+  severity: varchar("severity").notNull(), // low, medium, high, critical
+  description: text("description").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  metadata: jsonb("metadata"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Security alerts table
+export const securityAlerts = pgTable("security_alerts", {
+  id: serial("id").primaryKey(),
+  securityEventId: integer("security_event_id").references(() => securityEvents.id),
+  alertType: varchar("alert_type").notNull(),
+  severity: varchar("severity").notNull(),
+  message: text("message").notNull(),
+  isResolved: boolean("is_resolved").default(false),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Data encryption keys table
+export const dataEncryptionKeys = pgTable("data_encryption_keys", {
+  id: serial("id").primaryKey(),
+  keyName: varchar("key_name").notNull().unique(),
+  keyValue: text("key_value").notNull(),
+  algorithm: varchar("algorithm").notNull(),
+  keyLength: integer("key_length").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  rotatedAt: timestamp("rotated_at"),
+});
+
+// Secure files table for encrypted document storage
+export const secureFiles = pgTable("secure_files", {
+  id: serial("id").primaryKey(),
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  filePath: varchar("file_path").notNull(),
+  fileSize: integer("file_size").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  encryptionKeyId: integer("encryption_key_id").references(() => dataEncryptionKeys.id),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  accessedBy: text("accessed_by").array().default([]), // Array of user IDs who accessed
+  lastAccessedAt: timestamp("last_accessed_at"),
+  isEncrypted: boolean("is_encrypted").default(true),
+  complianceLevel: varchar("compliance_level").default("standard"), // standard, ferpa, hipaa, sox
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Activity logs table
@@ -986,117 +1058,27 @@ export type ArchivedEmployee = typeof archivedEmployees.$inferSelect;
 export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
 export type PersonnelFile = typeof personnelFiles.$inferSelect;
 
-// Security and audit logging tables
+// Update the existing audit logs table to match the new security requirements
 export const auditLogs = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   action: varchar("action").notNull(),
-  resource: varchar("resource").notNull(),
-  resourceId: varchar("resource_id"),
-  details: jsonb("details"),
+  entityType: varchar("entity_type").notNull(),
+  entityId: varchar("entity_id"),
+  description: text("description"),
   ipAddress: varchar("ip_address").notNull(),
   userAgent: text("user_agent"),
   timestamp: timestamp("timestamp").defaultNow(),
-  severity: varchar("severity").notNull().default("MEDIUM"), // LOW, MEDIUM, HIGH, CRITICAL
-  success: boolean("success").default(true),
-  errorMessage: text("error_message"),
+  severity: varchar("severity").notNull().default("medium"), // low, medium, high, critical
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const securityEvents = pgTable("security_events", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  action: varchar("action").notNull(),
-  ipAddress: varchar("ip_address").notNull(),
-  userAgent: text("user_agent"),
-  timestamp: timestamp("timestamp").defaultNow(),
-  details: jsonb("details"),
-  riskLevel: varchar("risk_level").notNull().default("MEDIUM"), // LOW, MEDIUM, HIGH, CRITICAL
-  resolved: boolean("resolved").default(false),
-  resolvedBy: varchar("resolved_by"),
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const securityAlerts = pgTable("security_alerts", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  action: varchar("action").notNull(),
-  riskLevel: varchar("risk_level").notNull(),
-  ipAddress: varchar("ip_address").notNull(),
-  details: jsonb("details"),
-  timestamp: timestamp("timestamp").defaultNow(),
-  status: varchar("status").notNull().default("PENDING"), // PENDING, ACKNOWLEDGED, RESOLVED
-  acknowledgedBy: varchar("acknowledged_by"),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  resolvedBy: varchar("resolved_by"),
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const userSessions = pgTable("user_sessions", {
-  id: serial("id").primaryKey(),
-  sessionId: varchar("session_id").notNull().unique(),
-  userId: varchar("user_id").notNull(),
-  ipAddress: varchar("ip_address").notNull(),
-  userAgent: text("user_agent"),
-  createdAt: timestamp("created_at").defaultNow(),
-  expiresAt: timestamp("expires_at").notNull(),
-  active: boolean("active").default(true),
-  lastActivity: timestamp("last_activity").defaultNow(),
-});
-
-export const secureFiles = pgTable("secure_files", {
-  id: serial("id").primaryKey(),
-  filename: varchar("filename").notNull(),
-  originalName: varchar("original_name").notNull(),
-  mimeType: varchar("mime_type").notNull(),
-  size: integer("size").notNull(),
-  encryptedPath: varchar("encrypted_path").notNull(),
-  checksum: varchar("checksum").notNull(),
-  uploadedBy: varchar("uploaded_by").notNull(),
-  uploadedAt: timestamp("uploaded_at").defaultNow(),
-  scanStatus: varchar("scan_status").notNull().default("PENDING"), // PENDING, CLEAN, INFECTED, QUARANTINED
-  fileCategory: varchar("file_category").notNull(), // PERSONNEL, PAYROLL, MEDICAL, PROFILE
-  linkedResourceId: varchar("linked_resource_id"), // ID of linked employee, payroll record, etc.
-  accessCount: integer("access_count").default(0),
-  lastAccessed: timestamp("last_accessed"),
-  retentionDate: timestamp("retention_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const dataEncryptionKeys = pgTable("data_encryption_keys", {
-  id: serial("id").primaryKey(),
-  keyName: varchar("key_name").notNull().unique(),
-  encryptedKey: varchar("encrypted_key").notNull(),
-  keyVersion: integer("key_version").notNull().default(1),
-  createdBy: varchar("created_by").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  rotatedAt: timestamp("rotated_at"),
-  active: boolean("active").default(true),
-  expiresAt: timestamp("expires_at"),
-});
-
-// Insert schemas and types for security tables
+// Insert schemas and types for updated audit logs
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
-export const insertSecurityEventSchema = createInsertSchema(securityEvents).omit({ id: true, createdAt: true });
-export const insertSecurityAlertSchema = createInsertSchema(securityAlerts).omit({ id: true, createdAt: true });
-export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ id: true, createdAt: true });
-export const insertSecureFileSchema = createInsertSchema(secureFiles).omit({ id: true, createdAt: true });
-export const insertDataEncryptionKeySchema = createInsertSchema(dataEncryptionKeys).omit({ id: true, createdAt: true });
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
-export type SecurityEvent = typeof securityEvents.$inferSelect;
-export type InsertSecurityAlert = z.infer<typeof insertSecurityAlertSchema>;
-export type SecurityAlert = typeof securityAlerts.$inferSelect;
-export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
-export type UserSession = typeof userSessions.$inferSelect;
-export type InsertSecureFile = z.infer<typeof insertSecureFileSchema>;
-export type SecureFile = typeof secureFiles.$inferSelect;
-export type InsertDataEncryptionKey = z.infer<typeof insertDataEncryptionKeySchema>;
-export type DataEncryptionKey = typeof dataEncryptionKeys.$inferSelect;
 
 // Support Documentation Library
 export const supportDocuments = pgTable("support_documents", {
