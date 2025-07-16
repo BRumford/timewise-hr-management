@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertLeaveRequestSchema, type InsertLeaveRequest } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, Clock, CheckCircle, XCircle, User, AlertCircle, Download, Upload, FileText } from "lucide-react";
+import { Plus, Calendar, Clock, CheckCircle, XCircle, User, AlertCircle, Download, Upload, FileText, Shield, Heart, Stethoscope } from "lucide-react";
 import { format, differenceInDays, addDays } from "date-fns";
 import { z } from "zod";
 import { useState, useRef } from "react";
@@ -75,6 +75,13 @@ export default function LeaveManagement() {
       endDate: new Date(),
       reason: "",
       substituteRequired: false,
+      isWorkersComp: false,
+      isMedicalLeave: false,
+      isFmla: false,
+      intermittentLeave: false,
+      reducedSchedule: false,
+      supportingDocuments: [],
+      medicalDocuments: [],
     },
   });
 
@@ -522,6 +529,426 @@ export default function LeaveManagement() {
                     )}
                   />
 
+                  {/* Workers Compensation Section */}
+                  <FormField
+                    control={form.control}
+                    name="isWorkersComp"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            This is a Workers' Compensation claim
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Check if this leave is related to a workplace injury
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch("isWorkersComp") && (
+                    <div className="space-y-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <h4 className="font-medium text-orange-800 flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Workers' Compensation Details
+                      </h4>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="injuryDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Injury Date</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="date" 
+                                  value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                                  onChange={(e) => field.onChange(new Date(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="incidentLocation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Incident Location</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Where did the injury occur?" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="injuryDescription"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Injury Description</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Describe the injury and how it occurred..."
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="witnessName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Witness Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Name of witness (if any)" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="witnessContact"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Witness Contact</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Witness phone/email" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="claimNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Claim Number</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Workers' comp claim number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="insuranceProvider"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Insurance Provider</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Workers' comp insurance company" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="doctorName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Doctor Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Treating physician" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="doctorContact"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Doctor Contact</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Doctor phone/fax" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="expectedReturnDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Expected Return Date</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="date" 
+                                  value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                                  onChange={(e) => field.onChange(new Date(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="workRestrictions"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Work Restrictions</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Any work restrictions" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Medical Leave Section */}
+                  <FormField
+                    control={form.control}
+                    name="isMedicalLeave"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="flex items-center gap-2">
+                            <Stethoscope className="h-4 w-4" />
+                            This is a Medical Leave
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Check if this leave is for medical reasons
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch("isMedicalLeave") && (
+                    <div className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h4 className="font-medium text-green-800 flex items-center gap-2">
+                        <Stethoscope className="h-4 w-4" />
+                        Medical Leave Details
+                      </h4>
+                      
+                      <FormField
+                        control={form.control}
+                        name="isFmla"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <input
+                                type="checkbox"
+                                checked={field.value}
+                                onChange={field.onChange}
+                                className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="flex items-center gap-2">
+                                <Heart className="h-4 w-4" />
+                                FMLA (Family Medical Leave Act)
+                              </FormLabel>
+                              <p className="text-sm text-muted-foreground">
+                                Check if this qualifies for FMLA protection
+                              </p>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="medicalProvider"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Medical Provider</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Doctor/hospital name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="medicalProviderContact"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Provider Contact</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Provider phone/fax" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="diagnosisCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Diagnosis Code</FormLabel>
+                              <FormControl>
+                                <Input placeholder="ICD-10 code (if available)" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="medicalCertificationDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Medical Certification Date</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="date" 
+                                  value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                                  onChange={(e) => field.onChange(new Date(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="medicalCertificationExpiry"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Medical Certification Expiry</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="date" 
+                                value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                                onChange={(e) => field.onChange(new Date(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="intermittentLeave"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value}
+                                  onChange={field.onChange}
+                                  className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Intermittent Leave</FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  Leave taken in separate blocks of time
+                                </p>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="reducedSchedule"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value}
+                                  onChange={field.onChange}
+                                  className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Reduced Schedule</FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  Reduce usual weekly/daily work schedule
+                                </p>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="accommodationsNeeded"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Accommodations Needed</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Describe any workplace accommodations needed upon return..."
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+
                   <div className="flex justify-end space-x-2">
                     <Button 
                       type="button" 
@@ -697,8 +1124,8 @@ export default function LeaveManagement() {
                   <p className="text-sm text-gray-900">{format(new Date(selectedRequest.endDate), 'PPP')}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Duration</label>
-                  <p className="text-sm text-gray-900">{calculateLeaveDays(selectedRequest.startDate, selectedRequest.endDate)} days</p>
+                  <label className="text-sm font-medium text-gray-600">Days Requested</label>
+                  <p className="text-sm text-gray-900">{differenceInDays(new Date(selectedRequest.endDate), new Date(selectedRequest.startDate)) + 1}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Status</label>
@@ -706,6 +1133,28 @@ export default function LeaveManagement() {
                     {selectedRequest.status}
                   </Badge>
                 </div>
+              </div>
+
+              {/* Special Leave Type Indicators */}
+              <div className="flex gap-2">
+                {selectedRequest.isWorkersComp && (
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                    <Shield className="h-3 w-3 mr-1" />
+                    Workers' Compensation
+                  </Badge>
+                )}
+                {selectedRequest.isMedicalLeave && (
+                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    <Stethoscope className="h-3 w-3 mr-1" />
+                    Medical Leave
+                  </Badge>
+                )}
+                {selectedRequest.isFmla && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    <Heart className="h-3 w-3 mr-1" />
+                    FMLA
+                  </Badge>
+                )}
               </div>
               
               <div>
@@ -717,6 +1166,146 @@ export default function LeaveManagement() {
                 <label className="text-sm font-medium text-gray-600">Substitute Required</label>
                 <p className="text-sm text-gray-900">{selectedRequest.substituteRequired ? 'Yes' : 'No'}</p>
               </div>
+
+              {/* Workers Compensation Details */}
+              {selectedRequest.isWorkersComp && (
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <h4 className="font-medium text-orange-800 mb-3 flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Workers' Compensation Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedRequest.injuryDate && (
+                      <div>
+                        <label className="font-medium text-gray-600">Injury Date</label>
+                        <p className="text-gray-900">{format(new Date(selectedRequest.injuryDate), 'PPP')}</p>
+                      </div>
+                    )}
+                    {selectedRequest.incidentLocation && (
+                      <div>
+                        <label className="font-medium text-gray-600">Incident Location</label>
+                        <p className="text-gray-900">{selectedRequest.incidentLocation}</p>
+                      </div>
+                    )}
+                    {selectedRequest.injuryDescription && (
+                      <div className="col-span-2">
+                        <label className="font-medium text-gray-600">Injury Description</label>
+                        <p className="text-gray-900">{selectedRequest.injuryDescription}</p>
+                      </div>
+                    )}
+                    {selectedRequest.witnessName && (
+                      <div>
+                        <label className="font-medium text-gray-600">Witness Name</label>
+                        <p className="text-gray-900">{selectedRequest.witnessName}</p>
+                      </div>
+                    )}
+                    {selectedRequest.witnessContact && (
+                      <div>
+                        <label className="font-medium text-gray-600">Witness Contact</label>
+                        <p className="text-gray-900">{selectedRequest.witnessContact}</p>
+                      </div>
+                    )}
+                    {selectedRequest.claimNumber && (
+                      <div>
+                        <label className="font-medium text-gray-600">Claim Number</label>
+                        <p className="text-gray-900">{selectedRequest.claimNumber}</p>
+                      </div>
+                    )}
+                    {selectedRequest.insuranceProvider && (
+                      <div>
+                        <label className="font-medium text-gray-600">Insurance Provider</label>
+                        <p className="text-gray-900">{selectedRequest.insuranceProvider}</p>
+                      </div>
+                    )}
+                    {selectedRequest.doctorName && (
+                      <div>
+                        <label className="font-medium text-gray-600">Doctor Name</label>
+                        <p className="text-gray-900">{selectedRequest.doctorName}</p>
+                      </div>
+                    )}
+                    {selectedRequest.doctorContact && (
+                      <div>
+                        <label className="font-medium text-gray-600">Doctor Contact</label>
+                        <p className="text-gray-900">{selectedRequest.doctorContact}</p>
+                      </div>
+                    )}
+                    {selectedRequest.expectedReturnDate && (
+                      <div>
+                        <label className="font-medium text-gray-600">Expected Return Date</label>
+                        <p className="text-gray-900">{format(new Date(selectedRequest.expectedReturnDate), 'PPP')}</p>
+                      </div>
+                    )}
+                    {selectedRequest.workRestrictions && (
+                      <div>
+                        <label className="font-medium text-gray-600">Work Restrictions</label>
+                        <p className="text-gray-900">{selectedRequest.workRestrictions}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Medical Leave Details */}
+              {selectedRequest.isMedicalLeave && (
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
+                    <Stethoscope className="h-4 w-4" />
+                    Medical Leave Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedRequest.medicalProvider && (
+                      <div>
+                        <label className="font-medium text-gray-600">Medical Provider</label>
+                        <p className="text-gray-900">{selectedRequest.medicalProvider}</p>
+                      </div>
+                    )}
+                    {selectedRequest.medicalProviderContact && (
+                      <div>
+                        <label className="font-medium text-gray-600">Provider Contact</label>
+                        <p className="text-gray-900">{selectedRequest.medicalProviderContact}</p>
+                      </div>
+                    )}
+                    {selectedRequest.diagnosisCode && (
+                      <div>
+                        <label className="font-medium text-gray-600">Diagnosis Code</label>
+                        <p className="text-gray-900">{selectedRequest.diagnosisCode}</p>
+                      </div>
+                    )}
+                    {selectedRequest.medicalCertificationDate && (
+                      <div>
+                        <label className="font-medium text-gray-600">Medical Certification Date</label>
+                        <p className="text-gray-900">{format(new Date(selectedRequest.medicalCertificationDate), 'PPP')}</p>
+                      </div>
+                    )}
+                    {selectedRequest.medicalCertificationExpiry && (
+                      <div>
+                        <label className="font-medium text-gray-600">Medical Certification Expiry</label>
+                        <p className="text-gray-900">{format(new Date(selectedRequest.medicalCertificationExpiry), 'PPP')}</p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="font-medium text-gray-600">Leave Type</label>
+                      <div className="flex gap-2 mt-1">
+                        {selectedRequest.intermittentLeave && (
+                          <Badge variant="outline" className="text-xs">Intermittent</Badge>
+                        )}
+                        {selectedRequest.reducedSchedule && (
+                          <Badge variant="outline" className="text-xs">Reduced Schedule</Badge>
+                        )}
+                        {!selectedRequest.intermittentLeave && !selectedRequest.reducedSchedule && (
+                          <Badge variant="outline" className="text-xs">Continuous</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {selectedRequest.accommodationsNeeded && (
+                      <div className="col-span-2">
+                        <label className="font-medium text-gray-600">Accommodations Needed</label>
+                        <p className="text-gray-900">{selectedRequest.accommodationsNeeded}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
               {selectedRequest.approvedBy && (
                 <div>

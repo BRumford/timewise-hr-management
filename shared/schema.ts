@@ -97,6 +97,37 @@ export const leaveRequests = pgTable("leave_requests", {
   approvedAt: timestamp("approved_at"),
   substituteRequired: boolean("substitute_required").default(false),
   substituteAssigned: integer("substitute_assigned"),
+  
+  // Workers Compensation specific fields
+  isWorkersComp: boolean("is_workers_comp").default(false),
+  injuryDate: timestamp("injury_date"),
+  injuryDescription: text("injury_description"),
+  incidentLocation: varchar("incident_location"),
+  witnessName: varchar("witness_name"),
+  witnessContact: varchar("witness_contact"),
+  claimNumber: varchar("claim_number"),
+  insuranceProvider: varchar("insurance_provider"),
+  doctorName: varchar("doctor_name"),
+  doctorContact: varchar("doctor_contact"),
+  expectedReturnDate: timestamp("expected_return_date"),
+  workRestrictions: text("work_restrictions"),
+  
+  // Medical Leave specific fields
+  isMedicalLeave: boolean("is_medical_leave").default(false),
+  isFmla: boolean("is_fmla").default(false), // Family Medical Leave Act
+  medicalProvider: varchar("medical_provider"),
+  medicalProviderContact: varchar("medical_provider_contact"),
+  diagnosisCode: varchar("diagnosis_code"),
+  medicalCertificationDate: timestamp("medical_certification_date"),
+  medicalCertificationExpiry: timestamp("medical_certification_expiry"),
+  intermittentLeave: boolean("intermittent_leave").default(false),
+  reducedSchedule: boolean("reduced_schedule").default(false),
+  accommodationsNeeded: text("accommodations_needed"),
+  
+  // General supporting documentation
+  supportingDocuments: text("supporting_documents").array().default([]),
+  medicalDocuments: text("medical_documents").array().default([]),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -633,6 +664,36 @@ export const insertLeaveRequestSchema = z.object({
   notes: z.string().optional(),
   approvedBy: z.number().optional(),
   approvedAt: z.date().optional(),
+  
+  // Workers Compensation fields
+  isWorkersComp: z.boolean().default(false),
+  injuryDate: z.coerce.date().optional(),
+  injuryDescription: z.string().optional(),
+  incidentLocation: z.string().optional(),
+  witnessName: z.string().optional(),
+  witnessContact: z.string().optional(),
+  claimNumber: z.string().optional(),
+  insuranceProvider: z.string().optional(),
+  doctorName: z.string().optional(),
+  doctorContact: z.string().optional(),
+  expectedReturnDate: z.coerce.date().optional(),
+  workRestrictions: z.string().optional(),
+  
+  // Medical Leave fields
+  isMedicalLeave: z.boolean().default(false),
+  isFmla: z.boolean().default(false),
+  medicalProvider: z.string().optional(),
+  medicalProviderContact: z.string().optional(),
+  diagnosisCode: z.string().optional(),
+  medicalCertificationDate: z.coerce.date().optional(),
+  medicalCertificationExpiry: z.coerce.date().optional(),
+  intermittentLeave: z.boolean().default(false),
+  reducedSchedule: z.boolean().default(false),
+  accommodationsNeeded: z.string().optional(),
+  
+  // Supporting documentation
+  supportingDocuments: z.array(z.string()).default([]),
+  medicalDocuments: z.array(z.string()).default([]),
 });
 export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({ id: true, createdAt: true });
 export const insertTaxWithholdingConfigSchema = createInsertSchema(taxWithholdingConfigs).omit({ id: true, createdAt: true, updatedAt: true });
