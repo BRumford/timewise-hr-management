@@ -627,7 +627,7 @@ export default function SubstituteTimeCards() {
                           {field.fieldLabel}
                           {field.isRequired && <span className="text-red-500 ml-1">*</span>}
                         </Label>
-                        {renderField(field)}
+                        {renderFormField(field)}
                       </div>
                     ))}
                   </div>
@@ -647,7 +647,7 @@ export default function SubstituteTimeCards() {
                           {field.fieldLabel}
                           {field.isRequired && <span className="text-red-500 ml-1">*</span>}
                         </Label>
-                        {renderField(field)}
+                        {renderFormField(field)}
                       </div>
                     ))}
                   </div>
