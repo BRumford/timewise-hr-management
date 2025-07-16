@@ -82,6 +82,15 @@ export default function Sidebar() {
     
     // Use role permissions system for other roles
     return hasAccess(item.path);
+  }).map(item => {
+    // Customize the time-cards label based on user role
+    if (item.path === '/time-cards') {
+      return {
+        ...item,
+        label: user?.role === 'employee' ? 'Employee Timecard Approval' : 'Admin Timecard Approval'
+      };
+    }
+    return item;
   });
 
   return (
