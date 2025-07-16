@@ -9,16 +9,19 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertCircle, Settings, Plus, Edit2, Trash2, RotateCcw } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, Settings, Plus, Edit2, Trash2, RotateCcw, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface FieldLabel {
   id: number;
   fieldName: string;
   displayLabel: string;
-  section: string;
+  category: string;
   description?: string;
-  isCustom: boolean;
+  isRequired: boolean;
+  isVisible: boolean;
+  displayOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +33,69 @@ export default function FieldLabels() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Available fields for each section
+  const availableFields = {
+    employee: [
+      { name: 'employeeId', label: 'Employee ID' },
+      { name: 'firstName', label: 'First Name' },
+      { name: 'lastName', label: 'Last Name' },
+      { name: 'email', label: 'Email' },
+      { name: 'phoneNumber', label: 'Phone Number' },
+      { name: 'address', label: 'Address' },
+      { name: 'department', label: 'Department' },
+      { name: 'position', label: 'Position' },
+      { name: 'employeeType', label: 'Employee Type' },
+      { name: 'hireDate', label: 'Hire Date' },
+      { name: 'salary', label: 'Salary' },
+      { name: 'payGrade', label: 'Pay Grade' },
+      { name: 'educationLevel', label: 'Education Level' },
+      { name: 'certifications', label: 'Certifications' },
+      { name: 'status', label: 'Status' },
+      { name: 'supervisorId', label: 'Supervisor ID' }
+    ],
+    timecard: [
+      { name: 'employeeId', label: 'Employee' },
+      { name: 'date', label: 'Date' },
+      { name: 'clockIn', label: 'Clock In' },
+      { name: 'clockOut', label: 'Clock Out' },
+      { name: 'breakStart', label: 'Break Start' },
+      { name: 'breakEnd', label: 'Break End' },
+      { name: 'notes', label: 'Notes' },
+      { name: 'status', label: 'Status' },
+      { name: 'totalHours', label: 'Total Hours' },
+      { name: 'overtimeHours', label: 'Overtime Hours' }
+    ],
+    leave: [
+      { name: 'employeeId', label: 'Employee' },
+      { name: 'leaveType', label: 'Leave Type' },
+      { name: 'startDate', label: 'Start Date' },
+      { name: 'endDate', label: 'End Date' },
+      { name: 'reason', label: 'Reason' },
+      { name: 'status', label: 'Status' },
+      { name: 'isSubstituteNeeded', label: 'Substitute Needed' },
+      { name: 'notes', label: 'Notes' }
+    ],
+    payroll: [
+      { name: 'employeeId', label: 'Employee' },
+      { name: 'payPeriodStart', label: 'Pay Period Start' },
+      { name: 'payPeriodEnd', label: 'Pay Period End' },
+      { name: 'grossPay', label: 'Gross Pay' },
+      { name: 'netPay', label: 'Net Pay' },
+      { name: 'deductions', label: 'Deductions' },
+      { name: 'hoursWorked', label: 'Hours Worked' },
+      { name: 'overtimeHours', label: 'Overtime Hours' },
+      { name: 'processed', label: 'Processed Status' }
+    ],
+    onboarding: [
+      { name: 'employeeId', label: 'Employee' },
+      { name: 'workflowName', label: 'Workflow Name' },
+      { name: 'status', label: 'Status' },
+      { name: 'currentStep', label: 'Current Step' },
+      { name: 'expectedCompletionDate', label: 'Expected Completion Date' },
+      { name: 'notes', label: 'Notes' }
+    ]
+  };
 
   const { data: fieldLabels, isLoading } = useQuery({
     queryKey: ['/api/custom-field-labels'],
@@ -130,8 +196,13 @@ export default function FieldLabels() {
     }
 
     createLabelMutation.mutate({
-      ...newLabel,
-      isCustom: true,
+      fieldName: newLabel.fieldName,
+      displayLabel: newLabel.displayLabel,
+      description: newLabel.description,
+      category: newLabel.section,
+      isRequired: false,
+      isVisible: true,
+      displayOrder: 0,
     });
   };
 
@@ -154,10 +225,11 @@ export default function FieldLabels() {
   };
 
   const groupedLabels = fieldLabels?.reduce((acc: any, label: FieldLabel) => {
-    if (!acc[label.section]) {
-      acc[label.section] = [];
+    const section = label.category || 'general'; // Use category instead of section
+    if (!acc[section]) {
+      acc[section] = [];
     }
-    acc[label.section].push(label);
+    acc[section].push(label);
     return acc;
   }, {}) || {};
 
@@ -208,13 +280,34 @@ export default function FieldLabels() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
+                  <Label htmlFor="section">Section</Label>
+                  <Select value={newLabel.section} onValueChange={(value) => setNewLabel({ ...newLabel, section: value, fieldName: '' })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee Fields</SelectItem>
+                      <SelectItem value="payroll">Payroll Fields</SelectItem>
+                      <SelectItem value="leave">Leave Fields</SelectItem>
+                      <SelectItem value="timecard">Timecard Fields</SelectItem>
+                      <SelectItem value="onboarding">Onboarding Fields</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="fieldName">Field Name</Label>
-                  <Input
-                    id="fieldName"
-                    value={newLabel.fieldName}
-                    onChange={(e) => setNewLabel({ ...newLabel, fieldName: e.target.value })}
-                    placeholder="e.g., employeeId, salary, department"
-                  />
+                  <Select value={newLabel.fieldName} onValueChange={(value) => setNewLabel({ ...newLabel, fieldName: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a field" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableFields[newLabel.section as keyof typeof availableFields]?.map((field) => (
+                        <SelectItem key={field.name} value={field.name}>
+                          {field.name} - {field.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="displayLabel">Display Label</Label>
@@ -225,21 +318,17 @@ export default function FieldLabels() {
                     placeholder="e.g., Staff ID, Annual Salary, Cost Center"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="section">Section</Label>
-                  <select
-                    id="section"
-                    value={newLabel.section}
-                    onChange={(e) => setNewLabel({ ...newLabel, section: e.target.value })}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="employee">Employee Fields</option>
-                    <option value="payroll">Payroll Fields</option>
-                    <option value="leave">Leave Fields</option>
-                    <option value="timecard">Timecard Fields</option>
-                    <option value="onboarding">Onboarding Fields</option>
-                  </select>
-                </div>
+                {newLabel.fieldName && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                    <p className="text-sm text-blue-800">
+                      <strong>Selected Field:</strong> {newLabel.fieldName}
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      This will change how "{availableFields[newLabel.section as keyof typeof availableFields]?.find(f => f.name === newLabel.fieldName)?.label}" appears in {newLabel.section} forms.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <Label htmlFor="description">Description (Optional)</Label>
                   <Input
@@ -266,6 +355,40 @@ export default function FieldLabels() {
           </AlertDescription>
         </Alert>
       ) : (
+        <>
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Important:</strong> Custom field labels only work for fields that actually exist in the forms. If you see labels that don't appear in the system, they may be for fields that don't exist. Use the dropdowns when creating new labels to ensure they work properly.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold mb-2">Available Fields by Section:</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(availableFields).map(([section, fields]) => (
+                <Card key={section} className="p-4">
+                  <h4 className="font-medium text-sm uppercase text-gray-600 mb-2">
+                    {section} Fields
+                  </h4>
+                  <div className="space-y-1">
+                    {fields.slice(0, 5).map((field) => (
+                      <div key={field.name} className="text-xs text-gray-500">
+                        <code className="bg-gray-100 px-1 py-0.5 rounded">{field.name}</code> - {field.label}
+                      </div>
+                    ))}
+                    {fields.length > 5 && (
+                      <div className="text-xs text-gray-400">+{fields.length - 5} more...</div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+      
+      {fieldLabels && fieldLabels.length > 0 && (
         <Tabs defaultValue="employee" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             {sections.map((section) => (
@@ -290,8 +413,8 @@ export default function FieldLabels() {
                           </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant={label.isCustom ? "default" : "secondary"}>
-                            {label.isCustom ? "Custom" : "Default"}
+                          <Badge variant={label.isRequired ? "destructive" : "secondary"}>
+                            {label.isRequired ? "Required" : "Optional"}
                           </Badge>
                           <Button
                             variant="ghost"
@@ -303,15 +426,13 @@ export default function FieldLabels() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>
-                          {label.isCustom && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteLabel(label.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteLabel(label.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </CardHeader>

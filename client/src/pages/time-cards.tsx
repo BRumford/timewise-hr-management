@@ -790,6 +790,58 @@ export default function TimeCards() {
                   )}
                 </div>
               )}
+
+              {/* Payroll Use Only Section */}
+              {timeCard.status === "admin_approved" || timeCard.status === "payroll_processed" ? (
+                <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
+                    <Users className="h-4 w-4 mr-2" />
+                    Payroll Use Only
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-purple-700">Regular Hours:</span>
+                      <div className="text-purple-600">
+                        {timeCard.totalHours || 0}h
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium text-purple-700">Overtime Hours:</span>
+                      <div className="text-purple-600">
+                        {timeCard.overtimeHours || 0}h
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium text-purple-700">Total Pay:</span>
+                      <div className="text-purple-600">
+                        ${timeCard.totalPay || 0}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-purple-700">Processed Date:</span>
+                      <div className="text-purple-600">
+                        {timeCard.processedAt ? format(new Date(timeCard.processedAt), "MMM dd, yyyy") : "Not processed"}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium text-purple-700">Payroll Period:</span>
+                      <div className="text-purple-600">
+                        {timeCard.payrollPeriod || "Not assigned"}
+                      </div>
+                    </div>
+                  </div>
+                  {timeCard.payrollNotes && (
+                    <div className="mt-3 text-sm">
+                      <span className="font-medium text-purple-700">Payroll Notes:</span>
+                      <div className="text-purple-600 mt-1">
+                        {timeCard.payrollNotes}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </Card>
           );
         })}

@@ -284,6 +284,24 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Improved user experience with hover-to-edit functionality and real-time updates
   - Fixed payroll page error by correctly mapping processed boolean field to status dropdown options
 
+- Added Payroll Use Only Section to Time Cards Page (July 16, 2025)
+  - Created specialized section that appears only for admin_approved and payroll_processed time cards
+  - Added visual indicators with purple styling to differentiate payroll-specific information
+  - Displays regular hours, overtime hours, total pay, processed date, and payroll period
+  - Shows payroll notes field for internal payroll department use
+  - Helps payroll staff track processed time cards and calculate compensation
+  - Section is restricted to appropriate approval stages for security
+
+- Fixed and Enhanced Custom Field Labels System (July 16, 2025)
+  - Fixed custom field labels functionality with proper database schema alignment
+  - Added comprehensive field selection interface with dropdowns for valid fields
+  - Created available fields reference showing all customizable fields by section
+  - Updated interface to show field requirements and validation information
+  - Added helpful guidance explaining which fields actually exist in the system
+  - Improved field label creation process with better validation and error handling
+  - Custom field labels now work properly across employee, timecard, leave, payroll, and onboarding forms
+  - Districts can now successfully customize field terminology throughout the system
+
 - Fixed Leave Request Creation Error with OpenAI API Quota Handling (July 15, 2025)
   - Resolved 400 error when creating leave requests with substitute requirements
   - Added proper error handling for OpenAI API quota exceeded errors
