@@ -65,7 +65,6 @@ interface SubstituteTimecardData {
 export default function SubstituteTimeCards() {
   const [selectedSubstitute, setSelectedSubstitute] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [timecardData, setTimecardData] = useState<SubstituteTimecardData | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [payrollData, setPayrollData] = useState<any>({});
@@ -89,10 +88,10 @@ export default function SubstituteTimeCards() {
     enabled: !!selectedTemplate,
   });
 
-  // Fetch existing timecard data
+  // Fetch existing timecard data - for now we'll create new timecards each time
   const { data: existingTimecard, refetch: refetchTimecard } = useQuery({
-    queryKey: ["/api/substitute-time-cards", selectedSubstitute, selectedTemplate, selectedDate],
-    enabled: !!selectedSubstitute && !!selectedTemplate && !!selectedDate,
+    queryKey: ["/api/substitute-time-cards", "new", selectedSubstitute, selectedTemplate],
+    enabled: false, // Disable for now until we implement proper timecard fetching
   });
 
   // Fetch dropdown options
@@ -112,7 +111,7 @@ export default function SubstituteTimeCards() {
       const timecardPayload = {
         substituteId: selectedSubstitute,
         templateId: selectedTemplate,
-        workDate: selectedDate,
+        workDate: new Date().toISOString().split('T')[0], // Use current date
         status: timecardData?.status || "draft",
         customFieldsData: formData,
         notes: data.notes || "",
@@ -342,7 +341,7 @@ export default function SubstituteTimeCards() {
           <CardTitle>Select Substitute and Template</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="substitute">Substitute</Label>
               <Select value={selectedSubstitute?.toString() || ""} onValueChange={(val) => setSelectedSubstitute(parseInt(val))}>
@@ -374,15 +373,6 @@ export default function SubstituteTimeCards() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div>
-              <Label htmlFor="date">Work Date</Label>
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -395,7 +385,7 @@ export default function SubstituteTimeCards() {
               <div>
                 <CardTitle className="text-xl">Substitute Timecard</CardTitle>
                 <p className="text-sm text-gray-600">
-                  {substitutes.find(s => s.id === selectedSubstitute)?.firstName} {substitutes.find(s => s.id === selectedSubstitute)?.lastName} - {selectedDate}
+                  {substitutes.find(s => s.id === selectedSubstitute)?.firstName} {substitutes.find(s => s.id === selectedSubstitute)?.lastName}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
