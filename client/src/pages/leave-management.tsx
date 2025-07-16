@@ -493,10 +493,19 @@ export default function LeaveManagement() {
                         <FormControl>
                           <Input 
                             type="date" 
-                            value={field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), 'yyyy-MM-dd') : ''}
+                            value={field.value ? (() => {
+                              try {
+                                return format(new Date(field.value), 'yyyy-MM-dd');
+                              } catch {
+                                return '';
+                              }
+                            })() : ''}
                             onChange={(e) => {
-                              const date = new Date(e.target.value);
-                              field.onChange(isNaN(date.getTime()) ? null : date);
+                              if (e.target.value) {
+                                field.onChange(new Date(e.target.value + 'T00:00:00'));
+                              } else {
+                                field.onChange(null);
+                              }
                             }}
                           />
                         </FormControl>
@@ -514,10 +523,19 @@ export default function LeaveManagement() {
                         <FormControl>
                           <Input 
                             type="date"
-                            value={field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), 'yyyy-MM-dd') : ''}
+                            value={field.value ? (() => {
+                              try {
+                                return format(new Date(field.value), 'yyyy-MM-dd');
+                              } catch {
+                                return '';
+                              }
+                            })() : ''}
                             onChange={(e) => {
-                              const date = new Date(e.target.value);
-                              field.onChange(isNaN(date.getTime()) ? null : date);
+                              if (e.target.value) {
+                                field.onChange(new Date(e.target.value + 'T00:00:00'));
+                              } else {
+                                field.onChange(null);
+                              }
                             }}
                           />
                         </FormControl>
