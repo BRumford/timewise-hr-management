@@ -427,7 +427,7 @@ export default function SecurityMonitoring() {
                       <CardTitle className="text-sm">Total Access</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{mockCompliance.totalAccess}</div>
+                      <div className="text-2xl font-bold">{currentCompliance.totalAccess}</div>
                     </CardContent>
                   </Card>
 
@@ -436,7 +436,7 @@ export default function SecurityMonitoring() {
                       <CardTitle className="text-sm">Access Denied</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{mockCompliance.accessDenied}</div>
+                      <div className="text-2xl font-bold">{currentCompliance.accessDenied}</div>
                     </CardContent>
                   </Card>
 
@@ -445,7 +445,7 @@ export default function SecurityMonitoring() {
                       <CardTitle className="text-sm">Critical Events</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{mockCompliance.criticalEvents}</div>
+                      <div className="text-2xl font-bold">{currentCompliance.criticalEvents}</div>
                     </CardContent>
                   </Card>
 
@@ -454,7 +454,7 @@ export default function SecurityMonitoring() {
                       <CardTitle className="text-sm">Compliance Score</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{mockCompliance.complianceScore}%</div>
+                      <div className="text-2xl font-bold">{currentCompliance.complianceScore}%</div>
                     </CardContent>
                   </Card>
                 </div>
@@ -462,8 +462,8 @@ export default function SecurityMonitoring() {
                 <Alert>
                   <Shield className="h-4 w-4" />
                   <AlertDescription>
-                    {selectedFramework} compliance is at {mockCompliance.complianceScore}%. 
-                    {mockCompliance.complianceScore >= 90 ? " Your system meets compliance requirements." : " Review critical events to improve compliance."}
+                    {selectedFramework} compliance is at {currentCompliance.complianceScore}%. 
+                    {currentCompliance.complianceScore >= 90 ? " Your system meets compliance requirements." : " Review critical events to improve compliance."}
                   </AlertDescription>
                 </Alert>
               </div>
