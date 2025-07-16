@@ -1128,7 +1128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leave-requests/:id/approve", requireRole(['admin', 'hr']), async (req, res) => {
+  app.post("/api/leave-requests/:id/approve", requireRole(['admin', 'hr', 'secretary']), async (req, res) => {
     try {
       const leaveRequestId = parseInt(req.params.id);
       const leaveRequests = await storage.getLeaveRequests();
@@ -1228,7 +1228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leave-requests/:id/reject", requireRole(['admin', 'hr']), async (req, res) => {
+  app.post("/api/leave-requests/:id/reject", requireRole(['admin', 'hr', 'secretary']), async (req, res) => {
     try {
       const leaveRequestId = parseInt(req.params.id);
       const leaveRequests = await storage.getLeaveRequests();

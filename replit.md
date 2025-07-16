@@ -122,6 +122,13 @@ The application uses a comprehensive schema with the following main entities:
 The system is designed to be scalable, maintainable, and specifically tailored for the complex needs of school district HR departments, with AI automation reducing manual workload while ensuring compliance and efficiency.
 
 ## Recent Changes
+- Added Secretary Leave Request Approval Authority (July 16, 2025)
+  - Updated leave request approval endpoints to allow secretary role alongside admin and hr roles
+  - Secretaries can now approve and reject leave requests directly from the Leave Management page
+  - Role-based authentication properly validates secretary permissions for leave request workflows
+  - Maintains existing workflow: secretary approves leave → timecards become active → normal approval workflow continues
+  - Streamlines leave request processing by allowing frontline staff to handle initial approvals
+  - Successfully tested secretary role approval functionality with proper database updates
 - Implemented Complete Leave Request to Timecard Integration (July 16, 2025)
   - Leave requests automatically create preliminary timecard entries when submitted
   - Secretary can track all leave-related timecards in the normal timecard management system
