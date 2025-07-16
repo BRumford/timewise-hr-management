@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Edit2 } from "lucide-react";
 
 interface DropdownEditProps {
-  value: string;
+  value: string | undefined | null;
   onSave: (value: string) => void;
   type?: 'text' | 'select' | 'status';
   options?: { value: string; label: string; color?: string }[];
@@ -25,7 +25,7 @@ export function DropdownEdit({
   disabled = false
 }: DropdownEditProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value);
+  const [editValue, setEditValue] = useState(value || '');
 
   const handleSave = () => {
     onSave(editValue);
@@ -33,7 +33,7 @@ export function DropdownEdit({
   };
 
   const handleCancel = () => {
-    setEditValue(value);
+    setEditValue(value || '');
     setIsEditing(false);
   };
 
@@ -54,11 +54,11 @@ export function DropdownEdit({
     return (
       <div className={`text-sm ${className}`}>
         {type === 'status' ? (
-          <Badge className={getStatusColor(value)}>
-            {value.replace('_', ' ')}
+          <Badge className={getStatusColor(value || '')}>
+            {value ? value.replace('_', ' ') : 'N/A'}
           </Badge>
         ) : (
-          value
+          value || 'N/A'
         )}
       </div>
     );
@@ -68,11 +68,11 @@ export function DropdownEdit({
     return (
       <div className={`group flex items-center space-x-2 ${className}`}>
         {type === 'status' ? (
-          <Badge className={getStatusColor(value)}>
-            {value.replace('_', ' ')}
+          <Badge className={getStatusColor(value || '')}>
+            {value ? value.replace('_', ' ') : 'N/A'}
           </Badge>
         ) : (
-          <span className="text-sm">{value}</span>
+          <span className="text-sm">{value || 'N/A'}</span>
         )}
         <Button
           variant="ghost"

@@ -296,7 +296,13 @@ export default function Payroll() {
       const record = payrollRecords?.find((pr: any) => pr.id === payrollId);
       if (!record) throw new Error('Payroll record not found');
       
-      const updatedRecord = { ...record, [field]: value };
+      // Convert string values to appropriate types
+      let convertedValue = value;
+      if (field === 'processed') {
+        convertedValue = value === 'true';
+      }
+      
+      const updatedRecord = { ...record, [field]: convertedValue };
       return await apiRequest(`/api/payroll/${payrollId}`, 'PUT', updatedRecord);
     },
     onSuccess: () => {
@@ -772,14 +778,12 @@ export default function Payroll() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <DropdownEdit
-                            value={record.status}
-                            onSave={(value) => updatePayrollFieldMutation.mutate({ payrollId: record.id, field: 'status', value })}
+                            value={record.processed ? 'processed' : 'pending'}
+                            onSave={(value) => updatePayrollFieldMutation.mutate({ payrollId: record.id, field: 'processed', value: value === 'processed' ? 'true' : 'false' })}
                             type="status"
                             options={[
-                              { value: 'draft', label: 'Draft' },
-                              { value: 'approved', label: 'Approved' },
-                              { value: 'processed', label: 'Processed' },
-                              { value: 'paid', label: 'Paid' }
+                              { value: 'pending', label: 'Pending' },
+                              { value: 'processed', label: 'Processed' }
                             ]}
                             className="min-w-24"
                           />
