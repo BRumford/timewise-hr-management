@@ -64,6 +64,7 @@ export default function MonthlyTimecard() {
   const [timecardData, setTimecardData] = useState<MonthlyTimecardData | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [dailyEntries, setDailyEntries] = useState<any[]>([]);
+  const [payrollEntries, setPayrollEntries] = useState<any[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -115,6 +116,9 @@ export default function MonthlyTimecard() {
         
         // Generate daily entries for the month
         generateDailyEntries();
+        
+        // Initialize payroll entries (10 rows)
+        initializePayrollEntries();
       }
     }
   }, [selectedTemplate, selectedEmployee, currentMonth, currentYear, selectedEmployeeData, templates]);
@@ -144,6 +148,23 @@ export default function MonthlyTimecard() {
     setDailyEntries(entries);
   };
 
+  // Initialize payroll entries (10 rows)
+  const initializePayrollEntries = () => {
+    const entries: any[] = [];
+    
+    for (let i = 0; i < 10; i++) {
+      entries.push({
+        addon: '',
+        units: '',
+        rate: '',
+        alias: '',
+        notes: ''
+      });
+    }
+    
+    setPayrollEntries(entries);
+  };
+
   // Update form field
   const updateFormField = (fieldName: string, value: any) => {
     setFormData(prev => ({
@@ -155,6 +176,18 @@ export default function MonthlyTimecard() {
   // Update daily entry
   const updateDailyEntry = (index: number, field: string, value: any) => {
     setDailyEntries(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        [field]: value
+      };
+      return updated;
+    });
+  };
+
+  // Update payroll entry
+  const updatePayrollEntry = (index: number, field: string, value: any) => {
+    setPayrollEntries(prev => {
       const updated = [...prev];
       updated[index] = {
         ...updated[index],
@@ -261,14 +294,11 @@ export default function MonthlyTimecard() {
 
   // PayrollProcessingRowInline component for payroll processing section
   const PayrollProcessingRowInline = ({ lineNumber }: { lineNumber: number }) => {
-    const [addon, setAddon] = useState('');
-    const [units, setUnits] = useState('');
-    const [rate, setRate] = useState('');
-    const [alias, setAlias] = useState('');
-    const [notes, setNotes] = useState('');
+    const index = lineNumber - 1;
+    const entry = payrollEntries[index] || {};
 
     // Calculate total automatically
-    const total = (parseFloat(units) || 0) * (parseFloat(rate) || 0);
+    const total = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
 
     return (
       <tr className="even:bg-gray-50">
@@ -278,8 +308,8 @@ export default function MonthlyTimecard() {
         <td className="border border-gray-400 px-1 py-1">
           <Input
             type="text"
-            value={addon}
-            onChange={(e) => setAddon(e.target.value)}
+            value={entry.addon || ''}
+            onChange={(e) => updatePayrollEntry(index, 'addon', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="Addon description"
           />
@@ -288,8 +318,8 @@ export default function MonthlyTimecard() {
           <Input
             type="number"
             step="0.01"
-            value={units}
-            onChange={(e) => setUnits(e.target.value)}
+            value={entry.units || ''}
+            onChange={(e) => updatePayrollEntry(index, 'units', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="0"
           />
@@ -298,8 +328,8 @@ export default function MonthlyTimecard() {
           <Input
             type="number"
             step="0.01"
-            value={rate}
-            onChange={(e) => setRate(e.target.value)}
+            value={entry.rate || ''}
+            onChange={(e) => updatePayrollEntry(index, 'rate', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="0.00"
           />
@@ -310,8 +340,8 @@ export default function MonthlyTimecard() {
         <td className="border border-gray-400 px-1 py-1">
           <Input
             type="text"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
+            value={entry.alias || ''}
+            onChange={(e) => updatePayrollEntry(index, 'alias', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="Alias"
           />
@@ -319,14 +349,22 @@ export default function MonthlyTimecard() {
         <td className="border border-gray-400 px-1 py-1">
           <Input
             type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={entry.notes || ''}
+            onChange={(e) => updatePayrollEntry(index, 'notes', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="Notes"
           />
         </td>
       </tr>
     );
+  };
+
+  // Calculate grand total for payroll processing
+  const calculateGrandTotal = () => {
+    return payrollEntries.reduce((total, entry) => {
+      const lineTotal = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
+      return total + lineTotal;
+    }, 0);
   };
 
   return (
@@ -556,6 +594,16 @@ export default function MonthlyTimecard() {
                       {Array.from({ length: 10 }, (_, index) => (
                         <PayrollProcessingRowInline key={index} lineNumber={index + 1} />
                       ))}
+                      {/* Grand Total Row */}
+                      <tr className="bg-purple-100 border-t-2 border-purple-400">
+                        <td className="border border-gray-400 px-2 py-2 text-center text-sm font-bold text-purple-800" colSpan={4}>
+                          GRAND TOTAL
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-center text-lg font-bold text-purple-800">
+                          ${calculateGrandTotal().toFixed(2)}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2" colSpan={2}></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
