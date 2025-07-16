@@ -3924,6 +3924,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/monthly-timecards/:id/submit-to-payroll', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const timecard = await storage.submitTimecardToPayroll(timecardId, user.id);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error submitting timecard to payroll:', error);
+      res.status(500).json({ message: 'Failed to submit timecard to payroll' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/batch-submit-to-payroll', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { timecardIds } = req.body;
+      const user = (req as any).user;
+      
+      const results = await storage.batchSubmitTimecardsToPayroll(timecardIds, user.id);
+      res.json(results);
+    } catch (error) {
+      console.error('Error batch submitting timecards to payroll:', error);
+      res.status(500).json({ message: 'Failed to batch submit timecards to payroll' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/:id/payroll-process', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const { notes } = req.body;
+      const user = (req as any).user;
+      
+      const timecard = await storage.payrollProcessTimecard(timecardId, user.id, notes);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error processing timecard by payroll:', error);
+      res.status(500).json({ message: 'Failed to process timecard' });
+    }
+  });
+
   app.post('/api/monthly-timecards/:id/reject', isAuthenticated, async (req, res) => {
     try {
       const timecardId = parseInt(req.params.id);

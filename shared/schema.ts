@@ -528,7 +528,7 @@ export const monthlyTimecards = pgTable("monthly_timecards", {
   year: integer("year").notNull(),
   payPeriodStart: date("pay_period_start").notNull(),
   payPeriodEnd: date("pay_period_end").notNull(),
-  status: varchar("status").notNull().default("draft"), // draft, submitted_to_employee, employee_approved, submitted_to_admin, admin_approved, rejected
+  status: varchar("status").notNull().default("draft"), // draft, submitted_to_employee, employee_approved, submitted_to_admin, admin_approved, submitted_to_payroll, payroll_processed, rejected
   entries: jsonb("entries").default([]), // Array of daily entries
   customFieldsData: jsonb("custom_fields_data").default({}), // Store custom field values
   notes: text("notes"),
@@ -540,6 +540,9 @@ export const monthlyTimecards = pgTable("monthly_timecards", {
   adminApprovedBy: varchar("admin_approved_by"),
   adminApprovedAt: timestamp("admin_approved_at"),
   adminApprovalNotes: text("admin_approval_notes"),
+  payrollProcessedBy: varchar("payroll_processed_by"),
+  payrollProcessedAt: timestamp("payroll_processed_at"),
+  payrollNotes: text("payroll_notes"),
   rejectedBy: varchar("rejected_by"),
   rejectedAt: timestamp("rejected_at"),
   rejectionReason: text("rejection_reason"),

@@ -2285,10 +2285,50 @@ export class DatabaseStorage implements IStorage {
   async adminApproveTimecard(id: number, adminApprovedBy: string, notes?: string): Promise<any> {
     const [timecard] = await db.update(monthlyTimecards)
       .set({
-        status: 'admin_approved',
+        status: 'submitted_to_payroll',
         adminApprovedBy,
         adminApprovedAt: new Date(),
         adminApprovalNotes: notes,
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async submitTimecardToPayroll(id: number, submittedBy: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        status: 'submitted_to_payroll',
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async batchSubmitTimecardsToPayroll(timecardIds: number[], submittedBy: string): Promise<any[]> {
+    const results = [];
+    for (const id of timecardIds) {
+      const [timecard] = await db.update(monthlyTimecards)
+        .set({
+          status: 'submitted_to_payroll',
+          updatedAt: new Date()
+        })
+        .where(eq(monthlyTimecards.id, id))
+        .returning();
+      results.push(timecard);
+    }
+    return results;
+  }
+
+  async payrollProcessTimecard(id: number, payrollProcessedBy: string, notes?: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        status: 'payroll_processed',
+        payrollProcessedBy,
+        payrollProcessedAt: new Date(),
+        payrollNotes: notes,
         updatedAt: new Date()
       })
       .where(eq(monthlyTimecards.id, id))

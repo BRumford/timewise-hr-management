@@ -98,8 +98,8 @@ export default function AdminTimecardApproval() {
 
   // Calculate statistics
   const stats = {
-    pending: filteredTimecards.filter(t => ['submitted_to_employee', 'employee_approved', 'submitted_to_admin'].includes(t.status)).length,
-    approved: filteredTimecards.filter(t => t.status === 'admin_approved').length,
+    pending: filteredTimecards.filter(t => ['submitted_to_employee', 'employee_approved', 'submitted_to_admin', 'submitted_to_payroll'].includes(t.status)).length,
+    approved: filteredTimecards.filter(t => t.status === 'payroll_processed').length,
     rejected: filteredTimecards.filter(t => t.status === 'rejected').length,
     total: filteredTimecards.length
   };
@@ -150,6 +150,52 @@ export default function AdminTimecardApproval() {
     },
   });
 
+  // Batch submit to payroll mutation
+  const batchSubmitToPayroll = useMutation({
+    mutationFn: async (timecardIds: number[]) => {
+      return await apiRequest(`/api/monthly-timecards/batch-submit-to-payroll`, "POST", { timecardIds });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: `${selectedTimecardIds.length} timecards submitted to payroll successfully`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecards"] });
+      setSelectedTimecardIds([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit timecards to payroll",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Payroll process timecard mutation
+  const payrollProcessTimecard = useMutation({
+    mutationFn: async (data: { id: number; notes: string }) => {
+      return await apiRequest(`/api/monthly-timecards/${data.id}/payroll-process`, "POST", { notes: data.notes });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Timecard processed by payroll successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecards"] });
+      setApprovalDialogOpen(false);
+      setApprovalNotes('');
+      setSelectedTimecard(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process timecard",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Reject timecard mutation
   const rejectTimecard = useMutation({
     mutationFn: async (data: { id: number; reason: string }) => {
@@ -177,7 +223,12 @@ export default function AdminTimecardApproval() {
   // Handle approval
   const handleApprove = () => {
     if (!selectedTimecard) return;
-    adminApproveTimecard.mutate({ id: selectedTimecard.id, notes: approvalNotes });
+    
+    if (selectedTimecard.status === 'submitted_to_payroll') {
+      payrollProcessTimecard.mutate({ id: selectedTimecard.id, notes: approvalNotes });
+    } else {
+      adminApproveTimecard.mutate({ id: selectedTimecard.id, notes: approvalNotes });
+    }
   };
 
   // Handle batch submission
@@ -191,6 +242,18 @@ export default function AdminTimecardApproval() {
       return;
     }
     batchSubmitToAdmin.mutate(selectedTimecardIds);
+  };
+
+  const handleBatchSubmitToPayroll = () => {
+    if (selectedTimecardIds.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select timecards to submit to payroll",
+        variant: "destructive",
+      });
+      return;
+    }
+    batchSubmitToPayroll.mutate(selectedTimecardIds);
   };
 
   // Handle checkbox selection
@@ -231,7 +294,9 @@ export default function AdminTimecardApproval() {
         return 'bg-purple-100 text-purple-800';
       case 'submitted_to_admin':
         return 'bg-orange-100 text-orange-800';
-      case 'admin_approved':
+      case 'submitted_to_payroll':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'payroll_processed':
         return 'bg-green-100 text-green-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
@@ -251,7 +316,9 @@ export default function AdminTimecardApproval() {
         return <User className="h-4 w-4" />;
       case 'submitted_to_admin':
         return <Building className="h-4 w-4" />;
-      case 'admin_approved':
+      case 'submitted_to_payroll':
+        return <User className="h-4 w-4" />;
+      case 'payroll_processed':
         return <CheckCircle className="h-4 w-4" />;
       case 'rejected':
         return <XCircle className="h-4 w-4" />;
@@ -365,7 +432,8 @@ export default function AdminTimecardApproval() {
                   <SelectItem value="submitted_to_employee">Submitted to Employee</SelectItem>
                   <SelectItem value="employee_approved">Employee Approved</SelectItem>
                   <SelectItem value="submitted_to_admin">Submitted to Admin</SelectItem>
-                  <SelectItem value="admin_approved">Admin Approved</SelectItem>
+                  <SelectItem value="submitted_to_payroll">Submitted to Payroll</SelectItem>
+                  <SelectItem value="payroll_processed">Payroll Processed</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
@@ -374,13 +442,16 @@ export default function AdminTimecardApproval() {
         </CardContent>
       </Card>
 
-      {/* Batch Submission Section - Only show for employee_approved status */}
-      {selectedStatus === 'employee_approved' && (
+      {/* Batch Submission Section - Show for employee_approved and submitted_to_payroll status */}
+      {(selectedStatus === 'employee_approved' || selectedStatus === 'submitted_to_payroll') && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Check className="h-5 w-5" />
-              <span>Batch Submit to Admin</span>
+              <span>
+                {selectedStatus === 'employee_approved' && 'Batch Submit to Admin'}
+                {selectedStatus === 'submitted_to_payroll' && 'Batch Process Payroll'}
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -401,15 +472,17 @@ export default function AdminTimecardApproval() {
                   Clear Selection
                 </Button>
                 <span className="text-sm text-gray-600">
-                  {selectedTimecardIds.length} of {filteredTimecards.filter(t => t.status === 'employee_approved').length} selected
+                  {selectedTimecardIds.length} of {filteredTimecards.filter(t => t.status === selectedStatus).length} selected
                 </span>
               </div>
               <Button
-                onClick={handleBatchSubmitToAdmin}
-                disabled={selectedTimecardIds.length === 0 || batchSubmitToAdmin.isPending}
+                onClick={selectedStatus === 'employee_approved' ? handleBatchSubmitToAdmin : handleBatchSubmitToPayroll}
+                disabled={selectedTimecardIds.length === 0 || batchSubmitToAdmin.isPending || batchSubmitToPayroll.isPending}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {batchSubmitToAdmin.isPending ? 'Submitting...' : `Submit ${selectedTimecardIds.length} to Admin`}
+                {(batchSubmitToAdmin.isPending || batchSubmitToPayroll.isPending) ? 'Processing...' : 
+                  selectedStatus === 'employee_approved' ? `Submit ${selectedTimecardIds.length} to Admin` : 
+                  `Submit ${selectedTimecardIds.length} to Payroll`}
               </Button>
             </div>
           </CardContent>
@@ -602,6 +675,21 @@ export default function AdminTimecardApproval() {
                               </Button>
                             </>
                           )}
+
+                          {timecard.status === 'submitted_to_payroll' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 hover:bg-blue-50"
+                              onClick={() => {
+                                setSelectedTimecard(timecard);
+                                setApprovalDialogOpen(true);
+                              }}
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Process Payroll
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -617,7 +705,9 @@ export default function AdminTimecardApproval() {
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Timecard</DialogTitle>
+            <DialogTitle>
+              {selectedTimecard?.status === 'submitted_to_payroll' ? 'Process Payroll' : 'Approve Timecard'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -631,10 +721,12 @@ export default function AdminTimecardApproval() {
               <p className="text-sm">{selectedTimecard?.month}/{selectedTimecard?.year}</p>
             </div>
             <div>
-              <Label htmlFor="approval-notes">Approval Notes (Optional)</Label>
+              <Label htmlFor="approval-notes">
+                {selectedTimecard?.status === 'submitted_to_payroll' ? 'Processing Notes (Optional)' : 'Approval Notes (Optional)'}
+              </Label>
               <Textarea
                 id="approval-notes"
-                placeholder="Add any notes about this approval..."
+                placeholder={selectedTimecard?.status === 'submitted_to_payroll' ? 'Add any notes about this payroll processing...' : 'Add any notes about this approval...'}
                 value={approvalNotes}
                 onChange={(e) => setApprovalNotes(e.target.value)}
               />
@@ -643,8 +735,9 @@ export default function AdminTimecardApproval() {
               <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleApprove} disabled={adminApproveTimecard.isPending}>
-                {adminApproveTimecard.isPending ? 'Approving...' : 'Approve'}
+              <Button onClick={handleApprove} disabled={adminApproveTimecard.isPending || payrollProcessTimecard.isPending}>
+                {(adminApproveTimecard.isPending || payrollProcessTimecard.isPending) ? 'Processing...' : 
+                  selectedTimecard?.status === 'submitted_to_payroll' ? 'Process Payroll' : 'Approve'}
               </Button>
             </div>
           </div>
