@@ -18,6 +18,46 @@ import { emailAlerts } from "./emailAlerts";
 import { dataRetentionMonitor } from "./monitoring/dataRetention";
 import { storageMonitor } from "./monitoring/storageMonitor";
 import { dataArchiver } from "./monitoring/dataArchiver";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { sql } from 'drizzle-orm';
+
+// Configure multer for file uploads
+const multerStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/personnel-files';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const personnelUpload = multer({ 
+  storage: multerStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png', 
+      'image/tiff',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Simple authentication middleware for demo purposes
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
@@ -3050,6 +3090,200 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to reset password" });
     }
   });
+
+  // Retirees API endpoints
+  app.get("/api/retirees", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const retirees = await db.select().from(schema.retirees).orderBy(schema.retirees.lastName);
+      res.json(retirees);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/retirees', req.user?.id);
+      res.status(500).json({ message: "Failed to fetch retirees" });
+    }
+  }));
+
+  app.post("/api/retirees", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const validatedData = schema.insertRetireeSchema.parse(req.body);
+      const [retiree] = await db.insert(schema.retirees).values(validatedData).returning();
+      res.json(retiree);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/retirees', req.user?.id);
+      res.status(500).json({ message: "Failed to create retiree" });
+    }
+  }));
+
+  app.put("/api/retirees/:id", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = schema.insertRetireeSchema.parse(req.body);
+      const [retiree] = await db.update(schema.retirees).set(validatedData).where(eq(schema.retirees.id, id)).returning();
+      res.json(retiree);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/retirees', req.user?.id);
+      res.status(500).json({ message: "Failed to update retiree" });
+    }
+  }));
+
+  app.delete("/api/retirees/:id", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.delete(schema.retirees).where(eq(schema.retirees.id, id));
+      res.json({ message: "Retiree deleted successfully" });
+    } catch (error) {
+      handleAPIError(error as Error, '/api/retirees', req.user?.id);
+      res.status(500).json({ message: "Failed to delete retiree" });
+    }
+  }));
+
+  // Archived Employees API endpoints
+  app.get("/api/archived-employees", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const employees = await db.select().from(schema.archivedEmployees).orderBy(schema.archivedEmployees.lastName);
+      res.json(employees);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/archived-employees', req.user?.id);
+      res.status(500).json({ message: "Failed to fetch archived employees" });
+    }
+  }));
+
+  app.post("/api/archived-employees", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const validatedData = schema.insertArchivedEmployeeSchema.parse(req.body);
+      const [employee] = await db.insert(schema.archivedEmployees).values(validatedData).returning();
+      res.json(employee);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/archived-employees', req.user?.id);
+      res.status(500).json({ message: "Failed to create archived employee" });
+    }
+  }));
+
+  app.put("/api/archived-employees/:id", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = schema.insertArchivedEmployeeSchema.parse(req.body);
+      const [employee] = await db.update(schema.archivedEmployees).set(validatedData).where(eq(schema.archivedEmployees.id, id)).returning();
+      res.json(employee);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/archived-employees', req.user?.id);
+      res.status(500).json({ message: "Failed to update archived employee" });
+    }
+  }));
+
+  app.delete("/api/archived-employees/:id", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      // Delete associated files first
+      await db.delete(schema.personnelFiles).where(eq(schema.personnelFiles.archivedEmployeeId, id));
+      // Then delete the employee
+      await db.delete(schema.archivedEmployees).where(eq(schema.archivedEmployees.id, id));
+      res.json({ message: "Archived employee deleted successfully" });
+    } catch (error) {
+      handleAPIError(error as Error, '/api/archived-employees', req.user?.id);
+      res.status(500).json({ message: "Failed to delete archived employee" });
+    }
+  }));
+
+  // Personnel Files API endpoints
+  app.get("/api/personnel-files/:employeeId", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      const files = await db.select().from(schema.personnelFiles)
+        .where(eq(schema.personnelFiles.archivedEmployeeId, employeeId))
+        .orderBy(schema.personnelFiles.createdAt);
+      res.json(files);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/personnel-files', req.user?.id);
+      res.status(500).json({ message: "Failed to fetch personnel files" });
+    }
+  }));
+
+  app.post("/api/personnel-files/upload", requireRole(['admin', 'hr']), personnelUpload.single('file'), asyncErrorHandler(async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { archivedEmployeeId, category, description, documentDate, tags } = req.body;
+      
+      const fileData = {
+        archivedEmployeeId: parseInt(archivedEmployeeId),
+        fileName: req.file.filename,
+        originalFileName: req.file.originalname,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        filePath: req.file.path,
+        category,
+        description: description || null,
+        documentDate: documentDate ? new Date(documentDate) : null,
+        tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : [],
+        uploadedBy: req.user?.id || 'system',
+      };
+
+      const [file] = await db.insert(schema.personnelFiles).values(fileData).returning();
+      
+      // Update file count for the employee
+      await db.update(schema.archivedEmployees)
+        .set({ 
+          personnelFilesCount: sql`${schema.archivedEmployees.personnelFilesCount} + 1`,
+          lastFileUpload: new Date()
+        })
+        .where(eq(schema.archivedEmployees.id, parseInt(archivedEmployeeId)));
+
+      res.json(file);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/personnel-files/upload', req.user?.id);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  }));
+
+  app.get("/api/personnel-files/:id/download", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [file] = await db.select().from(schema.personnelFiles).where(eq(schema.personnelFiles.id, id));
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      res.download(file.filePath, file.originalFileName);
+    } catch (error) {
+      handleAPIError(error as Error, '/api/personnel-files/download', req.user?.id);
+      res.status(500).json({ message: "Failed to download file" });
+    }
+  }));
+
+  app.delete("/api/personnel-files/:id", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [file] = await db.select().from(schema.personnelFiles).where(eq(schema.personnelFiles.id, id));
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Delete file from filesystem
+      const fs = require('fs');
+      try {
+        fs.unlinkSync(file.filePath);
+      } catch (err) {
+        console.error('Error deleting file:', err);
+      }
+
+      // Delete from database
+      await db.delete(schema.personnelFiles).where(eq(schema.personnelFiles.id, id));
+      
+      // Update file count for the employee
+      await db.update(schema.archivedEmployees)
+        .set({ personnelFilesCount: sql`${schema.archivedEmployees.personnelFilesCount} - 1` })
+        .where(eq(schema.archivedEmployees.id, file.archivedEmployeeId));
+
+      res.json({ message: "File deleted successfully" });
+    } catch (error) {
+      handleAPIError(error as Error, '/api/personnel-files', req.user?.id);
+      res.status(500).json({ message: "Failed to delete file" });
+    }
+  }));
 
   const httpServer = createServer(app);
   return httpServer;

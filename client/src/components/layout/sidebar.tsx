@@ -14,7 +14,9 @@ import {
   DollarSign,
   Mail,
   Layout,
-  Tag
+  Tag,
+  Archive,
+  Heart
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import RoleSwitcher from "@/components/auth/role-switcher";
@@ -34,6 +36,8 @@ const menuItems = [
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["admin", "hr"] },
   { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["admin", "hr"] },
+  { path: "/retirees", icon: Heart, label: "Retirees", roles: ["admin", "hr"] },
+  { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["admin", "hr"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr"] },
 ];
 
@@ -90,14 +94,14 @@ export default function Sidebar() {
           
           return (
             <Link key={item.path} href={item.path}>
-              <a className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              <div className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                 isActive 
                   ? 'bg-primary text-white' 
                   : 'text-gray-700 hover:bg-gray-100'
               }`}>
                 <Icon className="text-sm" size={16} />
                 <span className={isActive ? 'font-medium' : ''}>{item.label}</span>
-              </a>
+              </div>
             </Link>
           );
         })}

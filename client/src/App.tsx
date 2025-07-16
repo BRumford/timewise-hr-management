@@ -22,6 +22,8 @@ import FieldLabels from "@/pages/field-labels";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
+import Retirees from "@/pages/retirees";
+import ArchivedEmployees from "@/pages/archived-employees";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -56,6 +58,8 @@ function Router() {
                 <Route path="/reports" component={Reports} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/field-labels" component={FieldLabels} />
+                <Route path="/retirees" component={Retirees} />
+                <Route path="/archived-employees" component={ArchivedEmployees} />
                 <Route component={NotFound} />
               </Switch>
             </main>

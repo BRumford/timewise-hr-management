@@ -709,3 +709,124 @@ export type CustomFieldLabel = typeof customFieldLabels.$inferSelect;
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true, createdAt: true });
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Retirees table for benefit information
+export const retirees = pgTable("retirees", {
+  id: serial("id").primaryKey(),
+  employeeId: varchar("employee_id").notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  retirementDate: date("retirement_date").notNull(),
+  yearsOfService: integer("years_of_service"),
+  
+  // Benefit information
+  pensionPlan: varchar("pension_plan"),
+  pensionAmount: decimal("pension_amount", { precision: 10, scale: 2 }),
+  healthInsurance: varchar("health_insurance"),
+  healthInsurancePremium: decimal("health_insurance_premium", { precision: 10, scale: 2 }),
+  dentalInsurance: varchar("dental_insurance"),
+  visionInsurance: varchar("vision_insurance"),
+  lifeInsurance: varchar("life_insurance"),
+  lifeInsuranceAmount: decimal("life_insurance_amount", { precision: 10, scale: 2 }),
+  
+  // Contact and emergency information
+  address: text("address"),
+  emergencyContactName: varchar("emergency_contact_name"),
+  emergencyContactPhone: varchar("emergency_contact_phone"),
+  emergencyContactRelation: varchar("emergency_contact_relation"),
+  
+  // Medicare information
+  medicarePartA: boolean("medicare_part_a").default(false),
+  medicarePartB: boolean("medicare_part_b").default(false),
+  medicarePartD: boolean("medicare_part_d").default(false),
+  medicareNumber: varchar("medicare_number"),
+  
+  // Additional notes
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Archived employees table for personnel files
+export const archivedEmployees = pgTable("archived_employees", {
+  id: serial("id").primaryKey(),
+  originalEmployeeId: varchar("original_employee_id").notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email"),
+  department: varchar("department"),
+  position: varchar("position"),
+  hireDate: date("hire_date"),
+  terminationDate: date("termination_date"),
+  terminationReason: varchar("termination_reason"),
+  
+  // Archive information
+  archiveDate: timestamp("archive_date").defaultNow(),
+  archivedBy: varchar("archived_by").notNull(),
+  archiveReason: varchar("archive_reason"),
+  
+  // Personnel file tracking
+  personnelFilesCount: integer("personnel_files_count").default(0),
+  lastFileUpload: timestamp("last_file_upload"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Personnel files for archived employees
+export const personnelFiles = pgTable("personnel_files", {
+  id: serial("id").primaryKey(),
+  archivedEmployeeId: integer("archived_employee_id").notNull().references(() => archivedEmployees.id),
+  fileName: varchar("file_name").notNull(),
+  originalFileName: varchar("original_file_name").notNull(),
+  fileType: varchar("file_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  filePath: varchar("file_path").notNull(),
+  
+  // File categorization
+  category: varchar("category").notNull(), // 'application', 'evaluation', 'disciplinary', 'training', 'medical', 'other'
+  description: text("description"),
+  
+  // Document metadata
+  documentDate: date("document_date"),
+  scannedDate: timestamp("scanned_date").defaultNow(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  
+  // Search and indexing
+  searchableText: text("searchable_text"),
+  tags: text("tags").array(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Add relations for new tables
+export const retireesRelations = relations(retirees, ({ one }) => ({
+  // No direct relations, but could link to original employee records if needed
+}));
+
+export const archivedEmployeesRelations = relations(archivedEmployees, ({ many }) => ({
+  personnelFiles: many(personnelFiles),
+}));
+
+export const personnelFilesRelations = relations(personnelFiles, ({ one }) => ({
+  archivedEmployee: one(archivedEmployees, {
+    fields: [personnelFiles.archivedEmployeeId],
+    references: [archivedEmployees.id],
+  }),
+}));
+
+// Add insert schemas and types for new tables
+export const insertRetireeSchema = createInsertSchema(retirees).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertArchivedEmployeeSchema = createInsertSchema(archivedEmployees).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPersonnelFileSchema = createInsertSchema(personnelFiles).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertRetiree = z.infer<typeof insertRetireeSchema>;
+export type Retiree = typeof retirees.$inferSelect;
+export type InsertArchivedEmployee = z.infer<typeof insertArchivedEmployeeSchema>;
+export type ArchivedEmployee = typeof archivedEmployees.$inferSelect;
+export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
+export type PersonnelFile = typeof personnelFiles.$inferSelect;
