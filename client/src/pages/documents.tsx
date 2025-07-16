@@ -2,7 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { DropdownEdit } from "@/components/ui/dropdown-edit";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Plus, 
   Search, 
@@ -21,6 +24,7 @@ import { format } from "date-fns";
 export default function Documents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { toast } = useToast();
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ["/api/documents"],
@@ -28,6 +32,31 @@ export default function Documents() {
 
   const { data: employees } = useQuery({
     queryKey: ["/api/employees"],
+  });
+
+  // Update document field mutation
+  const updateDocumentFieldMutation = useMutation({
+    mutationFn: async ({ documentId, field, value }: { documentId: number; field: string; value: string }) => {
+      const document = documents?.find((doc: any) => doc.id === documentId);
+      if (!document) throw new Error('Document not found');
+      
+      const updatedDocument = { ...document, [field]: value };
+      return await apiRequest(`/api/documents/${documentId}`, 'PUT', updatedDocument);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      toast({
+        title: "Success",
+        description: "Document updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update document",
+        variant: "destructive",
+      });
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -234,9 +263,21 @@ export default function Documents() {
                       <div className="text-sm text-gray-900">{getEmployeeName(document.employeeId)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">
-                        {document.documentType.replace('_', ' ')}
-                      </div>
+                      <DropdownEdit
+                        value={document.documentType}
+                        onSave={(value) => updateDocumentFieldMutation.mutate({ documentId: document.id, field: 'documentType', value })}
+                        type="select"
+                        options={[
+                          { value: 'resume', label: 'Resume' },
+                          { value: 'certification', label: 'Certification' },
+                          { value: 'background_check', label: 'Background Check' },
+                          { value: 'tax_form', label: 'Tax Form' },
+                          { value: 'contract', label: 'Contract' },
+                          { value: 'evaluation', label: 'Evaluation' },
+                          { value: 'other', label: 'Other' }
+                        ]}
+                        className="min-w-32"
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
@@ -246,9 +287,18 @@ export default function Documents() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(document.status)}
-                        <Badge className={getStatusColor(document.status)}>
-                          {document.status}
-                        </Badge>
+                        <DropdownEdit
+                          value={document.status}
+                          onSave={(value) => updateDocumentFieldMutation.mutate({ documentId: document.id, field: 'status', value })}
+                          type="status"
+                          options={[
+                            { value: 'pending', label: 'Pending' },
+                            { value: 'approved', label: 'Approved' },
+                            { value: 'processed', label: 'Processed' },
+                            { value: 'rejected', label: 'Rejected' }
+                          ]}
+                          className="min-w-24"
+                        />
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

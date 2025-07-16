@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownEdit } from "@/components/ui/dropdown-edit";
 import { Calendar, Clock, User, Filter, Plus, Check, X, Edit, ArrowRight, FileText, Users, AlertCircle, Download, GraduationCap, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -219,6 +220,39 @@ export default function TimeCards() {
       toast({
         title: "Error",
         description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update time card field mutation
+  const updateTimeCardFieldMutation = useMutation({
+    mutationFn: async ({ timeCardId, field, value }: { timeCardId: number; field: string; value: string }) => {
+      const timeCard = timeCards.find((tc: TimeCard) => tc.id === timeCardId);
+      if (!timeCard) throw new Error('Time card not found');
+      
+      let updatedValue = value;
+      
+      // Handle time fields
+      if (field === 'clockIn' || field === 'clockOut') {
+        const dateStr = format(new Date(timeCard.date), 'yyyy-MM-dd');
+        updatedValue = new Date(`${dateStr}T${value}:00`).toISOString();
+      }
+      
+      const updatedTimeCard = { ...timeCard, [field]: updatedValue };
+      return await apiRequest(`/api/time-cards/${timeCardId}`, 'PUT', updatedTimeCard);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-cards"] });
+      toast({
+        title: "Success",
+        description: "Time card updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update time card",
         variant: "destructive",
       });
     },
@@ -638,10 +672,25 @@ export default function TimeCards() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Clock className="h-4 w-4 text-gray-500" />
-                    <span>
-                      {timeCard.clockIn && format(new Date(timeCard.clockIn), "HH:mm")} - 
-                      {timeCard.clockOut && format(new Date(timeCard.clockOut), "HH:mm")}
-                    </span>
+                    <div className="flex items-center space-x-1">
+                      <DropdownEdit
+                        value={timeCard.clockIn ? format(new Date(timeCard.clockIn), "HH:mm") : ""}
+                        onSave={(value) => updateTimeCardFieldMutation.mutate({ timeCardId: timeCard.id, field: 'clockIn', value })}
+                        type="text"
+                        placeholder="HH:mm"
+                        className="w-16"
+                        disabled={timeCard.status === "payroll_processed"}
+                      />
+                      <span>-</span>
+                      <DropdownEdit
+                        value={timeCard.clockOut ? format(new Date(timeCard.clockOut), "HH:mm") : ""}
+                        onSave={(value) => updateTimeCardFieldMutation.mutate({ timeCardId: timeCard.id, field: 'clockOut', value })}
+                        type="text"
+                        placeholder="HH:mm"
+                        className="w-16"
+                        disabled={timeCard.status === "payroll_processed"}
+                      />
+                    </div>
                   </div>
                   {timeCard.totalHours && (
                     <Badge variant="secondary">

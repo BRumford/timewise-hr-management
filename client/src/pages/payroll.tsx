@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DropdownEdit } from "@/components/ui/dropdown-edit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Plus, 
@@ -288,6 +289,31 @@ export default function Payroll() {
     }
     createBenefitMutation.mutate(benefitData);
   };
+
+  // Update payroll record field mutation
+  const updatePayrollFieldMutation = useMutation({
+    mutationFn: async ({ payrollId, field, value }: { payrollId: number; field: string; value: string }) => {
+      const record = payrollRecords?.find((pr: any) => pr.id === payrollId);
+      if (!record) throw new Error('Payroll record not found');
+      
+      const updatedRecord = { ...record, [field]: value };
+      return await apiRequest(`/api/payroll/${payrollId}`, 'PUT', updatedRecord);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payroll"] });
+      toast({
+        title: "Success",
+        description: "Payroll record updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update payroll record",
+        variant: "destructive",
+      });
+    },
+  });
 
   const generateReport = async (reportType: string) => {
     try {
@@ -745,9 +771,18 @@ export default function Payroll() {
                           <div className="text-sm text-gray-900">{formatCurrency(parseFloat(record.netPay))}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={record.status === 'processed' ? 'default' : 'secondary'}>
-                            {record.status}
-                          </Badge>
+                          <DropdownEdit
+                            value={record.status}
+                            onSave={(value) => updatePayrollFieldMutation.mutate({ payrollId: record.id, field: 'status', value })}
+                            type="status"
+                            options={[
+                              { value: 'draft', label: 'Draft' },
+                              { value: 'approved', label: 'Approved' },
+                              { value: 'processed', label: 'Processed' },
+                              { value: 'paid', label: 'Paid' }
+                            ]}
+                            className="min-w-24"
+                          />
                         </td>
                       </tr>
                     ))}

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { DropdownEdit } from "@/components/ui/dropdown-edit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Filter, Download, Upload, FileText, AlertCircle, CheckCircle, Edit, Eye, Trash2 } from "lucide-react";
@@ -217,6 +218,31 @@ export default function Employees() {
       toast({
         title: "Import Error",
         description: "Some employees could not be imported. Check the error details.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update individual employee field mutation
+  const updateEmployeeFieldMutation = useMutation({
+    mutationFn: async ({ employeeId, field, value }: { employeeId: number; field: string; value: string }) => {
+      const employee = employees?.find((e: any) => e.id === employeeId);
+      if (!employee) throw new Error('Employee not found');
+      
+      const updatedEmployee = { ...employee, [field]: value };
+      return await apiRequest(`/api/employees/${employeeId}`, 'PUT', updatedEmployee);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+      toast({
+        title: "Success",
+        description: "Employee updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update employee",
         variant: "destructive",
       });
     },
@@ -544,20 +570,50 @@ export default function Employees() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.position}</div>
+                      <DropdownEdit
+                        value={employee.position}
+                        onSave={(value) => updateEmployeeFieldMutation.mutate({ employeeId: employee.id, field: 'position', value })}
+                        type="text"
+                        placeholder="Enter position"
+                        className="min-w-32"
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.department}</div>
+                      <DropdownEdit
+                        value={employee.department}
+                        onSave={(value) => updateEmployeeFieldMutation.mutate({ employeeId: employee.id, field: 'department', value })}
+                        type="text"
+                        placeholder="Enter department"
+                        className="min-w-32"
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">
-                        {employee.employeeType.replace('_', ' ')}
-                      </div>
+                      <DropdownEdit
+                        value={employee.employeeType}
+                        onSave={(value) => updateEmployeeFieldMutation.mutate({ employeeId: employee.id, field: 'employeeType', value })}
+                        type="select"
+                        options={[
+                          { value: 'teacher', label: 'Teacher' },
+                          { value: 'administrator', label: 'Administrator' },
+                          { value: 'support_staff', label: 'Support Staff' },
+                          { value: 'substitute', label: 'Substitute' }
+                        ]}
+                        className="min-w-32"
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={getStatusColor(employee.status)}>
-                        {employee.status.replace('_', ' ')}
-                      </Badge>
+                      <DropdownEdit
+                        value={employee.status}
+                        onSave={(value) => updateEmployeeFieldMutation.mutate({ employeeId: employee.id, field: 'status', value })}
+                        type="status"
+                        options={[
+                          { value: 'active', label: 'Active' },
+                          { value: 'inactive', label: 'Inactive' },
+                          { value: 'on_leave', label: 'On Leave' },
+                          { value: 'terminated', label: 'Terminated' }
+                        ]}
+                        className="min-w-24"
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">

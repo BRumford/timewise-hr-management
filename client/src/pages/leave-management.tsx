@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { DropdownEdit } from "@/components/ui/dropdown-edit";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -162,6 +163,31 @@ export default function LeaveManagement() {
       toast({
         title: "Error",
         description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update leave request field mutation
+  const updateLeaveRequestFieldMutation = useMutation({
+    mutationFn: async ({ requestId, field, value }: { requestId: number; field: string; value: string }) => {
+      const request = leaveRequests?.find((lr: any) => lr.id === requestId);
+      if (!request) throw new Error('Leave request not found');
+      
+      const updatedRequest = { ...request, [field]: value };
+      return await apiRequest(`/api/leave-requests/${requestId}`, 'PUT', updatedRequest);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
+      toast({
+        title: "Success",
+        description: "Leave request updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update leave request",
         variant: "destructive",
       });
     },
@@ -1078,9 +1104,18 @@ export default function LeaveManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={getStatusColor(request.status)}>
-                        {request.status}
-                      </Badge>
+                      <DropdownEdit
+                        value={request.status}
+                        onSave={(value) => updateLeaveRequestFieldMutation.mutate({ requestId: request.id, field: 'status', value })}
+                        type="status"
+                        options={[
+                          { value: 'pending', label: 'Pending' },
+                          { value: 'approved', label: 'Approved' },
+                          { value: 'rejected', label: 'Rejected' },
+                          { value: 'cancelled', label: 'Cancelled' }
+                        ]}
+                        className="min-w-24"
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Button
