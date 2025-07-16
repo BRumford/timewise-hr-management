@@ -93,6 +93,9 @@ import {
   type InsertDataEncryptionKey,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  dropdownOptions,
+  type DropdownOption,
+  type InsertDropdownOption,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-orm";
@@ -2139,6 +2142,38 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await this.getMonthlyTimecard(data.employeeId, data.month, data.year);
+  }
+
+  // Dropdown options methods
+  async getDropdownOptions(category: string): Promise<DropdownOption[]> {
+    return await db.select().from(dropdownOptions)
+      .where(and(
+        eq(dropdownOptions.category, category),
+        eq(dropdownOptions.isActive, true)
+      ))
+      .orderBy(dropdownOptions.displayOrder);
+  }
+
+  async createDropdownOption(data: InsertDropdownOption): Promise<DropdownOption> {
+    const [option] = await db.insert(dropdownOptions).values(data).returning();
+    return option;
+  }
+
+  async updateDropdownOption(id: number, data: Partial<InsertDropdownOption>): Promise<DropdownOption> {
+    const [option] = await db.update(dropdownOptions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(dropdownOptions.id, id))
+      .returning();
+    return option;
+  }
+
+  async deleteDropdownOption(id: number): Promise<void> {
+    await db.delete(dropdownOptions).where(eq(dropdownOptions.id, id));
+  }
+
+  async getAllDropdownOptions(): Promise<DropdownOption[]> {
+    return await db.select().from(dropdownOptions)
+      .orderBy(dropdownOptions.category, dropdownOptions.displayOrder);
   }
 }
 

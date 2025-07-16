@@ -1486,4 +1486,21 @@ export const insertMonthlyTimecardSchema = createInsertSchema(monthlyTimecards).
 export type InsertMonthlyTimecard = z.infer<typeof insertMonthlyTimecardSchema>;
 export type MonthlyTimecard = typeof monthlyTimecards.$inferSelect;
 
+// Dropdown options for timecard fields
+export const dropdownOptions = pgTable("dropdown_options", {
+  id: serial("id").primaryKey(),
+  category: varchar("category", { length: 50 }).notNull(), // 'code', 'funding', 'site', 'addon'
+  value: varchar("value", { length: 100 }).notNull(),
+  label: varchar("label", { length: 200 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDropdownOptionSchema = createInsertSchema(dropdownOptions).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDropdownOption = z.infer<typeof insertDropdownOptionSchema>;
+export type DropdownOption = typeof dropdownOptions.$inferSelect;
+
 

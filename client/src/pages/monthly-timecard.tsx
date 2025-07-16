@@ -84,6 +84,23 @@ export default function MonthlyTimecard() {
     enabled: !!selectedTemplate,
   });
 
+  // Fetch dropdown options for timecard fields
+  const { data: codeOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "code"],
+  });
+
+  const { data: fundingOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "funding"],
+  });
+
+  const { data: siteOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "site"],
+  });
+
+  const { data: addonOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "addon"],
+  });
+
   // Get employee data
   const selectedEmployeeData = employees.find((emp: Employee) => emp.id === selectedEmployee);
 
@@ -306,13 +323,18 @@ export default function MonthlyTimecard() {
           {lineNumber}
         </td>
         <td className="border border-gray-400 px-1 py-1">
-          <Input
-            type="text"
-            value={entry.addon || ''}
-            onChange={(e) => updatePayrollEntry(index, 'addon', e.target.value)}
-            className="h-8 text-sm border-0 bg-transparent p-1"
-            placeholder="Addon description"
-          />
+          <Select onValueChange={(value) => updatePayrollEntry(index, 'addon', value)} value={entry.addon || ''}>
+            <SelectTrigger className="h-8 text-sm border-0 bg-transparent p-1">
+              <SelectValue placeholder="Addon" />
+            </SelectTrigger>
+            <SelectContent>
+              {addonOptions.map((option) => (
+                <SelectItem key={option.id} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </td>
         <td className="border border-gray-400 px-1 py-1">
           <Input
@@ -491,13 +513,18 @@ export default function MonthlyTimecard() {
                             </div>
                           </td>
                           <td className="border border-gray-400 px-1 py-1">
-                            <Input
-                              type="text"
-                              value={entry.code}
-                              onChange={(e) => updateDailyEntry(index, 'code', e.target.value)}
-                              className="h-6 text-xs border-0 bg-transparent p-1"
-                              placeholder="Code"
-                            />
+                            <Select onValueChange={(value) => updateDailyEntry(index, 'code', value)} value={entry.code}>
+                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-1">
+                                <SelectValue placeholder="Code" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {codeOptions.map((option) => (
+                                  <SelectItem key={option.id} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="border border-gray-400 px-1 py-1">
                             <Input
@@ -528,22 +555,32 @@ export default function MonthlyTimecard() {
                             />
                           </td>
                           <td className="border border-gray-400 px-1 py-1">
-                            <Input
-                              type="text"
-                              value={entry.funding}
-                              onChange={(e) => updateDailyEntry(index, 'funding', e.target.value)}
-                              className="h-6 text-xs border-0 bg-transparent p-1"
-                              placeholder="Funding"
-                            />
+                            <Select onValueChange={(value) => updateDailyEntry(index, 'funding', value)} value={entry.funding}>
+                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-1">
+                                <SelectValue placeholder="Funding" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {fundingOptions.map((option) => (
+                                  <SelectItem key={option.id} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="border border-gray-400 px-1 py-1">
-                            <Input
-                              type="text"
-                              value={entry.site}
-                              onChange={(e) => updateDailyEntry(index, 'site', e.target.value)}
-                              className="h-6 text-xs border-0 bg-transparent p-1"
-                              placeholder="Site"
-                            />
+                            <Select onValueChange={(value) => updateDailyEntry(index, 'site', value)} value={entry.site}>
+                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-1">
+                                <SelectValue placeholder="Site" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {siteOptions.map((option) => (
+                                  <SelectItem key={option.id} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                         </tr>
                       ))}

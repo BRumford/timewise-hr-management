@@ -26,6 +26,7 @@ import fs from 'fs';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
 import * as schema from '@shared/schema';
+import { insertDropdownOptionSchema } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 // Configure multer for file uploads
@@ -3650,6 +3651,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(timecard);
     } catch (error) {
       res.status(500).json({ message: "Failed to update monthly timecard", error: (error as Error).message });
+    }
+  });
+
+  // Dropdown options routes
+  app.get('/api/dropdown-options/:category', async (req, res) => {
+    try {
+      const category = req.params.category;
+      const options = await storage.getDropdownOptions(category);
+      res.json(options);
+    } catch (error) {
+      console.error('Error fetching dropdown options:', error);
+      res.status(500).json({ message: "Failed to fetch dropdown options" });
+    }
+  });
+
+  app.get('/api/dropdown-options', async (req, res) => {
+    try {
+      const options = await storage.getAllDropdownOptions();
+      res.json(options);
+    } catch (error) {
+      console.error('Error fetching all dropdown options:', error);
+      res.status(500).json({ message: "Failed to fetch all dropdown options" });
+    }
+  });
+
+  app.post('/api/dropdown-options', isAuthenticated, async (req, res) => {
+    try {
+      const validation = insertDropdownOptionSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const option = await storage.createDropdownOption(validation.data);
+      res.json(option);
+    } catch (error) {
+      console.error('Error creating dropdown option:', error);
+      res.status(500).json({ message: "Failed to create dropdown option" });
+    }
+  });
+
+  app.put('/api/dropdown-options/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertDropdownOptionSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const option = await storage.updateDropdownOption(id, validation.data);
+      res.json(option);
+    } catch (error) {
+      console.error('Error updating dropdown option:', error);
+      res.status(500).json({ message: "Failed to update dropdown option" });
+    }
+  });
+
+  app.delete('/api/dropdown-options/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteDropdownOption(id);
+      res.json({ message: "Dropdown option deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting dropdown option:', error);
+      res.status(500).json({ message: "Failed to delete dropdown option" });
     }
   });
 
