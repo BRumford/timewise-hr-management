@@ -5,6 +5,16 @@ import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import { 
+  asyncErrorHandler, 
+  handleDatabaseError, 
+  handleAuthError, 
+  handlePayrollError,
+  handleAPIError,
+  handleCriticalError 
+} from "./errorHandler";
+import { systemHealthMonitor } from "./monitoring/systemHealth";
+import { emailAlerts } from "./emailAlerts";
 
 // Simple authentication middleware for demo purposes
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
@@ -37,7 +47,7 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
     
     next();
   } catch (error) {
-    res.status(500).json({ message: "Authentication error", error: (error as Error).message });
+    handleAuthError(error as Error, "demo_user");
   }
 };
 
@@ -61,7 +71,7 @@ const requireRole = (allowedRoles: string[]) => {
       (req as any).currentUser = { id: user.id, role: userRole };
       next();
     } catch (error) {
-      res.status(500).json({ message: "Authorization error", error: (error as Error).message });
+      handleAuthError(error as Error, user?.id);
     }
   };
 };
@@ -2699,6 +2709,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to initialize default field labels", error: (error as Error).message });
     }
   });
+
+  // System health monitoring routes
+  app.get("/api/system/health", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const healthStatus = await systemHealthMonitor.getSystemHealth();
+      res.json(healthStatus);
+    } catch (error) {
+      handleCriticalError(error as Error, 'System health check failed');
+      res.status(500).json({ message: "Failed to get system health", error: (error as Error).message });
+    }
+  }));
+
+  // Test error alert endpoint (admin only)
+  app.post("/api/system/test-alert", requireRole(['admin']), asyncErrorHandler(async (req, res) => {
+    try {
+      const { alertType, message } = req.body;
+      
+      const testError = new Error(message || 'Test error alert');
+      
+      switch (alertType) {
+        case 'database':
+          await emailAlerts.sendDatabaseError(testError, 'Test database error');
+          break;
+        case 'authentication':
+          await emailAlerts.sendAuthenticationError(testError, 'test_user');
+          break;
+        case 'payroll':
+          await emailAlerts.sendPayrollError(testError, 'Test payroll error');
+          break;
+        case 'system':
+          await emailAlerts.sendSystemError(testError, 'Test system error');
+          break;
+        default:
+          await emailAlerts.sendAPIError(testError, 'POST /api/system/test-alert', 'test_user');
+      }
+      
+      res.json({ message: 'Test alert sent successfully' });
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to send test alert');
+      res.status(500).json({ message: "Failed to send test alert", error: (error as Error).message });
+    }
+  }));
+
+  // System metrics endpoint
+  app.get("/api/system/metrics", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const metrics = {
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        cpuUsage: process.cpuUsage(),
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString()
+      };
+      
+      res.json(metrics);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get system metrics');
+      res.status(500).json({ message: "Failed to get system metrics", error: (error as Error).message });
+    }
+  }));
 
   // Password reset routes (public - no authentication required)
   app.post("/api/password-reset/request", async (req, res) => {

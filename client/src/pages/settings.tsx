@@ -15,8 +15,10 @@ import {
   Zap, 
   Save,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Activity
 } from "lucide-react";
+import SystemHealthMonitor from "@/components/SystemHealthMonitor";
 import { useState } from "react";
 
 export default function Settings() {
@@ -33,12 +35,13 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="ai">AI Settings</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -415,6 +418,10 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-6">
+          <SystemHealthMonitor />
         </TabsContent>
       </Tabs>
     </div>
