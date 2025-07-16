@@ -30,6 +30,8 @@ import ArchivedEmployees from "@/pages/archived-employees";
 import SupportDocumentation from "@/pages/support-documentation";
 import SecurityUpdates from "@/pages/security-updates";
 import DropdownSettings from "@/pages/dropdown-settings";
+import PrivacyPolicies from "@/pages/privacy-policies";
+import DataDeletionRequests from "@/pages/data-deletion-requests";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -72,6 +74,8 @@ function Router() {
                 <Route path="/support-documentation" component={SupportDocumentation} />
                 <Route path="/security-updates" component={SecurityUpdates} />
                 <Route path="/dropdown-settings" component={DropdownSettings} />
+                <Route path="/privacy-policies" component={PrivacyPolicies} />
+                <Route path="/data-deletion-requests" component={DataDeletionRequests} />
                 <Route component={NotFound} />
               </Switch>
             </main>

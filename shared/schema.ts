@@ -1332,6 +1332,241 @@ export type InsertSupportTicketHistory = z.infer<typeof insertSupportTicketHisto
 export type InsertSupportAgent = z.infer<typeof insertSupportAgentSchema>;
 export type InsertSupportKnowledgeBase = z.infer<typeof insertSupportKnowledgeBaseSchema>;
 
+// ===========================================
+// PRIVACY COMPLIANCE TABLES
+// ===========================================
+
+// Privacy Policy and Terms of Service
+export const privacyPolicies = pgTable("privacy_policies", {
+  id: serial("id").primaryKey(),
+  version: varchar("version", { length: 50 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  content: text("content").notNull(),
+  effectiveDate: timestamp("effective_date").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const termsOfService = pgTable("terms_of_service", {
+  id: serial("id").primaryKey(),
+  version: varchar("version", { length: 50 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  content: text("content").notNull(),
+  effectiveDate: timestamp("effective_date").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Data Processing Agreements
+export const dataProcessingAgreements = pgTable("data_processing_agreements", {
+  id: serial("id").primaryKey(),
+  agreementType: varchar("agreement_type", { length: 100 }).notNull(), // vendor, employee, student, etc.
+  entityName: varchar("entity_name", { length: 200 }).notNull(),
+  entityType: varchar("entity_type", { length: 100 }).notNull(), // individual, organization
+  agreementContent: text("agreement_content").notNull(),
+  signedDate: timestamp("signed_date"),
+  expirationDate: timestamp("expiration_date"),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, signed, expired, revoked
+  legalBasis: varchar("legal_basis", { length: 100 }).notNull(), // consent, contract, legal_obligation, etc.
+  dataCategories: text("data_categories").array(), // ["personal", "sensitive", "financial"]
+  processingPurposes: text("processing_purposes").array(),
+  retentionPeriod: integer("retention_period_days"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User Consent Management
+export const userConsents = pgTable("user_consents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  consentType: varchar("consent_type", { length: 100 }).notNull(), // privacy_policy, terms_of_service, data_processing
+  consentVersion: varchar("consent_version", { length: 50 }).notNull(),
+  consentGiven: boolean("consent_given").notNull(),
+  consentDate: timestamp("consent_date").notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  withdrawnDate: timestamp("withdrawn_date"),
+  expirationDate: timestamp("expiration_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Data Retention Policies
+export const dataRetentionPolicies = pgTable("data_retention_policies", {
+  id: serial("id").primaryKey(),
+  policyName: varchar("policy_name", { length: 200 }).notNull(),
+  dataCategory: varchar("data_category", { length: 100 }).notNull(), // employee, payroll, medical, etc.
+  retentionPeriodYears: integer("retention_period_years").notNull(),
+  legalRequirement: text("legal_requirement"),
+  businessJustification: text("business_justification"),
+  disposalMethod: varchar("disposal_method", { length: 100 }).notNull(), // secure_delete, anonymize, archive
+  isActive: boolean("is_active").default(true),
+  reviewDate: timestamp("review_date"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Data Deletion Requests (Right to be Forgotten)
+export const dataDeletionRequests = pgTable("data_deletion_requests", {
+  id: serial("id").primaryKey(),
+  requesterId: varchar("requester_id").references(() => users.id),
+  employeeId: integer("employee_id").references(() => employees.id),
+  requestType: varchar("request_type", { length: 50 }).notNull(), // full_deletion, partial_deletion, anonymization
+  requestReason: text("request_reason"),
+  dataCategories: text("data_categories").array(), // ["personal", "payroll", "medical", "performance"]
+  requestDate: timestamp("request_date").defaultNow(),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewDate: timestamp("review_date"),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, approved, rejected, completed
+  completionDate: timestamp("completion_date"),
+  rejectionReason: text("rejection_reason"),
+  deletionDetails: jsonb("deletion_details"), // What was deleted, what was retained and why
+  legalBasis: varchar("legal_basis", { length: 100 }), // gdpr_art_17, ccpa, employment_termination
+  retentionOverride: boolean("retention_override").default(false), // Legal requirement to retain
+  overrideReason: text("override_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Privacy Impact Assessments
+export const privacyImpactAssessments = pgTable("privacy_impact_assessments", {
+  id: serial("id").primaryKey(),
+  assessmentName: varchar("assessment_name", { length: 200 }).notNull(),
+  systemOrProcess: varchar("system_or_process", { length: 200 }).notNull(),
+  dataTypes: text("data_types").array(),
+  riskLevel: varchar("risk_level", { length: 50 }).notNull(), // low, medium, high, critical
+  riskDescription: text("risk_description"),
+  mitigationMeasures: text("mitigation_measures"),
+  assessmentDate: timestamp("assessment_date").defaultNow(),
+  reviewDate: timestamp("review_date"),
+  assessorId: varchar("assessor_id").references(() => users.id),
+  status: varchar("status", { length: 50 }).default("draft"), // draft, completed, approved
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Data Breach Incidents
+export const dataBreachIncidents = pgTable("data_breach_incidents", {
+  id: serial("id").primaryKey(),
+  incidentTitle: varchar("incident_title", { length: 200 }).notNull(),
+  incidentType: varchar("incident_type", { length: 100 }).notNull(), // unauthorized_access, data_loss, system_breach
+  discoveryDate: timestamp("discovery_date").notNull(),
+  incidentDate: timestamp("incident_date"),
+  affectedDataTypes: text("affected_data_types").array(),
+  affectedRecordCount: integer("affected_record_count"),
+  riskLevel: varchar("risk_level", { length: 50 }).notNull(),
+  containmentMeasures: text("containment_measures"),
+  notificationRequired: boolean("notification_required").default(false),
+  notificationDate: timestamp("notification_date"),
+  regulatoryReported: boolean("regulatory_reported").default(false),
+  regulatoryReportDate: timestamp("regulatory_report_date"),
+  status: varchar("status", { length: 50 }).default("investigating"), // investigating, contained, resolved
+  incidentDetails: text("incident_details"),
+  reportedBy: varchar("reported_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Privacy Compliance Relations
+export const privacyPoliciesRelations = relations(privacyPolicies, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [privacyPolicies.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const termsOfServiceRelations = relations(termsOfService, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [termsOfService.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const dataProcessingAgreementsRelations = relations(dataProcessingAgreements, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [dataProcessingAgreements.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const userConsentsRelations = relations(userConsents, ({ one }) => ({
+  user: one(users, {
+    fields: [userConsents.userId],
+    references: [users.id],
+  }),
+}));
+
+export const dataRetentionPoliciesRelations = relations(dataRetentionPolicies, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [dataRetentionPolicies.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const dataDeletionRequestsRelations = relations(dataDeletionRequests, ({ one }) => ({
+  requester: one(users, {
+    fields: [dataDeletionRequests.requesterId],
+    references: [users.id],
+  }),
+  employee: one(employees, {
+    fields: [dataDeletionRequests.employeeId],
+    references: [employees.id],
+  }),
+  reviewedBy: one(users, {
+    fields: [dataDeletionRequests.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+export const privacyImpactAssessmentsRelations = relations(privacyImpactAssessments, ({ one }) => ({
+  assessor: one(users, {
+    fields: [privacyImpactAssessments.assessorId],
+    references: [users.id],
+  }),
+}));
+
+export const dataBreachIncidentsRelations = relations(dataBreachIncidents, ({ one }) => ({
+  reportedBy: one(users, {
+    fields: [dataBreachIncidents.reportedBy],
+    references: [users.id],
+  }),
+}));
+
+// Privacy Compliance Insert Schemas
+export const insertPrivacyPolicySchema = createInsertSchema(privacyPolicies).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTermsOfServiceSchema = createInsertSchema(termsOfService).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDataProcessingAgreementSchema = createInsertSchema(dataProcessingAgreements).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserConsentSchema = createInsertSchema(userConsents).omit({ id: true, createdAt: true });
+export const insertDataRetentionPolicySchema = createInsertSchema(dataRetentionPolicies).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDataDeletionRequestSchema = createInsertSchema(dataDeletionRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPrivacyImpactAssessmentSchema = createInsertSchema(privacyImpactAssessments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDataBreachIncidentSchema = createInsertSchema(dataBreachIncidents).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Privacy Compliance Export Types
+export type PrivacyPolicy = typeof privacyPolicies.$inferSelect;
+export type InsertPrivacyPolicy = z.infer<typeof insertPrivacyPolicySchema>;
+export type TermsOfService = typeof termsOfService.$inferSelect;
+export type InsertTermsOfService = z.infer<typeof insertTermsOfServiceSchema>;
+export type DataProcessingAgreement = typeof dataProcessingAgreements.$inferSelect;
+export type InsertDataProcessingAgreement = z.infer<typeof insertDataProcessingAgreementSchema>;
+export type UserConsent = typeof userConsents.$inferSelect;
+export type InsertUserConsent = z.infer<typeof insertUserConsentSchema>;
+export type DataRetentionPolicy = typeof dataRetentionPolicies.$inferSelect;
+export type InsertDataRetentionPolicy = z.infer<typeof insertDataRetentionPolicySchema>;
+export type DataDeletionRequest = typeof dataDeletionRequests.$inferSelect;
+export type InsertDataDeletionRequest = z.infer<typeof insertDataDeletionRequestSchema>;
+export type PrivacyImpactAssessment = typeof privacyImpactAssessments.$inferSelect;
+export type InsertPrivacyImpactAssessment = z.infer<typeof insertPrivacyImpactAssessmentSchema>;
+export type DataBreachIncident = typeof dataBreachIncidents.$inferSelect;
+export type InsertDataBreachIncident = z.infer<typeof insertDataBreachIncidentSchema>;
+
 // Security Updates System
 export const securityUpdates = pgTable("security_updates", {
   id: serial("id").primaryKey(),

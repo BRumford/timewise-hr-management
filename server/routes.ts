@@ -21,6 +21,7 @@ import { registerSecurityRoutes } from "./security/securityRoutes";
 import { initSupportTables } from "./initSupportTables";
 import { SecurityMonitor, SecurityAudit, SecurityEventType, SecuritySeverity, IntrusionDetection } from "./security/monitoring";
 import { corsOptions } from "./security/middleware";
+import privacyRoutes from "./privacyRoutes";
 import cors from "cors";
 import multer from 'multer';
 import path from 'path';
@@ -3768,6 +3769,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register security routes
   registerSecurityRoutes(app);
+
+  // Register privacy compliance routes
+  app.use('/api/privacy', isAuthenticated, privacyRoutes);
 
   // Support Documentation routes
   app.get('/api/support/documents', isAuthenticated, async (req, res) => {
