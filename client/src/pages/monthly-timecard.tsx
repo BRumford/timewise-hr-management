@@ -64,6 +64,7 @@ interface MonthlyTimecardData {
 export default function MonthlyTimecard() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [selectedSite, setSelectedSite] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [timecardData, setTimecardData] = useState<MonthlyTimecardData | null>(null);
@@ -107,8 +108,26 @@ export default function MonthlyTimecard() {
     queryKey: ["/api/dropdown-options", "addon"],
   });
 
+  // Get unique sites from employees for filtering
+  const uniqueSites = [...new Set(employees.map((emp: Employee) => emp.department).filter(Boolean))];
+  
+  // Filter employees by selected site
+  const filteredEmployees = selectedSite && selectedSite !== 'all'
+    ? employees.filter((emp: Employee) => emp.department === selectedSite)
+    : employees;
+  
   // Get employee data
   const selectedEmployeeData = employees.find((emp: Employee) => emp.id === selectedEmployee);
+
+  // Reset selected employee when site filter changes
+  useEffect(() => {
+    if (selectedSite && selectedSite !== 'all' && selectedEmployee) {
+      const employeeInFilteredList = filteredEmployees.find((emp: Employee) => emp.id === selectedEmployee);
+      if (!employeeInFilteredList) {
+        setSelectedEmployee(null);
+      }
+    }
+  }, [selectedSite, filteredEmployees, selectedEmployee]);
 
   // Initialize form data when template changes
   useEffect(() => {
@@ -527,7 +546,24 @@ export default function MonthlyTimecard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="site-filter">Filter by Site/Location:</Label>
+              <Select value={selectedSite} onValueChange={setSelectedSite}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All sites" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sites</SelectItem>
+                  {uniqueSites.map((site) => (
+                    <SelectItem key={site} value={site}>
+                      {site}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div>
               <Label htmlFor="employee-select">Select Employee:</Label>
               <Select value={selectedEmployee?.toString() || ""} onValueChange={(value) => setSelectedEmployee(parseInt(value))}>
@@ -535,7 +571,7 @@ export default function MonthlyTimecard() {
                   <SelectValue placeholder="Choose an employee" />
                 </SelectTrigger>
                 <SelectContent>
-                  {employees.map((employee: Employee) => (
+                  {filteredEmployees.map((employee: Employee) => (
                     <SelectItem key={employee.id} value={employee.id.toString()}>
                       {employee.firstName} {employee.lastName} - {employee.position}
                     </SelectItem>
