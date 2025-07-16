@@ -363,8 +363,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/employees", requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const employeeData = insertEmployeeSchema.parse(req.body);
-      const employee = await storage.createEmployee(employeeData);
+      console.log('Create employee request body:', req.body);
+      
+      // Transform date fields to proper format
+      const employeeData = { ...req.body };
+      if (employeeData.hireDate) {
+        employeeData.hireDate = new Date(employeeData.hireDate);
+      }
+      
+      console.log('Transformed employee data:', employeeData);
+      const validatedData = insertEmployeeSchema.parse(employeeData);
+      console.log('Validated employee data:', validatedData);
+      
+      const employee = await storage.createEmployee(validatedData);
       
       // Create activity log
       await storage.createActivityLog({
@@ -377,6 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(employee);
     } catch (error) {
+      console.error('Employee creation error:', error);
       res.status(400).json({ message: "Failed to create employee", error: (error as Error).message });
     }
   });
