@@ -75,6 +75,42 @@ class EmailAlerts {
     await this.sendSecurityAlert('authentication_error', 'high', `Authentication failed for user: ${userId}`, { error: error.message });
   }
 
+  async sendAPIError(error: Error, endpoint: string, userId?: string) {
+    if (!this.isConfigured) {
+      console.log('Email alerts not configured');
+      return;
+    }
+
+    const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+    if (adminEmails.length === 0) {
+      return;
+    }
+
+    const emailContent = {
+      to: adminEmails,
+      subject: `[HIGH] API Error - ${endpoint}`,
+      message: `
+        An API error has occurred:
+        
+        Endpoint: ${endpoint}
+        Error: ${error.message}
+        User ID: ${userId || 'Unknown'}
+        Timestamp: ${new Date().toISOString()}
+        
+        Stack trace: ${error.stack}
+        
+        Please investigate this API error.
+      `,
+      priority: 'high' as const
+    };
+
+    try {
+      await this.sendAlert(emailContent);
+    } catch (emailError) {
+      console.error('Failed to send API error alert email:', emailError);
+    }
+  }
+
   async sendSecurityAlert(eventType: string, severity: string, description: string, metadata?: any) {
     if (!this.isConfigured) {
       console.log('Email alerts not configured');
