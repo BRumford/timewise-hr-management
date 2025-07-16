@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, User, Filter, Plus, Check, X, Edit, ArrowRight, FileText, Users, AlertCircle, DollarSign, Download } from "lucide-react";
+import { Calendar, Clock, User, Filter, Plus, Check, X, Edit, ArrowRight, FileText, Users, AlertCircle, DollarSign, Download, Lock, Unlock, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSubstituteTimeCardSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import type { SubstituteTimeCard, Employee } from "@shared/schema";
 import { z } from "zod";
 
@@ -107,6 +108,7 @@ export default function SubstituteTimeCards() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: substituteTimeCards = [], isLoading } = useQuery({
     queryKey: ["/api/substitute-time-cards"],
@@ -249,6 +251,46 @@ export default function SubstituteTimeCards() {
     },
   });
 
+  const lockSubstituteTimeCard = useMutation({
+    mutationFn: async ({ id, lockReason }: { id: number, lockReason?: string }) => {
+      return await apiRequest(`/api/substitute-time-cards/${id}/lock`, "POST", { lockReason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/substitute-time-cards"] });
+      toast({
+        title: "Success",
+        description: "Substitute time card locked successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unlockSubstituteTimeCard = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/substitute-time-cards/${id}/unlock`, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/substitute-time-cards"] });
+      toast({
+        title: "Success",
+        description: "Substitute time card unlocked successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApproval = (timeCard: SubstituteTimeCard, action: string) => {
     setSelectedTimeCard(timeCard);
     setApprovalAction(action);
@@ -263,6 +305,17 @@ export default function SubstituteTimeCards() {
         notes: approvalNotes,
       });
     }
+  };
+
+  const handleLockTimeCard = (timeCard: SubstituteTimeCard) => {
+    const lockReason = prompt("Please provide a reason for locking this timecard:");
+    if (lockReason) {
+      lockSubstituteTimeCard.mutate({ id: timeCard.id, lockReason });
+    }
+  };
+
+  const handleUnlockTimeCard = (timeCard: SubstituteTimeCard) => {
+    unlockSubstituteTimeCard.mutate(timeCard.id);
   };
 
   const filteredSubstituteTimeCards = substituteTimeCards.filter((timeCard: SubstituteTimeCard) => {
@@ -593,12 +646,47 @@ export default function SubstituteTimeCards() {
                     </Badge>
                   )}
                   
+                  {/* Lock status indicator */}
+                  {timeCard.isLocked && (
+                    <div className="flex items-center space-x-1 text-red-600">
+                      <Lock className="h-4 w-4" />
+                      <span className="text-sm">Locked</span>
+                    </div>
+                  )}
+                  
+                  {/* Lock/Unlock buttons for admin/hr */}
+                  {user && (user.role === 'admin' || user.role === 'hr') && (
+                    <>
+                      {timeCard.isLocked ? (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleUnlockTimeCard(timeCard)}
+                          disabled={unlockSubstituteTimeCard.isPending}
+                        >
+                          <Unlock className="h-4 w-4 mr-1" />
+                          Unlock
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleLockTimeCard(timeCard)}
+                          disabled={lockSubstituteTimeCard.isPending}
+                        >
+                          <Lock className="h-4 w-4 mr-1" />
+                          Lock
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  
                   {/* Action buttons based on status */}
                   {timeCard.status === "draft" && (
                     <Button 
                       size="sm" 
                       onClick={() => submitForApproval.mutate(timeCard.id)}
-                      disabled={submitForApproval.isPending}
+                      disabled={submitForApproval.isPending || timeCard.isLocked}
                     >
                       <ArrowRight className="h-4 w-4 mr-1" />
                       Submit for Approval
@@ -609,6 +697,7 @@ export default function SubstituteTimeCards() {
                     <Button 
                       size="sm" 
                       onClick={() => handleApproval(timeCard, "approve-admin")}
+                      disabled={timeCard.isLocked}
                     >
                       <Check className="h-4 w-4 mr-1" />
                       Admin Approve
@@ -619,6 +708,7 @@ export default function SubstituteTimeCards() {
                     <Button 
                       size="sm" 
                       onClick={() => handleApproval(timeCard, "process-payroll")}
+                      disabled={timeCard.isLocked}
                     >
                       <DollarSign className="h-4 w-4 mr-1" />
                       Process Payroll
@@ -630,6 +720,7 @@ export default function SubstituteTimeCards() {
                       size="sm" 
                       variant="destructive" 
                       onClick={() => handleApproval(timeCard, "reject")}
+                      disabled={timeCard.isLocked}
                     >
                       <X className="h-4 w-4 mr-1" />
                       Reject
@@ -639,7 +730,7 @@ export default function SubstituteTimeCards() {
               </div>
               
               {/* Notes section */}
-              {(timeCard.notes || timeCard.secretaryNotes || timeCard.adminNotes || timeCard.payrollNotes) && (
+              {(timeCard.notes || timeCard.secretaryNotes || timeCard.adminNotes || timeCard.payrollNotes || timeCard.isLocked) && (
                 <div className="mt-4 space-y-2">
                   {timeCard.notes && (
                     <div className="text-sm text-gray-600">
@@ -659,6 +750,27 @@ export default function SubstituteTimeCards() {
                   {timeCard.payrollNotes && (
                     <div className="text-sm text-purple-600">
                       <strong>Payroll Notes:</strong> {timeCard.payrollNotes}
+                    </div>
+                  )}
+                  {timeCard.isLocked && (
+                    <div className="text-sm text-red-600 p-2 bg-red-50 rounded border border-red-200">
+                      <div className="flex items-center space-x-1">
+                        <AlertTriangle className="h-4 w-4" />
+                        <strong>Locked Status:</strong>
+                      </div>
+                      <div className="mt-1">
+                        <strong>Locked by:</strong> {timeCard.lockedBy || 'System'}
+                      </div>
+                      {timeCard.lockedAt && (
+                        <div>
+                          <strong>Locked at:</strong> {format(new Date(timeCard.lockedAt), "MMM dd, yyyy 'at' HH:mm")}
+                        </div>
+                      )}
+                      {timeCard.lockReason && (
+                        <div>
+                          <strong>Reason:</strong> {timeCard.lockReason}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

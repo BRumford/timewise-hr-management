@@ -1354,6 +1354,10 @@ export class DatabaseStorage implements IStorage {
       currentApprovalStage: "administrator",
       submittedBy: submittedBy,
       submittedAt: new Date(),
+      isLocked: true,
+      lockedBy: 'System',
+      lockedAt: new Date(),
+      lockReason: 'Automatically locked when submitted for approval'
     }).where(eq(substituteTimeCards.id, id)).returning();
     return updated;
   }
@@ -1386,6 +1390,34 @@ export class DatabaseStorage implements IStorage {
       adminNotes: notes,
     }).where(eq(substituteTimeCards.id, id)).returning();
     return updated;
+  }
+
+  async lockSubstituteTimeCard(id: number, lockedBy: string, lockReason?: string): Promise<SubstituteTimeCard> {
+    const [timecard] = await db.update(substituteTimeCards)
+      .set({
+        isLocked: true,
+        lockedBy,
+        lockedAt: new Date(),
+        lockReason,
+        updatedAt: new Date()
+      })
+      .where(eq(substituteTimeCards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async unlockSubstituteTimeCard(id: number): Promise<SubstituteTimeCard> {
+    const [timecard] = await db.update(substituteTimeCards)
+      .set({
+        isLocked: false,
+        lockedBy: null,
+        lockedAt: null,
+        lockReason: null,
+        updatedAt: new Date()
+      })
+      .where(eq(substituteTimeCards.id, id))
+      .returning();
+    return timecard;
   }
 
   // Extra Pay Contracts

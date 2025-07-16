@@ -484,3 +484,6 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - HR and admin users can manually lock/unlock timecards with custom reasons
   - System prevents accidental changes to approved timecards while allowing authorized modifications
   - Added comprehensive audit trail for all lock/unlock actions with timestamps and user tracking
+  - Extended timecard locking system to substitute timecards with identical functionality
+  - Substitute timecards now automatically lock when submitted for approval
+  - Both monthly and substitute timecards have consistent locking behavior and security controls

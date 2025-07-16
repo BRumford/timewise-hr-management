@@ -3744,6 +3744,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Substitute Timecard Locking Routes
+  app.post('/api/substitute-time-cards/:id/lock', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const { lockReason } = req.body;
+      const user = req.user as any;
+      
+      const timecard = await storage.lockSubstituteTimeCard(timecardId, user.username, lockReason);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error locking substitute timecard:', error);
+      res.status(500).json({ message: 'Failed to lock substitute timecard' });
+    }
+  });
+
+  app.post('/api/substitute-time-cards/:id/unlock', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const timecard = await storage.unlockSubstituteTimeCard(timecardId);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error unlocking substitute timecard:', error);
+      res.status(500).json({ message: 'Failed to unlock substitute timecard' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

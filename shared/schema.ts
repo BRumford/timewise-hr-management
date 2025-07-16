@@ -344,6 +344,10 @@ export const substituteTimeCards = pgTable("substitute_time_cards", {
   submittedAt: timestamp("submitted_at"),
   adminApprovedAt: timestamp("admin_approved_at"),
   payrollProcessedAt: timestamp("payroll_processed_at"),
+  isLocked: boolean("is_locked").default(false),
+  lockedBy: varchar("locked_by"),
+  lockedAt: timestamp("locked_at"),
+  lockReason: text("lock_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
