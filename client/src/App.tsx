@@ -8,6 +8,7 @@ import Dashboard from "@/pages/dashboard";
 import Employees from "@/pages/employees";
 import LeaveManagement from "@/pages/leave-management";
 import TimeCards from "@/pages/time-cards";
+import MonthlyTimecard from "@/pages/monthly-timecard";
 import SubstituteTimeCards from "@/pages/substitute-time-cards";
 import Payroll from "@/pages/payroll";
 import PayrollSettings from "@/pages/payroll-settings";
@@ -50,6 +51,7 @@ function Router() {
                 <Route path="/employees" component={Employees} />
                 <Route path="/leave-management" component={LeaveManagement} />
                 <Route path="/time-cards" component={TimeCards} />
+                <Route path="/monthly-timecard" component={MonthlyTimecard} />
                 <Route path="/substitute-time-cards" component={SubstituteTimeCards} />
                 <Route path="/timecard-templates" component={TimecardTemplates} />
                 <Route path="/payroll" component={Payroll} />

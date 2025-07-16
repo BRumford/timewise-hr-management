@@ -3623,6 +3623,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Monthly timecard endpoints
+  app.get("/api/monthly-timecard/:employeeId/:month/:year", isAuthenticated, async (req, res) => {
+    try {
+      const { employeeId, month, year } = req.params;
+      const timecard = await storage.getMonthlyTimecard(parseInt(employeeId), parseInt(month), parseInt(year));
+      res.json(timecard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch monthly timecard", error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/monthly-timecard", isAuthenticated, async (req, res) => {
+    try {
+      const timecard = await storage.createMonthlyTimecard(req.body);
+      res.status(201).json(timecard);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create monthly timecard", error: (error as Error).message });
+    }
+  });
+
+  app.put("/api/monthly-timecard/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const timecard = await storage.updateMonthlyTimecard(parseInt(id), req.body);
+      res.json(timecard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update monthly timecard", error: (error as Error).message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

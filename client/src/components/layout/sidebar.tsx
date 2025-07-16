@@ -29,6 +29,7 @@ const menuItems = [
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["admin", "hr"] },
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["admin", "hr", "employee"] },
   { path: "/time-cards", icon: Clock, label: "Time Cards", roles: ["admin", "hr", "employee"] },
+  { path: "/monthly-timecard", icon: Calendar, label: "Monthly Timecard", roles: ["admin", "hr"] },
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards", roles: ["admin", "hr"] },
   { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["admin", "hr"] },

@@ -2047,6 +2047,99 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(secureFiles.id, fileId));
   }
+
+  // Monthly timecard methods
+  async getMonthlyTimecard(employeeId: number, month: number, year: number): Promise<any> {
+    const [timecard] = await db.select().from(monthlyTimecards).where(
+      and(
+        eq(monthlyTimecards.employeeId, employeeId),
+        eq(monthlyTimecards.month, month),
+        eq(monthlyTimecards.year, year)
+      )
+    );
+    
+    if (!timecard) return null;
+
+    const entries = await db.select().from(monthlyTimecardEntries).where(
+      eq(monthlyTimecardEntries.timecardId, timecard.id)
+    );
+
+    return {
+      ...timecard,
+      entries
+    };
+  }
+
+  async createMonthlyTimecard(data: any): Promise<any> {
+    const [timecard] = await db.insert(monthlyTimecards).values({
+      employeeId: data.employeeId,
+      month: data.month,
+      year: data.year,
+      payPeriodStart: data.payPeriodStart,
+      payPeriodEnd: data.payPeriodEnd,
+      status: data.status || 'draft'
+    }).returning();
+
+    // Create entries for each day if provided
+    if (data.entries && data.entries.length > 0) {
+      const entries = data.entries.map((entry: any) => ({
+        timecardId: timecard.id,
+        date: entry.date,
+        regularHours: entry.regularHours || 0,
+        overtimeHours: entry.overtimeHours || 0,
+        extraHours: entry.extraHours || 0,
+        leaveHours: entry.leaveHours || 0,
+        leaveType: entry.leaveType || null,
+        notes: entry.notes || null
+      }));
+
+      await db.insert(monthlyTimecardEntries).values(entries);
+    }
+
+    return await this.getMonthlyTimecard(data.employeeId, data.month, data.year);
+  }
+
+  async updateMonthlyTimecard(id: number, data: any): Promise<any> {
+    // Update the timecard
+    await db.update(monthlyTimecards)
+      .set({
+        status: data.status,
+        payPeriodStart: data.payPeriodStart,
+        payPeriodEnd: data.payPeriodEnd,
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id));
+
+    // Update entries
+    if (data.entries && data.entries.length > 0) {
+      for (const entry of data.entries) {
+        await db.insert(monthlyTimecardEntries).values({
+          timecardId: id,
+          date: entry.date,
+          regularHours: entry.regularHours || 0,
+          overtimeHours: entry.overtimeHours || 0,
+          extraHours: entry.extraHours || 0,
+          leaveHours: entry.leaveHours || 0,
+          leaveType: entry.leaveType || null,
+          notes: entry.notes || null
+        })
+        .onConflictDoUpdate({
+          target: [monthlyTimecardEntries.timecardId, monthlyTimecardEntries.date],
+          set: {
+            regularHours: entry.regularHours || 0,
+            overtimeHours: entry.overtimeHours || 0,
+            extraHours: entry.extraHours || 0,
+            leaveHours: entry.leaveHours || 0,
+            leaveType: entry.leaveType || null,
+            notes: entry.notes || null,
+            updatedAt: new Date()
+          }
+        });
+      }
+    }
+
+    return await this.getMonthlyTimecard(data.employeeId, data.month, data.year);
+  }
 }
 
 export const storage = new DatabaseStorage();

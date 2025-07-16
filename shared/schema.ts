@@ -1461,3 +1461,33 @@ export type InsertSecurityNotification = z.infer<typeof insertSecurityNotificati
 export type InsertSecurityUpdateApproval = z.infer<typeof insertSecurityUpdateApprovalSchema>;
 export type InsertSecurityPolicy = z.infer<typeof insertSecurityPolicySchema>;
 export type InsertVulnerabilityAssessment = z.infer<typeof insertVulnerabilityAssessmentSchema>;
+
+// Monthly timecard tables
+export const monthlyTimecards = pgTable("monthly_timecards", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employee_id").notNull(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  payPeriodStart: date("pay_period_start"),
+  payPeriodEnd: date("pay_period_end"),
+  status: varchar("status").default("draft"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const monthlyTimecardEntries = pgTable("monthly_timecard_entries", {
+  id: serial("id").primaryKey(),
+  timecardId: integer("timecard_id").references(() => monthlyTimecards.id),
+  date: date("date").notNull(),
+  regularHours: decimal("regular_hours", { precision: 5, scale: 2 }).default("0"),
+  overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
+  extraHours: decimal("extra_hours", { precision: 5, scale: 2 }).default("0"),
+  leaveHours: decimal("leave_hours", { precision: 5, scale: 2 }).default("0"),
+  leaveType: varchar("leave_type"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type MonthlyTimecard = typeof monthlyTimecards.$inferSelect;
+export type MonthlyTimecardEntry = typeof monthlyTimecardEntries.$inferSelect;
