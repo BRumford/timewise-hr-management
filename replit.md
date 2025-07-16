@@ -122,6 +122,16 @@ The application uses a comprehensive schema with the following main entities:
 The system is designed to be scalable, maintainable, and specifically tailored for the complex needs of school district HR departments, with AI automation reducing manual workload while ensuring compliance and efficiency.
 
 ## Recent Changes
+- Implemented Complete Leave Request to Timecard Integration (July 16, 2025)
+  - Leave requests automatically create preliminary timecard entries when submitted
+  - Secretary can track all leave-related timecards in the normal timecard management system
+  - Preliminary entries have 'draft' status and 'secretary' approval stage until leave is approved
+  - When admin approves leave request, timecards move to 'secretary_submitted' status for employee approval
+  - Visual indicators show which timecards are related to leave requests with badges and color coding
+  - Complete workflow: Employee submits leave → Creates preliminary timecards → Admin approves → Timecards enter normal approval workflow
+  - Secretary can see all leave-related timecards alongside regular timecards for comprehensive tracking
+  - Fixed date field validation errors in employee leave request form with simplified string-based handling
+
 - Implemented Complete Employee Authentication System with Individual Login Credentials (July 16, 2025)
   - Added password hashing with bcrypt for secure authentication
   - Created employee registration endpoint for creating user accounts with email-based login
