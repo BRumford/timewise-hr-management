@@ -75,6 +75,19 @@ export default function MonthlyTimecard() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  // Helper function to safely parse JSON data
+  const safeJsonParse = (data: any, fallback: any = null) => {
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        console.error('Error parsing JSON:', e);
+        return fallback;
+      }
+    }
+    return data || fallback;
+  };
+
   // Fetch employees
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
@@ -648,10 +661,14 @@ export default function MonthlyTimecard() {
                     setSelectedEmployee(timecard.employeeId);
                     setSelectedTemplate(timecard.templateId);
                     
+                    // Parse JSON data if it's stored as strings
+                    const parsedEntries = safeJsonParse(timecard.entries, []);
+                    const parsedCustomFieldsData = safeJsonParse(timecard.customFieldsData, {});
+                    
                     // Load the timecard data
                     setTimecardData(timecard);
-                    setFormData(timecard.customFieldsData || {});
-                    setDailyEntries(timecard.entries || []);
+                    setFormData(parsedCustomFieldsData);
+                    setDailyEntries(parsedEntries);
                     setCurrentMonth(timecard.month);
                     setCurrentYear(timecard.year);
                   }}
@@ -1012,10 +1029,14 @@ export default function MonthlyTimecard() {
                   key={timecard.id}
                   className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
                   onClick={() => {
+                    // Parse JSON data if it's stored as strings
+                    const parsedEntries = safeJsonParse(timecard.entries, []);
+                    const parsedCustomFieldsData = safeJsonParse(timecard.customFieldsData, {});
+                    
                     // Load the timecard data
                     setTimecardData(timecard);
-                    setFormData(timecard.customFieldsData || {});
-                    setDailyEntries(timecard.entries || []);
+                    setFormData(parsedCustomFieldsData);
+                    setDailyEntries(parsedEntries);
                     setPayrollEntries(timecard.payrollEntries || []);
                     setCurrentMonth(timecard.month);
                     setCurrentYear(timecard.year);
