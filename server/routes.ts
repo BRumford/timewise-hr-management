@@ -389,6 +389,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(employee);
     } catch (error) {
       console.error('Employee creation error:', error);
+      
+      // Check for specific database constraint violations
+      if (error.code === '23505') {
+        if (error.constraint === 'employees_email_unique') {
+          return res.status(400).json({ 
+            message: "An employee with this email address already exists. Please use a different email address.", 
+            error: "Email address already exists" 
+          });
+        }
+        if (error.constraint === 'employees_employee_id_unique') {
+          return res.status(400).json({ 
+            message: "An employee with this Employee ID already exists. Please use a different Employee ID.", 
+            error: "Employee ID already exists" 
+          });
+        }
+      }
+      
       res.status(400).json({ message: "Failed to create employee", error: (error as Error).message });
     }
   });
