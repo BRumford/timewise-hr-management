@@ -991,6 +991,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const leaveRequest = await storage.createLeaveRequest(requestData);
       
+      // Get leave type information for timecard creation
+      const leaveTypes = await storage.getLeaveTypes();
+      const leaveType = leaveTypes.find(lt => lt.id === requestData.leaveTypeId);
+      
+      // Generate preliminary timecard entries for the leave request
+      const startDate = new Date(requestData.startDate);
+      const endDate = new Date(requestData.endDate);
+      const preliminaryTimecards = [];
+      
+      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        // Skip weekends for most leave types
+        if (date.getDay() === 0 || date.getDay() === 6) {
+          continue;
+        }
+        
+        const timecard = await storage.createTimeCard({
+          employeeId: requestData.employeeId,
+          date: new Date(date),
+          leaveRequestId: leaveRequest.id,
+          leaveType: leaveType?.name || 'Leave',
+          isPaidLeave: leaveType?.isPaid || false,
+          totalHours: "8", // Standard work day as string
+          status: 'draft', // Mark as draft until leave is approved
+          currentApprovalStage: 'secretary',
+          notes: `Preliminary entry for leave request - ${requestData.reason} (Pending approval)`,
+          customFieldsData: {
+            leave_reason: requestData.reason,
+            leave_type: leaveType?.name || 'Leave',
+            preliminary_entry: true,
+            requires_approval: true,
+          },
+        });
+        
+        preliminaryTimecards.push(timecard);
+      }
+      
       // Auto-assign substitute if required
       if (requestData.substituteRequired) {
         try {
@@ -1020,7 +1056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "create_leave_request",
         entityType: "leave_request",
         entityId: leaveRequest.id,
-        description: `Created leave request for employee ${requestData.employeeId}`,
+        description: `Created leave request for employee ${requestData.employeeId} with ${preliminaryTimecards.length} preliminary timecard entries`,
       });
 
       res.status(201).json(leaveRequest);
@@ -1117,35 +1153,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leaveTypes = await storage.getLeaveTypes();
       const leaveType = leaveTypes.find(lt => lt.id === leaveRequest.leaveTypeId);
       
-      // Generate timecard entries for each day of leave
-      const startDate = new Date(leaveRequest.startDate);
-      const endDate = new Date(leaveRequest.endDate);
-      const timecards = [];
+      // Find existing preliminary timecards for this leave request
+      const existingTimecards = await storage.getTimeCardsByLeaveRequest(leaveRequestId);
       
-      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-        // Skip weekends for most leave types
-        if (date.getDay() === 0 || date.getDay() === 6) {
-          continue;
+      if (existingTimecards.length > 0) {
+        // Update existing preliminary timecards to approved status
+        const updatedTimecards = [];
+        for (const timecard of existingTimecards) {
+          const updated = await storage.updateTimeCard(timecard.id, {
+            status: 'secretary_submitted',
+            currentApprovalStage: 'employee',
+            notes: `Approved leave request - ${leaveRequest.reason}`,
+            customFieldsData: {
+              ...timecard.customFieldsData,
+              leave_reason: leaveRequest.reason,
+              leave_type: leaveType?.name || 'Leave',
+              preliminary_entry: false,
+              approved: true,
+            },
+          });
+          updatedTimecards.push(updated);
         }
+        var timecards = updatedTimecards;
+      } else {
+        // Generate new timecard entries if none exist (fallback)
+        const startDate = new Date(leaveRequest.startDate);
+        const endDate = new Date(leaveRequest.endDate);
+        const newTimecards = [];
         
-        const timecard = await storage.createTimeCard({
-          employeeId: leaveRequest.employeeId,
-          date: new Date(date),
-          leaveRequestId: leaveRequestId,
-          leaveType: leaveType?.name || 'Leave',
-          isPaidLeave: leaveType?.isPaid || false,
-          totalHours: "8", // Standard work day as string
-          status: 'secretary_submitted',
-          currentApprovalStage: 'employee',
-          notes: `Auto-generated for approved leave request - ${leaveRequest.reason}`,
-          customFieldsData: {
-            leave_reason: leaveRequest.reason,
-            leave_type: leaveType?.name || 'Leave',
-            auto_generated: true,
-          },
-        });
-        
-        timecards.push(timecard);
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+          // Skip weekends for most leave types
+          if (date.getDay() === 0 || date.getDay() === 6) {
+            continue;
+          }
+          
+          const timecard = await storage.createTimeCard({
+            employeeId: leaveRequest.employeeId,
+            date: new Date(date),
+            leaveRequestId: leaveRequestId,
+            leaveType: leaveType?.name || 'Leave',
+            isPaidLeave: leaveType?.isPaid || false,
+            totalHours: "8", // Standard work day as string
+            status: 'secretary_submitted',
+            currentApprovalStage: 'employee',
+            notes: `Auto-generated for approved leave request - ${leaveRequest.reason}`,
+            customFieldsData: {
+              leave_reason: leaveRequest.reason,
+              leave_type: leaveType?.name || 'Leave',
+              auto_generated: true,
+            },
+          });
+          
+          newTimecards.push(timecard);
+        }
+        var timecards = newTimecards;
       }
 
       await storage.createActivityLog({
@@ -1188,12 +1249,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvedAt: new Date(),
       });
 
+      // Remove preliminary timecards for rejected leave request
+      const preliminaryTimecards = await storage.getTimeCardsByLeaveRequest(leaveRequestId);
+      let removedTimecardsCount = 0;
+      
+      for (const timecard of preliminaryTimecards) {
+        // Only remove draft/preliminary timecards, not already approved ones
+        if (timecard.status === 'draft' || timecard.customFieldsData?.preliminary_entry) {
+          await storage.deleteTimeCard(timecard.id);
+          removedTimecardsCount++;
+        }
+      }
+
       await storage.createActivityLog({
         userId: req.body.userId || "system",
         action: "reject_leave_request",
         entityType: "leave_request",
         entityId: leaveRequestId,
-        description: `Rejected leave request`,
+        description: `Rejected leave request and removed ${removedTimecardsCount} preliminary timecard entries`,
       });
 
       res.json({

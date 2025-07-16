@@ -172,12 +172,26 @@ function EmployeeTimecardApproval() {
                         <Calendar className="h-4 w-4 mr-1" />
                         {format(new Date(timecard.date), "MMM dd, yyyy")}
                       </div>
+                      {timecard.leaveRequestId && (
+                        <div className="flex items-center text-blue-600 font-medium">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {timecard.leaveType || 'Leave'}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Pending Approval
-                  </Badge>
+                  <div className="flex flex-col items-end space-y-1">
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Pending Approval
+                    </Badge>
+                    {timecard.leaveRequestId && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Leave Request
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4 text-sm">

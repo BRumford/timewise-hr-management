@@ -199,6 +199,7 @@ export interface IStorage {
   updateTimeCard(id: number, timeCard: Partial<InsertTimeCard>): Promise<TimeCard>;
   deleteTimeCard(id: number): Promise<void>;
   getTimeCardsByEmployee(employeeId: number): Promise<TimeCard[]>;
+  getTimeCardsByLeaveRequest(leaveRequestId: number): Promise<TimeCard[]>;
   getPendingTimeCards(): Promise<TimeCard[]>;
   getTimeCardsByDateRange(startDate: Date, endDate: Date): Promise<TimeCard[]>;
   getTimeCardsByApprovalStage(stage: string): Promise<TimeCard[]>;
@@ -1223,6 +1224,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(timeCards)
       .where(eq(timeCards.employeeId, employeeId))
+      .orderBy(desc(timeCards.date));
+  }
+
+  async getTimeCardsByLeaveRequest(leaveRequestId: number): Promise<TimeCard[]> {
+    return await db
+      .select()
+      .from(timeCards)
+      .where(eq(timeCards.leaveRequestId, leaveRequestId))
       .orderBy(desc(timeCards.date));
   }
 
