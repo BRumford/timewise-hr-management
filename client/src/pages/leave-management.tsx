@@ -22,9 +22,14 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const leaveRequestFormSchema = insertLeaveRequestSchema.extend({
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
+  startDate: z.union([z.coerce.date(), z.null()]).refine((val) => val !== null, {
+    message: "Start date is required",
+  }),
+  endDate: z.union([z.coerce.date(), z.null()]).refine((val) => val !== null, {
+    message: "End date is required",
+  }),
 }).refine((data) => {
+  if (!data.startDate || !data.endDate) return true;
   return data.startDate <= data.endDate;
 }, {
   message: "Start date must be before or equal to end date",
@@ -72,8 +77,8 @@ export default function LeaveManagement() {
     defaultValues: {
       employeeId: user?.employee?.id || 0,
       leaveTypeId: 0,
-      startDate: new Date(),
-      endDate: new Date(),
+      startDate: null,
+      endDate: null,
       reason: "",
       substituteRequired: false,
       isWorkersComp: false,
@@ -488,8 +493,11 @@ export default function LeaveManagement() {
                         <FormControl>
                           <Input 
                             type="date" 
-                            value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                            value={field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), 'yyyy-MM-dd') : ''}
+                            onChange={(e) => {
+                              const date = new Date(e.target.value);
+                              field.onChange(isNaN(date.getTime()) ? null : date);
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -506,8 +514,11 @@ export default function LeaveManagement() {
                         <FormControl>
                           <Input 
                             type="date"
-                            value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                            value={field.value && !isNaN(new Date(field.value).getTime()) ? format(new Date(field.value), 'yyyy-MM-dd') : ''}
+                            onChange={(e) => {
+                              const date = new Date(e.target.value);
+                              field.onChange(isNaN(date.getTime()) ? null : date);
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
