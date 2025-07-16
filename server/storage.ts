@@ -2116,6 +2116,41 @@ export class DatabaseStorage implements IStorage {
     return timecards;
   }
 
+  async getMonthlyTimecardsBySite(site: string): Promise<any[]> {
+    const timecards = await db.select({
+      id: monthlyTimecards.id,
+      employeeId: monthlyTimecards.employeeId,
+      templateId: monthlyTimecards.templateId,
+      month: monthlyTimecards.month,
+      year: monthlyTimecards.year,
+      payPeriodStart: monthlyTimecards.payPeriodStart,
+      payPeriodEnd: monthlyTimecards.payPeriodEnd,
+      status: monthlyTimecards.status,
+      entries: monthlyTimecards.entries,
+      customFieldsData: monthlyTimecards.customFieldsData,
+      notes: monthlyTimecards.notes,
+      submittedBy: monthlyTimecards.submittedBy,
+      submittedAt: monthlyTimecards.submittedAt,
+      isLocked: monthlyTimecards.isLocked,
+      lockedBy: monthlyTimecards.lockedBy,
+      lockedAt: monthlyTimecards.lockedAt,
+      lockReason: monthlyTimecards.lockReason,
+      createdAt: monthlyTimecards.createdAt,
+      updatedAt: monthlyTimecards.updatedAt,
+      employeeName: sql`${employees.firstName} || ' ' || ${employees.lastName}`,
+      employeeFirstName: employees.firstName,
+      employeeLastName: employees.lastName,
+      employeeDepartment: employees.department,
+      employeePosition: employees.position,
+    })
+    .from(monthlyTimecards)
+    .innerJoin(employees, eq(monthlyTimecards.employeeId, employees.id))
+    .where(eq(employees.department, site))
+    .orderBy(desc(monthlyTimecards.year), desc(monthlyTimecards.month), employees.lastName, employees.firstName);
+    
+    return timecards;
+  }
+
   async createMonthlyTimecard(data: any): Promise<any> {
     const [timecard] = await db.insert(monthlyTimecards).values({
       employeeId: data.employeeId,

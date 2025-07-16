@@ -3825,6 +3825,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/monthly-timecards/site/:site', isAuthenticated, async (req, res) => {
+    try {
+      const site = req.params.site;
+      const timecards = await storage.getMonthlyTimecardsBySite(site);
+      res.json(timecards);
+    } catch (error) {
+      console.error('Error fetching monthly timecards by site:', error);
+      res.status(500).json({ message: 'Failed to fetch monthly timecards by site' });
+    }
+  });
+
   app.post('/api/monthly-timecards', isAuthenticated, async (req, res) => {
     try {
       const timecard = await storage.createMonthlyTimecard(req.body);

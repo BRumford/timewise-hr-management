@@ -114,6 +114,12 @@ export default function MonthlyTimecard() {
     enabled: !!selectedEmployee,
   });
 
+  // Fetch existing timecards for all employees at selected site
+  const { data: siteTimecards = [] } = useQuery({
+    queryKey: ["/api/monthly-timecards/site", selectedSite],
+    enabled: !!selectedSite && selectedSite !== 'all',
+  });
+
   // Get unique sites from employees for filtering
   const uniqueSites = [...new Set(employees.map((emp: Employee) => emp.department).filter(Boolean))];
   
@@ -621,6 +627,75 @@ export default function MonthlyTimecard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Site Timecards Section */}
+      {selectedSite && selectedSite !== 'all' && siteTimecards.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Building className="h-5 w-5" />
+              <span>Existing Timecards for {selectedSite}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {siteTimecards.map((timecard: any) => (
+                <div
+                  key={timecard.id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => {
+                    // Set the employee and template to load this timecard
+                    setSelectedEmployee(timecard.employeeId);
+                    setSelectedTemplate(timecard.templateId);
+                    
+                    // Load the timecard data
+                    setTimecardData(timecard);
+                    setFormData(timecard.customFieldsData || {});
+                    setDailyEntries(timecard.entries || []);
+                    setCurrentMonth(timecard.month);
+                    setCurrentYear(timecard.year);
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-semibold text-lg">
+                        {timecard.employeeName} - {timecard.month}/{timecard.year}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {timecard.employeePosition} • {templates.find((t: any) => t.id === timecard.templateId)?.name || 'Unknown Template'}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Pay Period: {new Date(timecard.payPeriodStart).toLocaleDateString()} - {new Date(timecard.payPeriodEnd).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Status: <span className={`px-2 py-1 rounded-full text-xs ${
+                          timecard.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          timecard.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                          timecard.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {timecard.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {timecard.isLocked && (
+                        <div className="flex items-center space-x-1 bg-red-100 text-red-700 px-2 py-1 rounded-md">
+                          <Lock className="h-4 w-4" />
+                          <span className="text-sm">Locked</span>
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-500">
+                        {timecard.entries?.reduce((sum: number, entry: any) => sum + (parseFloat(entry.hours) || 0), 0) || 0} hrs
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedEmployee && selectedTemplate && (
         <>
