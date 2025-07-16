@@ -4030,6 +4030,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Role permissions routes
+  app.get('/api/role-permissions', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const permissions = await storage.getAllRolePermissions();
+      res.json(permissions);
+    } catch (error) {
+      console.error('Error fetching role permissions:', error);
+      res.status(500).json({ message: 'Failed to fetch role permissions' });
+    }
+  });
+
+  app.get('/api/role-permissions/:role', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { role } = req.params;
+      const permissions = await storage.getRolePermissions(role);
+      res.json(permissions);
+    } catch (error) {
+      console.error('Error fetching role permissions:', error);
+      res.status(500).json({ message: 'Failed to fetch role permissions' });
+    }
+  });
+
+  app.put('/api/role-permissions/:role/:pagePath', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { role, pagePath } = req.params;
+      const { canAccess } = req.body;
+      const decodedPagePath = decodeURIComponent(pagePath);
+      
+      const permission = await storage.updateRolePermission(role, decodedPagePath, canAccess);
+      res.json(permission);
+    } catch (error) {
+      console.error('Error updating role permission:', error);
+      res.status(500).json({ message: 'Failed to update role permission' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

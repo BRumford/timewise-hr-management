@@ -19,10 +19,37 @@ import {
   Activity
 } from "lucide-react";
 import SystemHealthMonitor from "@/components/SystemHealthMonitor";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRolePermissionsManagement } from "@/hooks/useRolePermissions";
+import { useToast } from "@/hooks/use-toast";
+import type { RolePermission } from "@shared/schema";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general");
+  const { allPermissions, updatePermission, isUpdating } = useRolePermissionsManagement();
+  const { toast } = useToast();
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    // Initialize permissions state from database
+    const permissionsMap: Record<string, boolean> = {};
+    allPermissions.forEach((permission: RolePermission) => {
+      permissionsMap[`${permission.role}-${permission.pagePath}`] = permission.canAccess;
+    });
+    setPermissions(permissionsMap);
+  }, [allPermissions]);
+
+  const handlePermissionToggle = (role: string, pagePath: string, value: boolean) => {
+    const key = `${role}-${pagePath}`;
+    setPermissions(prev => ({ ...prev, [key]: value }));
+    
+    updatePermission({ role, pagePath, canAccess: value });
+    
+    toast({
+      title: "Permission Updated",
+      description: `${role} role ${value ? 'granted' : 'revoked'} access to ${pagePath}`,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -35,13 +62,14 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="ai">AI Settings</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+          <TabsTrigger value="permissions">Role Permissions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -422,6 +450,129 @@ export default function Settings() {
 
         <TabsContent value="monitoring" className="space-y-6">
           <SystemHealthMonitor />
+        </TabsContent>
+
+        <TabsContent value="permissions" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="mr-2" size={20} />
+                Role-Based Page Access Control
+              </CardTitle>
+              <p className="text-sm text-gray-500">Configure which pages each role can access based on your district's needs</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Secretary Role Permissions</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Leave Management</Label>
+                      <p className="text-sm text-gray-500">Access to employee leave requests and approvals</p>
+                    </div>
+                    <Switch 
+                      checked={permissions['secretary-/leave-management'] || false}
+                      onCheckedChange={(value) => handlePermissionToggle('secretary', '/leave-management', value)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Timecards</Label>
+                      <p className="text-sm text-gray-500">Access to employee timecard management</p>
+                    </div>
+                    <Switch 
+                      checked={permissions['secretary-/time-cards'] || false}
+                      onCheckedChange={(value) => handlePermissionToggle('secretary', '/time-cards', value)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Extra Pay Activities</Label>
+                      <p className="text-sm text-gray-500">Access to extra pay contracts and requests</p>
+                    </div>
+                    <Switch 
+                      checked={permissions['secretary-/extra-pay-activities'] || false}
+                      onCheckedChange={(value) => handlePermissionToggle('secretary', '/extra-pay-activities', value)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Employee Management</Label>
+                      <p className="text-sm text-gray-500">Access to employee records and management</p>
+                    </div>
+                    <Switch 
+                      checked={permissions['secretary-/employees'] || false}
+                      onCheckedChange={(value) => handlePermissionToggle('secretary', '/employees', value)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Payroll Processing</Label>
+                      <p className="text-sm text-gray-500">Access to payroll calculations and processing</p>
+                    </div>
+                    <Switch 
+                      checked={permissions['secretary-/payroll'] || false}
+                      onCheckedChange={(value) => handlePermissionToggle('secretary', '/payroll', value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Employee Role Permissions</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Leave Management</Label>
+                      <p className="text-sm text-gray-500">Access to submit personal leave requests</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Timecards</Label>
+                      <p className="text-sm text-gray-500">Access to own timecard approval</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Employee Management</Label>
+                      <p className="text-sm text-gray-500">Access to employee records and management</p>
+                    </div>
+                    <Switch />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Payroll Processing</Label>
+                      <p className="text-sm text-gray-500">Access to payroll calculations and processing</p>
+                    </div>
+                    <Switch />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Admin & HR Role Permissions</h3>
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-500">Admin and HR roles have full access to all system functions by default.</p>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>All System Functions</Label>
+                      <p className="text-sm text-gray-500">Complete access to all pages and functionality</p>
+                    </div>
+                    <Switch defaultChecked disabled />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <p className="text-sm text-gray-500">
+                  Changes are automatically saved when you toggle permissions.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

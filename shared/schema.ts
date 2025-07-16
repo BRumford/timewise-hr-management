@@ -33,7 +33,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("employee"), // hr, admin, employee
+  role: varchar("role").notNull().default("employee"), // hr, admin, employee, secretary
   passwordHash: varchar("password_hash"), // For password authentication
   mfaEnabled: boolean("mfa_enabled").default(false),
   mfaSecret: varchar("mfa_secret"),
@@ -41,6 +41,16 @@ export const users = pgTable("users", {
   failedLoginAttempts: integer("failed_login_attempts").default(0),
   accountLocked: boolean("account_locked").default(false),
   lockedUntil: timestamp("locked_until"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Role permissions table for configurable access control
+export const rolePermissions = pgTable("role_permissions", {
+  id: serial("id").primaryKey(),
+  role: varchar("role", { length: 50 }).notNull(), // admin, hr, employee, secretary
+  pagePath: varchar("page_path", { length: 100 }).notNull(), // /employees, /leave-management, etc.
+  canAccess: boolean("can_access").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -761,6 +771,9 @@ export const insertCustomFieldLabelSchema = createInsertSchema(customFieldLabels
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertRolePermission = typeof rolePermissions.$inferInsert;
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type Employee = typeof employees.$inferSelect;
 export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;

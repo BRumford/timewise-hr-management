@@ -26,8 +26,11 @@ import {
   userSessions,
   secureFiles,
   dataEncryptionKeys,
+  rolePermissions,
   type User,
   type UpsertUser,
+  type RolePermission,
+  type InsertRolePermission,
   type Employee,
   type InsertEmployee,
   type LeaveRequest,
@@ -2380,6 +2383,36 @@ export class DatabaseStorage implements IStorage {
   async getAllDropdownOptions(): Promise<DropdownOption[]> {
     return await db.select().from(dropdownOptions)
       .orderBy(dropdownOptions.category, dropdownOptions.displayOrder);
+  }
+
+  // Role permissions methods
+  async getRolePermissions(role: string): Promise<RolePermission[]> {
+    return await db.select().from(rolePermissions).where(eq(rolePermissions.role, role));
+  }
+
+  async updateRolePermission(role: string, pagePath: string, canAccess: boolean): Promise<RolePermission> {
+    const [permission] = await db
+      .insert(rolePermissions)
+      .values({ role, pagePath, canAccess })
+      .onConflictDoUpdate({
+        target: [rolePermissions.role, rolePermissions.pagePath],
+        set: { canAccess, updatedAt: new Date() }
+      })
+      .returning();
+    return permission;
+  }
+
+  async getAllRolePermissions(): Promise<RolePermission[]> {
+    return await db.select().from(rolePermissions);
+  }
+
+  async createRolePermission(data: InsertRolePermission): Promise<RolePermission> {
+    const [permission] = await db.insert(rolePermissions).values(data).returning();
+    return permission;
+  }
+
+  async deleteRolePermission(id: number): Promise<void> {
+    await db.delete(rolePermissions).where(eq(rolePermissions.id, id));
   }
 }
 

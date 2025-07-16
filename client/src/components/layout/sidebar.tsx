@@ -22,6 +22,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 import RoleSwitcher from "@/components/auth/role-switcher";
 
 const menuItems = [
@@ -52,6 +53,7 @@ const menuItems = [
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, isLoading } = useAuth();
+  const { hasAccess } = useRolePermissions();
 
   if (isLoading) {
     return (
@@ -71,10 +73,16 @@ export default function Sidebar() {
     );
   }
 
-  // Filter menu items based on user role
-  const visibleMenuItems = menuItems.filter(item => 
-    user && item.roles.includes(user.role)
-  );
+  // Filter menu items based on user role and permissions
+  const visibleMenuItems = menuItems.filter(item => {
+    // Admin and HR roles have access to everything by default
+    if (user?.role === 'admin' || user?.role === 'hr') {
+      return true;
+    }
+    
+    // Use role permissions system for other roles
+    return hasAccess(item.path);
+  });
 
   return (
     <div className="w-64 bg-white shadow-lg border-r border-gray-200 fixed left-0 top-0 h-full overflow-y-auto scrollbar-hide flex flex-col">
