@@ -104,6 +104,29 @@ export default function Employees() {
     },
   });
 
+  // Form for adding new employees
+  const addForm = useForm<EditEmployeeFormData>({
+    resolver: zodResolver(editEmployeeSchema),
+    defaultValues: {
+      employeeId: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phoneNumber: "",
+      address: "",
+      department: "",
+      position: "",
+      employeeType: "teacher",
+      hireDate: "",
+      salary: "",
+      status: "active",
+      payGrade: "",
+      educationLevel: "",
+      certifications: "",
+      supervisorId: "",
+    },
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -312,6 +335,7 @@ export default function Employees() {
 
   const handleAddEmployee = () => {
     setSelectedEmployee(null);
+    addForm.reset();
     setIsAddDialogOpen(true);
   };
 
@@ -365,6 +389,36 @@ export default function Employees() {
     },
   });
 
+  const addEmployeeMutation = useMutation({
+    mutationFn: async (data: EditEmployeeFormData) => {
+      // Convert fields to proper types for backend
+      const formattedData = {
+        ...data,
+        userId: `user_${Date.now()}`, // Generate a unique user ID
+        hireDate: new Date(data.hireDate),
+        supervisorId: data.supervisorId ? parseInt(data.supervisorId) : null,
+        certifications: data.certifications ? data.certifications.split(',').map(c => c.trim()) : [],
+      };
+      return await apiRequest('/api/employees', 'POST', formattedData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+      setIsAddDialogOpen(false);
+      addForm.reset();
+      toast({
+        title: "Success",
+        description: "Employee added successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add employee",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteEmployee = (employee: any) => {
     if (window.confirm(`Are you sure you want to delete ${employee.firstName} ${employee.lastName}?`)) {
       deleteEmployeeMutation.mutate(employee.id);
@@ -378,6 +432,10 @@ export default function Employees() {
         id: selectedEmployee.id,
       });
     }
+  };
+
+  const onAddSubmit = (data: EditEmployeeFormData) => {
+    addEmployeeMutation.mutate(data);
   };
 
   if (isLoading) {
@@ -985,17 +1043,262 @@ export default function Employees() {
 
       {/* Add Employee Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Employee</DialogTitle>
             <DialogDescription>
               Create a new employee record in the system
             </DialogDescription>
           </DialogHeader>
-          <div className="text-center py-8">
-            <p className="text-gray-500">Add employee functionality coming soon...</p>
-            <p className="text-sm text-gray-400 mt-2">This feature will allow you to create new employee records.</p>
-          </div>
+          <Form {...addForm}>
+            <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={addForm.control}
+                  name="employeeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("employeeId", "Employee ID")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("employeeId", "Employee ID").toLowerCase()}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("status", "Status")}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={`Select ${getFieldLabel("status", "Status").toLowerCase()}`} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="on_leave">On Leave</SelectItem>
+                          <SelectItem value="terminated">Terminated</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("firstName", "First Name")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("firstName", "First Name").toLowerCase()}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("lastName", "Last Name")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("lastName", "Last Name").toLowerCase()}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("email", "Email")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" placeholder={`Enter ${getFieldLabel("email", "Email").toLowerCase()}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("phoneNumber", "Phone Number")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("phoneNumber", "Phone Number").toLowerCase()} (optional)`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("department", "Department")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("department", "Department").toLowerCase()}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="position"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("position", "Position")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("position", "Position").toLowerCase()}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="employeeType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("employeeType", "Employee Type")}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={`Select ${getFieldLabel("employeeType", "Employee Type").toLowerCase()}`} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="teacher">Teacher</SelectItem>
+                          <SelectItem value="administrator">Administrator</SelectItem>
+                          <SelectItem value="support_staff">Support Staff</SelectItem>
+                          <SelectItem value="substitute">Substitute</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="hireDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("hireDate", "Hire Date")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="salary"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("salary", "Salary")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("salary", "Salary").toLowerCase()}`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="payGrade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("payGrade", "Pay Grade")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("payGrade", "Pay Grade").toLowerCase()} (optional)`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="educationLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("educationLevel", "Education Level")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("educationLevel", "Education Level").toLowerCase()} (optional)`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="supervisorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{getFieldLabel("supervisorId", "Supervisor ID")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={`Enter ${getFieldLabel("supervisorId", "Supervisor ID").toLowerCase()} (optional)`} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={addForm.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{getFieldLabel("address", "Address")}</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder={`Enter ${getFieldLabel("address", "Address").toLowerCase()} (optional)`} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addForm.control}
+                name="certifications"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{getFieldLabel("certifications", "Certifications")}</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder={`Enter ${getFieldLabel("certifications", "Certifications").toLowerCase()}, separated by commas (optional)`} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsAddDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={addEmployeeMutation.isPending}
+                >
+                  {addEmployeeMutation.isPending ? "Adding..." : "Add Employee"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
