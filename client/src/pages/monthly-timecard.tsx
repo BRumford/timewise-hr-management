@@ -662,8 +662,6 @@ export default function MonthlyTimecard() {
                   key={timecard.id}
                   className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
                   onClick={() => {
-                    console.log('Clicking on timecard:', timecard);
-                    
                     // Set the employee and template to load this timecard
                     setSelectedEmployee(timecard.employeeId);
                     setSelectedTemplate(timecard.templateId);
@@ -672,17 +670,12 @@ export default function MonthlyTimecard() {
                     const parsedEntries = safeJsonParse(timecard.entries, []);
                     const parsedCustomFieldsData = safeJsonParse(timecard.customFieldsData, {});
                     
-                    console.log('Parsed entries:', parsedEntries);
-                    console.log('Parsed custom fields:', parsedCustomFieldsData);
-                    
                     // Load the timecard data
                     setTimecardData(timecard);
                     setFormData(parsedCustomFieldsData);
                     setDailyEntries(parsedEntries);
                     setCurrentMonth(timecard.month);
                     setCurrentYear(timecard.year);
-                    
-                    console.log('State updated - selectedEmployee:', timecard.employeeId, 'selectedTemplate:', timecard.templateId);
                   }}
                 >
                   <div className="flex justify-between items-start">
@@ -823,18 +816,7 @@ export default function MonthlyTimecard() {
                 </div>
               )}
 
-              {/* Debug Information */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                  <h4 className="font-semibold text-yellow-800 mb-2">Debug Info</h4>
-                  <div className="text-sm text-yellow-700">
-                    <p>Template Fields: {templateFields.length}</p>
-                    <p>Grouped Fields: {Object.keys(groupedFields).join(', ')}</p>
-                    <p>Form Data keys: {Object.keys(formData).join(', ')}</p>
-                    <p>Daily Entries: {dailyEntries.length}</p>
-                  </div>
-                </div>
-              )}
+
 
               {/* Monthly Time Tracking Grid */}
               <div className="mb-6">
