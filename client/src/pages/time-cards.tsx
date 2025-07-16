@@ -284,7 +284,7 @@ function EmployeeTimecardApproval() {
 // Admin Timecard Approval Component
 function AdminTimecardApproval() {
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('draft');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedTimecard, setSelectedTimecard] = useState<MonthlyTimecard | null>(null);
   const [selectedTimecardIds, setSelectedTimecardIds] = useState<number[]>([]);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
