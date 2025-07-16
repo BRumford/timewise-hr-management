@@ -25,6 +25,8 @@ import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import Retirees from "@/pages/retirees";
 import ArchivedEmployees from "@/pages/archived-employees";
+import SupportDocumentation from "@/pages/support-documentation";
+import SecurityUpdates from "@/pages/security-updates";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -62,6 +64,8 @@ function Router() {
                 <Route path="/field-labels" component={FieldLabels} />
                 <Route path="/retirees" component={Retirees} />
                 <Route path="/archived-employees" component={ArchivedEmployees} />
+                <Route path="/support-documentation" component={SupportDocumentation} />
+                <Route path="/security-updates" component={SecurityUpdates} />
                 <Route component={NotFound} />
               </Switch>
             </main>

@@ -17,7 +17,9 @@ import {
   Tag,
   Archive,
   Heart,
-  Shield
+  Shield,
+  BookOpen,
+  ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import RoleSwitcher from "@/components/auth/role-switcher";
@@ -39,6 +41,8 @@ const menuItems = [
   { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["admin", "hr"] },
   { path: "/retirees", icon: Heart, label: "Retirees", roles: ["admin", "hr"] },
   { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["admin", "hr"] },
+  { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["admin", "hr"] },
+  { path: "/security-updates", icon: ShieldCheck, label: "Security Updates", roles: ["admin", "hr"] },
   { path: "/security-monitoring", icon: Shield, label: "Security Monitoring", roles: ["admin", "hr"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr"] },
 ];

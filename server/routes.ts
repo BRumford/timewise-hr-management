@@ -25,7 +25,7 @@ import fs from 'fs';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
 import * as schema from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -3291,6 +3291,284 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register security routes
   registerSecurityRoutes(app);
+
+  // Support Documentation routes
+  app.get('/api/support/documents', isAuthenticated, async (req, res) => {
+    try {
+      const { category, search, difficulty } = req.query;
+      let query = db.select().from(schema.supportDocuments).where(eq(schema.supportDocuments.isPublished, true));
+      
+      if (category) {
+        query = query.where(eq(schema.supportDocuments.category, category as string));
+      }
+      if (difficulty) {
+        query = query.where(eq(schema.supportDocuments.difficulty, difficulty as string));
+      }
+      
+      const documents = await query;
+      res.json(documents);
+    } catch (error) {
+      console.error('Error fetching support documents:', error);
+      res.status(500).json({ message: 'Failed to fetch support documents' });
+    }
+  });
+
+  app.post('/api/support/documents', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const documentData = {
+        ...req.body,
+        authorId: userId,
+        slug: req.body.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      };
+      
+      const [document] = await db.insert(schema.supportDocuments).values(documentData).returning();
+      res.json(document);
+    } catch (error) {
+      console.error('Error creating support document:', error);
+      res.status(500).json({ message: 'Failed to create support document' });
+    }
+  });
+
+  app.get('/api/support/categories', isAuthenticated, async (req, res) => {
+    try {
+      const categories = await db.select().from(schema.supportCategories).where(eq(schema.supportCategories.isActive, true));
+      res.json(categories);
+    } catch (error) {
+      console.error('Error fetching support categories:', error);
+      res.status(500).json({ message: 'Failed to fetch support categories' });
+    }
+  });
+
+  app.get('/api/support/bookmarks', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const bookmarks = await db.select({ documentId: schema.supportBookmarks.documentId })
+        .from(schema.supportBookmarks)
+        .where(eq(schema.supportBookmarks.userId, userId));
+      res.json(bookmarks.map(b => b.documentId));
+    } catch (error) {
+      console.error('Error fetching support bookmarks:', error);
+      res.status(500).json({ message: 'Failed to fetch support bookmarks' });
+    }
+  });
+
+  app.post('/api/support/bookmarks', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const { documentId } = req.body;
+      
+      const [bookmark] = await db.insert(schema.supportBookmarks).values({
+        userId,
+        documentId,
+      }).returning();
+      
+      res.json(bookmark);
+    } catch (error) {
+      console.error('Error creating support bookmark:', error);
+      res.status(500).json({ message: 'Failed to create support bookmark' });
+    }
+  });
+
+  app.delete('/api/support/bookmarks/:documentId', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const documentId = parseInt(req.params.documentId);
+      
+      await db.delete(schema.supportBookmarks)
+        .where(and(
+          eq(schema.supportBookmarks.userId, userId),
+          eq(schema.supportBookmarks.documentId, documentId)
+        ));
+      
+      res.json({ message: 'Bookmark removed' });
+    } catch (error) {
+      console.error('Error removing support bookmark:', error);
+      res.status(500).json({ message: 'Failed to remove support bookmark' });
+    }
+  });
+
+  app.post('/api/support/feedback', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const feedbackData = {
+        ...req.body,
+        userId,
+      };
+      
+      const [feedback] = await db.insert(schema.supportFeedback).values(feedbackData).returning();
+      res.json(feedback);
+    } catch (error) {
+      console.error('Error submitting support feedback:', error);
+      res.status(500).json({ message: 'Failed to submit support feedback' });
+    }
+  });
+
+  // Support Ticket routes
+  app.get('/api/support/tickets', isAuthenticated, async (req, res) => {
+    try {
+      const { status, priority, category } = req.query;
+      let query = db.select().from(schema.supportTickets);
+      
+      if (status) {
+        query = query.where(eq(schema.supportTickets.status, status as string));
+      }
+      if (priority) {
+        query = query.where(eq(schema.supportTickets.priority, priority as string));
+      }
+      if (category) {
+        query = query.where(eq(schema.supportTickets.category, category as string));
+      }
+      
+      const tickets = await query.orderBy(desc(schema.supportTickets.createdAt));
+      res.json(tickets);
+    } catch (error) {
+      console.error('Error fetching support tickets:', error);
+      res.status(500).json({ message: 'Failed to fetch support tickets' });
+    }
+  });
+
+  app.post('/api/support/tickets', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const ticketNumber = `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+      
+      const ticketData = {
+        ...req.body,
+        ticketNumber,
+        createdBy: userId,
+      };
+      
+      const [ticket] = await db.insert(schema.supportTickets).values(ticketData).returning();
+      res.json(ticket);
+    } catch (error) {
+      console.error('Error creating support ticket:', error);
+      res.status(500).json({ message: 'Failed to create support ticket' });
+    }
+  });
+
+  app.patch('/api/support/tickets/:id/status', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      const [ticket] = await db.update(schema.supportTickets)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(schema.supportTickets.id, ticketId))
+        .returning();
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error('Error updating support ticket status:', error);
+      res.status(500).json({ message: 'Failed to update support ticket status' });
+    }
+  });
+
+  // Security Updates routes
+  app.get('/api/security/updates', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { severity, status, search } = req.query;
+      let query = db.select().from(schema.securityUpdates);
+      
+      if (severity) {
+        query = query.where(eq(schema.securityUpdates.severity, severity as string));
+      }
+      if (status) {
+        query = query.where(eq(schema.securityUpdates.status, status as string));
+      }
+      
+      const updates = await query.orderBy(desc(schema.securityUpdates.createdAt));
+      res.json(updates);
+    } catch (error) {
+      console.error('Error fetching security updates:', error);
+      res.status(500).json({ message: 'Failed to fetch security updates' });
+    }
+  });
+
+  app.post('/api/security/updates', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const updateData = {
+        ...req.body,
+        releasedBy: userId,
+      };
+      
+      const [update] = await db.insert(schema.securityUpdates).values(updateData).returning();
+      res.json(update);
+    } catch (error) {
+      console.error('Error creating security update:', error);
+      res.status(500).json({ message: 'Failed to create security update' });
+    }
+  });
+
+  app.patch('/api/security/updates/:id/status', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const updateId = parseInt(req.params.id);
+      const { status } = req.body;
+      const userId = req.user?.id;
+      
+      const updateData: any = { status, updatedAt: new Date() };
+      
+      if (status === 'approved') {
+        updateData.approvedBy = userId;
+        updateData.approvedAt = new Date();
+      } else if (status === 'deployed') {
+        updateData.deployedBy = userId;
+        updateData.deployedAt = new Date();
+      }
+      
+      const [update] = await db.update(schema.securityUpdates)
+        .set(updateData)
+        .where(eq(schema.securityUpdates.id, updateId))
+        .returning();
+      
+      res.json(update);
+    } catch (error) {
+      console.error('Error updating security update status:', error);
+      res.status(500).json({ message: 'Failed to update security update status' });
+    }
+  });
+
+  app.get('/api/security/notifications', isAuthenticated, async (req, res) => {
+    try {
+      const notifications = await db.select().from(schema.securityNotifications)
+        .where(eq(schema.securityNotifications.isActive, true))
+        .orderBy(desc(schema.securityNotifications.createdAt));
+      
+      res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching security notifications:', error);
+      res.status(500).json({ message: 'Failed to fetch security notifications' });
+    }
+  });
+
+  app.post('/api/security/notifications', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const notificationData = {
+        ...req.body,
+        createdBy: userId,
+      };
+      
+      const [notification] = await db.insert(schema.securityNotifications).values(notificationData).returning();
+      res.json(notification);
+    } catch (error) {
+      console.error('Error creating security notification:', error);
+      res.status(500).json({ message: 'Failed to create security notification' });
+    }
+  });
+
+  app.get('/api/security/vulnerabilities', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const vulnerabilities = await db.select().from(schema.vulnerabilityAssessments)
+        .orderBy(desc(schema.vulnerabilityAssessments.discoveredAt));
+      
+      res.json(vulnerabilities);
+    } catch (error) {
+      console.error('Error fetching vulnerability assessments:', error);
+      res.status(500).json({ message: 'Failed to fetch vulnerability assessments' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
