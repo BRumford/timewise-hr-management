@@ -259,6 +259,76 @@ export default function MonthlyTimecard() {
 
   const groupedFields = groupFieldsBySection(templateFields);
 
+  // PayrollProcessingRowInline component for payroll processing section
+  const PayrollProcessingRowInline = ({ lineNumber }: { lineNumber: number }) => {
+    const [addon, setAddon] = useState('');
+    const [units, setUnits] = useState('');
+    const [rate, setRate] = useState('');
+    const [alias, setAlias] = useState('');
+    const [notes, setNotes] = useState('');
+
+    // Calculate total automatically
+    const total = (parseFloat(units) || 0) * (parseFloat(rate) || 0);
+
+    return (
+      <tr className="even:bg-gray-50">
+        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
+          {lineNumber}
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="text"
+            value={addon}
+            onChange={(e) => setAddon(e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="Addon description"
+          />
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="number"
+            step="0.01"
+            value={units}
+            onChange={(e) => setUnits(e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="0"
+          />
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="number"
+            step="0.01"
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="0.00"
+          />
+        </td>
+        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
+          ${total.toFixed(2)}
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="text"
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="Alias"
+          />
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="Notes"
+          />
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -463,6 +533,33 @@ export default function MonthlyTimecard() {
                   </div>
                 </div>
               )}
+
+              {/* Payroll Processing Section */}
+              <div className="mt-6 pt-4 border-t-2 border-gray-400">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                  Payroll Processing Section
+                </h3>
+                <div className="border border-gray-400 rounded">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-purple-50">
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Line</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Addon</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Units</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Rate</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Total</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Alias</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: 10 }, (_, index) => (
+                        <PayrollProcessingRowInline key={index} lineNumber={index + 1} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
               {/* Summary Section */}
               <div className="mt-6 pt-4 border-t border-gray-300">
