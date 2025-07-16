@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, User, Save, FileText, Building, Lock, Unlock, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, User, Save, FileText, Building, Lock, Unlock, AlertTriangle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { Employee } from "@shared/schema";
@@ -517,6 +517,70 @@ export default function SubstituteTimeCards() {
     }, 0);
   };
 
+  // Export payroll data to CSV
+  const exportPayrollData = () => {
+    const selectedSubstituteData = substitutes.find((sub: Employee) => sub.id === selectedSubstitute);
+    const template = templates.find((t: TimecardTemplate) => t.id === selectedTemplate);
+    
+    if (!selectedSubstituteData || !template) {
+      toast({ title: "Error", description: "Please select substitute and template first", variant: "destructive" });
+      return;
+    }
+
+    // Create CSV headers
+    const headers = [
+      "Employee Name",
+      "Employee ID",
+      "Template",
+      "Line",
+      "Addon",
+      "Units",
+      "Rate",
+      "Total",
+      "Alias",
+      "Notes"
+    ];
+
+    // Create CSV data
+    const csvData = payrollEntries
+      .filter(entry => entry.addon || entry.units || entry.rate || entry.notes)
+      .map((entry, index) => [
+        `${selectedSubstituteData.firstName} ${selectedSubstituteData.lastName}`,
+        selectedSubstituteData.employeeId,
+        template.name,
+        index + 1,
+        entry.addon || '',
+        entry.units || '',
+        entry.rate || '',
+        ((parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0)).toFixed(2),
+        entry.alias || '',
+        entry.notes || ''
+      ]);
+
+    // Add grand total row
+    csvData.push([
+      '', '', '', '', '', '', 'GRAND TOTAL', calculateGrandTotal().toFixed(2), '', ''
+    ]);
+
+    // Convert to CSV string
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `substitute-payroll-${selectedSubstituteData.firstName}-${selectedSubstituteData.lastName}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({ title: "Success", description: "Payroll data exported successfully" });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -799,9 +863,20 @@ export default function SubstituteTimeCards() {
 
               {/* Payroll Processing Section */}
               <div className="mt-6 pt-4 border-t-2 border-gray-400">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
-                  Payroll Processing Section
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-2">
+                    Payroll Processing Section
+                  </h3>
+                  <Button
+                    onClick={exportPayrollData}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Export Payroll</span>
+                  </Button>
+                </div>
                 <div className="border border-gray-400 rounded">
                   <table className="w-full border-collapse">
                     <thead>
