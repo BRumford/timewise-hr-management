@@ -19,6 +19,7 @@ import { dataRetentionMonitor } from "./monitoring/dataRetention";
 import { storageMonitor } from "./monitoring/storageMonitor";
 import { dataArchiver } from "./monitoring/dataArchiver";
 import { registerSecurityRoutes } from "./security/securityRoutes";
+import { initSupportTables } from "./initSupportTables";
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -227,6 +228,9 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize support and security tables
+  await initSupportTables();
+  
   // Serve uploaded files
   app.use('/uploads', (req, res, next) => {
     const express = require('express');
@@ -3296,17 +3300,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/support/documents', isAuthenticated, async (req, res) => {
     try {
       const { category, search, difficulty } = req.query;
-      let query = db.select().from(schema.supportDocuments).where(eq(schema.supportDocuments.isPublished, true));
+      
+      let queryText = 'SELECT * FROM support_documents WHERE is_published = true';
       
       if (category) {
-        query = query.where(eq(schema.supportDocuments.category, category as string));
+        queryText += ` AND category = '${category}'`;
       }
       if (difficulty) {
-        query = query.where(eq(schema.supportDocuments.difficulty, difficulty as string));
+        queryText += ` AND difficulty = '${difficulty}'`;
+      }
+      if (search) {
+        queryText += ` AND (title ILIKE '%${search}%' OR content ILIKE '%${search}%')`;
       }
       
-      const documents = await query;
-      res.json(documents);
+      queryText += ' ORDER BY created_at DESC';
+      
+      const result = await db.execute(sql.raw(queryText));
+      res.json(result.rows);
     } catch (error) {
       console.error('Error fetching support documents:', error);
       res.status(500).json({ message: 'Failed to fetch support documents' });
@@ -3316,14 +3326,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/support/documents', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const userId = req.user?.id;
-      const documentData = {
-        ...req.body,
-        authorId: userId,
-        slug: req.body.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-      };
+      const { title, content, excerpt, category, tags = [], difficulty = 'beginner' } = req.body;
+      const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       
-      const [document] = await db.insert(schema.supportDocuments).values(documentData).returning();
-      res.json(document);
+      const result = await db.execute(sql`
+        INSERT INTO support_documents (title, content, excerpt, category, tags, difficulty, is_published, author_id, slug)
+        VALUES (${title}, ${content}, ${excerpt}, ${category}, ${tags}, ${difficulty}, true, ${userId}, ${slug})
+        RETURNING *
+      `);
+      
+      res.json(result.rows[0]);
     } catch (error) {
       console.error('Error creating support document:', error);
       res.status(500).json({ message: 'Failed to create support document' });
@@ -3332,8 +3344,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/support/categories', isAuthenticated, async (req, res) => {
     try {
-      const categories = await db.select().from(schema.supportCategories).where(eq(schema.supportCategories.isActive, true));
-      res.json(categories);
+      const result = await db.execute(sql`
+        SELECT * FROM support_categories WHERE is_active = true ORDER BY sort_order
+      `);
+      res.json(result.rows);
     } catch (error) {
       console.error('Error fetching support categories:', error);
       res.status(500).json({ message: 'Failed to fetch support categories' });
