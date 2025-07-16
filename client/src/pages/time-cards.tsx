@@ -284,7 +284,7 @@ function EmployeeTimecardApproval() {
 // Admin Timecard Approval Component
 function AdminTimecardApproval() {
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('submitted_to_admin');
+  const [selectedStatus, setSelectedStatus] = useState<string>('draft');
   const [selectedTimecard, setSelectedTimecard] = useState<MonthlyTimecard | null>(null);
   const [selectedTimecardIds, setSelectedTimecardIds] = useState<number[]>([]);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
@@ -304,11 +304,49 @@ function AdminTimecardApproval() {
     queryKey: ["/api/monthly-timecards"],
   });
 
+  // Fetch regular timecards (including leave request timecards)
+  const { data: regularTimecards = [] } = useQuery({
+    queryKey: ["/api/time-cards"],
+  });
+
   // Get unique sites from employees
   const uniqueSites = [...new Set(employees.map((emp: Employee) => emp.department).filter(Boolean))];
 
+  // Transform regular timecards to match monthly timecard interface
+  const transformedRegularTimecards = regularTimecards.map((timecard: any) => {
+    const employee = employees.find((emp: Employee) => emp.id === timecard.employeeId);
+    return {
+      ...timecard,
+      employeeName: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+      employeePosition: employee?.position || 'Unknown',
+      templateId: null,
+      month: new Date(timecard.date).getMonth() + 1,
+      year: new Date(timecard.date).getFullYear(),
+      payPeriodStart: timecard.date,
+      payPeriodEnd: timecard.date,
+      entries: [],
+      customFieldsData: timecard.customFieldsData || {},
+      notes: timecard.notes || '',
+      totalHours: parseFloat(timecard.totalHours || '0'),
+      site: employee?.department || 'Unknown',
+      isLeaveRequest: !!timecard.leaveRequestId,
+      leaveType: timecard.leaveType || null,
+      type: 'regular'
+    };
+  });
+
+  // Add type identifier to monthly timecards
+  const monthlyTimecardsWithType = allTimecards.map((timecard: MonthlyTimecard) => ({
+    ...timecard,
+    type: 'monthly',
+    isLeaveRequest: false
+  }));
+
+  // Combine both types of timecards
+  const combinedTimecards = [...transformedRegularTimecards, ...monthlyTimecardsWithType];
+
   // Filter timecards based on selected site and status
-  const filteredTimecards = allTimecards.filter((timecard: MonthlyTimecard) => {
+  const filteredTimecards = combinedTimecards.filter((timecard: any) => {
     const employee = employees.find((emp: Employee) => emp.id === timecard.employeeId);
     const siteMatch = selectedSite === 'all' || employee?.department === selectedSite;
     const statusMatch = selectedStatus === 'all' || timecard.status === selectedStatus;
@@ -755,26 +793,57 @@ function AdminTimecardApproval() {
                       <div className="flex-1">
                         <div className="flex items-center space-x-4">
                           <div>
-                            <h3 className="font-semibold text-lg">
-                              {employee?.firstName} {employee?.lastName}
-                            </h3>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-semibold text-lg">
+                                {employee?.firstName} {employee?.lastName}
+                              </h3>
+                              {timecard.isLeaveRequest && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                  <User className="h-3 w-3 mr-1" />
+                                  Leave Request
+                                </Badge>
+                              )}
+                              {timecard.type === 'regular' && (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                  Daily
+                                </Badge>
+                              )}
+                              {timecard.type === 'monthly' && (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                  Monthly
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-600">
                               {employee?.position} • {employee?.department}
                             </p>
+                            {timecard.isLeaveRequest && timecard.leaveType && (
+                              <p className="text-sm text-blue-600 font-medium">
+                                {timecard.leaveType}
+                              </p>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500">
                             <div className="flex items-center space-x-1">
                               <Calendar className="h-4 w-4" />
-                              <span>{timecard.month}/{timecard.year}</span>
+                              <span>
+                                {timecard.type === 'regular' ? 
+                                  format(new Date(timecard.date), 'MMM d, yyyy') : 
+                                  `${timecard.month}/${timecard.year}`
+                                }
+                              </span>
                             </div>
                             <div className="flex items-center space-x-1 mt-1">
                               <Clock className="h-4 w-4" />
-                              <span>{totalHours} hours</span>
+                              <span>{timecard.totalHours || totalHours} hours</span>
                             </div>
                           </div>
                         </div>
                         <div className="mt-2 text-sm text-gray-600">
-                          Pay Period: {format(new Date(timecard.payPeriodStart), 'MMM d')} - {format(new Date(timecard.payPeriodEnd), 'MMM d, yyyy')}
+                          {timecard.type === 'regular' ? 
+                            `Date: ${format(new Date(timecard.date), 'MMM d, yyyy')}` :
+                            `Pay Period: ${format(new Date(timecard.payPeriodStart), 'MMM d')} - ${format(new Date(timecard.payPeriodEnd), 'MMM d, yyyy')}`
+                          }
                         </div>
                       </div>
 
