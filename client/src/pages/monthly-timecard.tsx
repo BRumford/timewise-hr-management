@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, User, Save, FileText, Building } from "lucide-react";
+import { Calendar, Clock, User, Save, FileText, Building, Lock, Unlock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import type { Employee } from "@shared/schema";
 
 // Types based on the template fields
@@ -54,6 +55,10 @@ interface MonthlyTimecardData {
   notes: string;
   submittedBy?: string;
   submittedAt?: string;
+  isLocked?: boolean;
+  lockedBy?: string;
+  lockedAt?: string;
+  lockReason?: string;
 }
 
 export default function MonthlyTimecard() {
@@ -67,6 +72,7 @@ export default function MonthlyTimecard() {
   const [payrollEntries, setPayrollEntries] = useState<any[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Fetch employees
   const { data: employees = [] } = useQuery({
@@ -231,6 +237,48 @@ export default function MonthlyTimecard() {
 
     console.log('Timecard data:', finalData);
   };
+
+  // Lock timecard mutation
+  const lockTimecard = useMutation({
+    mutationFn: async (data: { id: number; lockReason?: string }) => {
+      return await apiRequest(`/api/monthly-timecards/${data.id}/lock`, "POST", { lockReason: data.lockReason });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Timecard locked successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecards"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to lock timecard",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Unlock timecard mutation
+  const unlockTimecard = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/monthly-timecards/${id}/unlock`, "POST");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Timecard unlocked successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecards"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to unlock timecard",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Group template fields by section
   const groupFieldsBySection = (fields: TimecardTemplateField[]) => {
@@ -397,7 +445,7 @@ export default function MonthlyTimecard() {
           <h1 className="text-3xl font-bold">Monthly Timecard</h1>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={saveTimecard} disabled={!timecardData}>
+          <Button onClick={saveTimecard} disabled={!timecardData || timecardData?.isLocked}>
             <Save className="h-4 w-4 mr-2" />
             Save Timecard
           </Button>
@@ -454,14 +502,77 @@ export default function MonthlyTimecard() {
           {/* Paper-style Timecard Form */}
           <Card className="bg-white border-2 border-gray-400">
             <CardHeader className="bg-gray-50 border-b-2 border-gray-400">
-              <CardTitle className="text-center text-xl font-bold">
-                CLASSIFIED/CONFIDENTIAL PERMANENT TIMECARD
-              </CardTitle>
-              <div className="text-center text-sm text-gray-600">
-                School District Personnel Department
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-center text-xl font-bold">
+                    CLASSIFIED/CONFIDENTIAL PERMANENT TIMECARD
+                  </CardTitle>
+                  <div className="text-center text-sm text-gray-600">
+                    School District Personnel Department
+                  </div>
+                </div>
+                
+                {/* Lock Status and Controls */}
+                <div className="flex items-center space-x-2">
+                  {timecardData?.isLocked ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 bg-red-100 text-red-700 px-2 py-1 rounded-md">
+                        <Lock className="h-4 w-4" />
+                        <span className="text-sm font-medium">Locked</span>
+                      </div>
+                      {user?.role === 'admin' || user?.role === 'hr' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => unlockTimecard.mutate(timecardData.id!)}
+                          disabled={unlockTimecard.isPending}
+                        >
+                          <Unlock className="h-4 w-4 mr-1" />
+                          Unlock
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 bg-green-100 text-green-700 px-2 py-1 rounded-md">
+                        <Unlock className="h-4 w-4" />
+                        <span className="text-sm font-medium">Unlocked</span>
+                      </div>
+                      {user?.role === 'admin' || user?.role === 'hr' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => lockTimecard.mutate({ id: timecardData.id!, lockReason: 'Manually locked by ' + user.username })}
+                          disabled={lockTimecard.isPending}
+                        >
+                          <Lock className="h-4 w-4 mr-1" />
+                          Lock
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className={`p-6 ${timecardData?.isLocked ? 'opacity-75 pointer-events-none' : ''}`}>
+              
+              {/* Lock notification */}
+              {timecardData?.isLocked && (
+                <div className="bg-orange-100 border border-orange-300 text-orange-700 px-4 py-3 rounded-md mb-6">
+                  <div className="flex items-center">
+                    <AlertTriangle className="h-5 w-5 mr-2" />
+                    <div>
+                      <div className="font-medium">Timecard is locked</div>
+                      <div className="text-sm">
+                        Locked by {timecardData.lockedBy} on {timecardData.lockedAt ? new Date(timecardData.lockedAt).toLocaleDateString() : 'Unknown date'}
+                        {timecardData.lockReason && (
+                          <div className="mt-1">Reason: {timecardData.lockReason}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* General Information Section */}
               {groupedFields.general && (

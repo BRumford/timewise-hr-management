@@ -2103,12 +2103,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateMonthlyTimecard(id: number, data: any): Promise<any> {
+    // Auto-lock timecard if status is being changed to submitted
+    const shouldLock = data.status === 'submitted';
+    
     // Update the timecard
     await db.update(monthlyTimecards)
       .set({
         status: data.status,
         payPeriodStart: data.payPeriodStart,
         payPeriodEnd: data.payPeriodEnd,
+        ...(shouldLock && {
+          isLocked: true,
+          lockedBy: 'System',
+          lockedAt: new Date(),
+          lockReason: 'Automatically locked when submitted to payroll'
+        }),
         updatedAt: new Date()
       })
       .where(eq(monthlyTimecards.id, id));
@@ -2142,6 +2151,34 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await this.getMonthlyTimecard(data.employeeId, data.month, data.year);
+  }
+
+  async lockMonthlyTimecard(id: number, lockedBy: string, lockReason?: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        isLocked: true,
+        lockedBy,
+        lockedAt: new Date(),
+        lockReason,
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async unlockMonthlyTimecard(id: number): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        isLocked: false,
+        lockedBy: null,
+        lockedAt: null,
+        lockReason: null,
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
   }
 
   // Dropdown options methods

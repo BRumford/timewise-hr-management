@@ -3718,6 +3718,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Timecard Locking Routes
+  app.post('/api/monthly-timecards/:id/lock', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const { lockReason } = req.body;
+      const user = req.user as any;
+      
+      const timecard = await storage.lockMonthlyTimecard(timecardId, user.username, lockReason);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error locking timecard:', error);
+      res.status(500).json({ message: 'Failed to lock timecard' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/:id/unlock', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const timecard = await storage.unlockMonthlyTimecard(timecardId);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error unlocking timecard:', error);
+      res.status(500).json({ message: 'Failed to unlock timecard' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

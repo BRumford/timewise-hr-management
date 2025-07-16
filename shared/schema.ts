@@ -540,6 +540,10 @@ export const monthlyTimecards = pgTable("monthly_timecards", {
   notes: text("notes"),
   submittedBy: varchar("submitted_by"),
   submittedAt: timestamp("submitted_at"),
+  isLocked: boolean("is_locked").default(false),
+  lockedBy: varchar("locked_by"),
+  lockedAt: timestamp("locked_at"),
+  lockReason: text("lock_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

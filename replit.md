@@ -470,3 +470,17 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Integrated dropdown settings page into navigation sidebar with admin/hr access control
   - Districts can now customize all dropdown options throughout the timecard system
   - System provides consistent dropdown options across daily entries and payroll processing sections
+
+- Implemented Comprehensive Timecard Locking System (July 16, 2025)
+  - Added automatic timecard locking when status is changed to "submitted" to prevent unauthorized changes
+  - Extended monthly_timecards database table with isLocked, lockedBy, lockedAt, and lockReason fields
+  - Created lock/unlock API endpoints with proper role-based access control (admin/hr only)
+  - Implemented visual lock indicators and status badges in the timecard header
+  - Added lock/unlock buttons for authorized users with proper authentication checks
+  - Created comprehensive lock notification system showing who locked the timecard and when
+  - Disabled all form fields and Save button when timecard is locked with visual overlay
+  - Added lock/unlock mutations with proper error handling and success notifications
+  - Lock system automatically triggers when timecards are submitted to payroll for processing
+  - HR and admin users can manually lock/unlock timecards with custom reasons
+  - System prevents accidental changes to approved timecards while allowing authorized modifications
+  - Added comprehensive audit trail for all lock/unlock actions with timestamps and user tracking
