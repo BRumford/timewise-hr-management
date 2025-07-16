@@ -166,7 +166,14 @@ export default function MonthlyTimecard() {
 
   // Initialize form data when template changes
   useEffect(() => {
-    if (selectedTemplate && selectedEmployee) {
+    console.log('Form initialization useEffect triggered:', {
+      selectedTemplate,
+      selectedEmployee,
+      hasTimecardData: !!timecardData,
+      templatesLength: templates.length
+    });
+    
+    if (selectedTemplate && selectedEmployee && !timecardData) {
       const template = templates.find((t: TimecardTemplate) => t.id === selectedTemplate);
       if (template) {
         setTimecardData({
@@ -731,6 +738,10 @@ export default function MonthlyTimecard() {
         </Card>
       )}
 
+      <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+        Debug: selectedEmployee={selectedEmployee}, selectedTemplate={selectedTemplate}, templateFields={templateFields?.length || 0}, timecardData={timecardData?.id || 'null'}
+      </div>
+      
       {selectedEmployee && selectedTemplate && (
         <>
           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
