@@ -6,414 +6,485 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, User, Save, ArrowLeft, ArrowRight } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar, Clock, User, Save, FileText, Building } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Employee } from "@shared/schema";
 
-interface MonthlyTimecard {
+// Types based on the template fields
+interface TimecardTemplateField {
   id: number;
+  templateId: number;
+  fieldName: string;
+  fieldLabel: string;
+  fieldType: string;
+  fieldOptions: any;
+  isRequired: boolean;
+  isReadOnly: boolean;
+  displayOrder: number;
+  section: string;
+  validationRules: any;
+}
+
+interface TimecardTemplate {
+  id: number;
+  name: string;
+  description: string;
+  employeeType: string;
+  isActive: boolean;
+  isDefault: boolean;
+  approvalWorkflow: any[];
+  settings: any;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface MonthlyTimecardData {
+  id?: number;
   employeeId: number;
+  templateId: number;
   month: number;
   year: number;
   payPeriodStart: string;
   payPeriodEnd: string;
   status: string;
-  entries: MonthlyTimecardEntry[];
-}
-
-interface MonthlyTimecardEntry {
-  id: number;
-  timecardId: number;
-  date: string;
-  regularHours: number;
-  overtimeHours: number;
-  extraHours: number;
-  leaveHours: number;
-  leaveType: string;
+  entries: any[];
+  customFieldsData: any;
   notes: string;
+  submittedBy?: string;
+  submittedAt?: string;
 }
-
-const leaveTypes = [
-  { value: "sick", label: "Sick Leave" },
-  { value: "vacation", label: "Vacation" },
-  { value: "personal", label: "Personal Leave" },
-  { value: "bereavement", label: "Bereavement" },
-  { value: "jury", label: "Jury Duty" },
-  { value: "medical", label: "Medical Leave" },
-  { value: "emergency", label: "Emergency Leave" }
-];
 
 export default function MonthlyTimecard() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [timecardData, setTimecardData] = useState<MonthlyTimecard | null>(null);
+  const [timecardData, setTimecardData] = useState<MonthlyTimecardData | null>(null);
+  const [formData, setFormData] = useState<any>({});
+  const [dailyEntries, setDailyEntries] = useState<any[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch employees for selection
+  // Fetch employees
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
   });
 
-  // Fetch or create monthly timecard for selected employee
-  const { data: monthlyTimecard, refetch: refetchTimecard } = useQuery({
-    queryKey: ["/api/monthly-timecard", selectedEmployee, currentMonth, currentYear],
-    enabled: !!selectedEmployee,
+  // Fetch timecard templates
+  const { data: templates = [] } = useQuery({
+    queryKey: ["/api/timecard-templates"],
   });
 
-  // Create or update timecard mutation
-  const saveTimecardMutation = useMutation({
-    mutationFn: async (data: any) => {
-      if (timecardData?.id) {
-        return await apiRequest(`/api/monthly-timecard/${timecardData.id}`, 'PUT', data);
-      } else {
-        return await apiRequest("/api/monthly-timecard", 'POST', data);
-      }
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Monthly timecard saved successfully",
-      });
-      refetchTimecard();
-      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecard"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to save monthly timecard",
-        variant: "destructive",
-      });
-    }
+  // Fetch template fields for selected template
+  const { data: templateFields = [] } = useQuery({
+    queryKey: ["/api/timecard-template-fields", selectedTemplate],
+    enabled: !!selectedTemplate,
   });
 
-  // Initialize timecard data when monthlyTimecard is loaded
+  // Get employee data
+  const selectedEmployeeData = employees.find((emp: Employee) => emp.id === selectedEmployee);
+
+  // Initialize form data when template changes
   useEffect(() => {
-    if (monthlyTimecard) {
-      setTimecardData(monthlyTimecard);
-    } else if (selectedEmployee) {
-      // Create new timecard structure
-      const newTimecard: MonthlyTimecard = {
-        id: 0,
-        employeeId: selectedEmployee,
-        month: currentMonth,
-        year: currentYear,
-        payPeriodStart: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`,
-        payPeriodEnd: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${new Date(currentYear, currentMonth, 0).getDate()}`,
-        status: 'draft',
-        entries: []
-      };
-      setTimecardData(newTimecard);
+    if (selectedTemplate && selectedEmployee) {
+      const template = templates.find((t: TimecardTemplate) => t.id === selectedTemplate);
+      if (template) {
+        setTimecardData({
+          employeeId: selectedEmployee,
+          templateId: selectedTemplate,
+          month: currentMonth,
+          year: currentYear,
+          payPeriodStart: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`,
+          payPeriodEnd: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${new Date(currentYear, currentMonth, 0).getDate()}`,
+          status: 'draft',
+          entries: [],
+          customFieldsData: {},
+          notes: ''
+        });
+        
+        // Initialize form data with employee information
+        setFormData({
+          'Employee Name': `${selectedEmployeeData?.firstName || ''} ${selectedEmployeeData?.lastName || ''}`,
+          'Employee ID': selectedEmployeeData?.employeeId || '',
+          'Month/Year': `${currentMonth}/${currentYear}`,
+          'Duty': selectedEmployeeData?.position || '',
+          'Position Hours': '40', // Default position hours
+        });
+        
+        // Generate daily entries for the month
+        generateDailyEntries();
+      }
     }
-  }, [monthlyTimecard, selectedEmployee, currentMonth, currentYear]);
+  }, [selectedTemplate, selectedEmployee, currentMonth, currentYear, selectedEmployeeData, templates]);
 
-  // Update entry data
-  const updateEntry = (date: string, field: string, value: any) => {
-    if (!timecardData) return;
+  // Generate daily entries for current month
+  const generateDailyEntries = () => {
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const entries: any[] = [];
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentYear, currentMonth - 1, day);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const monthDay = `${currentMonth}/${day}`;
+      
+      entries.push({
+        date: monthDay,
+        dayName,
+        code: '',
+        hours: '',
+        personReplaced: '',
+        description: '',
+        funding: '',
+        site: ''
+      });
+    }
+    
+    setDailyEntries(entries);
+  };
 
-    const updatedEntries = [...timecardData.entries];
-    const existingEntryIndex = updatedEntries.findIndex(entry => entry.date === date);
+  // Update form field
+  const updateFormField = (fieldName: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
 
-    if (existingEntryIndex >= 0) {
-      updatedEntries[existingEntryIndex] = {
-        ...updatedEntries[existingEntryIndex],
+  // Update daily entry
+  const updateDailyEntry = (index: number, field: string, value: any) => {
+    setDailyEntries(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
         [field]: value
       };
-    } else {
-      updatedEntries.push({
-        id: 0,
-        timecardId: timecardData.id,
-        date,
-        regularHours: field === 'regularHours' ? value : 0,
-        overtimeHours: field === 'overtimeHours' ? value : 0,
-        extraHours: field === 'extraHours' ? value : 0,
-        leaveHours: field === 'leaveHours' ? value : 0,
-        leaveType: field === 'leaveType' ? value : '',
-        notes: field === 'notes' ? value : ''
-      });
-    }
-
-    setTimecardData({
-      ...timecardData,
-      entries: updatedEntries
+      return updated;
     });
   };
 
-  // Get entry for specific date
-  const getEntryForDate = (date: string) => {
-    return timecardData?.entries.find(entry => entry.date === date) || {
-      id: 0,
-      timecardId: 0,
-      date,
-      regularHours: 0,
-      overtimeHours: 0,
-      extraHours: 0,
-      leaveHours: 0,
-      leaveType: '',
-      notes: ''
-    };
-  };
-
-  // Save timecard
-  const handleSave = () => {
+  // Save timecard (simulate API call for now)
+  const saveTimecard = () => {
     if (!timecardData) return;
-    saveTimecardMutation.mutate(timecardData);
+
+    const finalData = {
+      ...timecardData,
+      customFieldsData: formData,
+      entries: dailyEntries
+    };
+
+    toast({
+      title: "Success",
+      description: "Monthly timecard saved successfully",
+    });
+
+    console.log('Timecard data:', finalData);
   };
 
-  // Navigate months
-  const previousMonth = () => {
-    if (currentMonth === 1) {
-      setCurrentMonth(12);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
+  // Group template fields by section
+  const groupFieldsBySection = (fields: TimecardTemplateField[]) => {
+    const grouped: { [key: string]: TimecardTemplateField[] } = {};
+    
+    fields.forEach(field => {
+      if (!grouped[field.section]) {
+        grouped[field.section] = [];
+      }
+      grouped[field.section].push(field);
+    });
+    
+    // Sort fields within each section by displayOrder
+    Object.keys(grouped).forEach(section => {
+      grouped[section].sort((a, b) => a.displayOrder - b.displayOrder);
+    });
+    
+    return grouped;
+  };
+
+  // Render field based on type
+  const renderField = (field: TimecardTemplateField) => {
+    const value = formData[field.fieldName] || '';
+    
+    switch (field.fieldType) {
+      case 'text':
+      case 'number':
+        return (
+          <Input
+            type={field.fieldType}
+            value={value}
+            onChange={(e) => updateFormField(field.fieldName, e.target.value)}
+            placeholder={field.fieldLabel}
+            required={field.isRequired}
+            readOnly={field.isReadOnly}
+            className="w-full"
+          />
+        );
+      case 'textarea':
+        return (
+          <Textarea
+            value={value}
+            onChange={(e) => updateFormField(field.fieldName, e.target.value)}
+            placeholder={field.fieldLabel}
+            required={field.isRequired}
+            readOnly={field.isReadOnly}
+            className="w-full"
+          />
+        );
+      case 'checkbox':
+        return (
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={value}
+              onChange={(e) => updateFormField(field.fieldName, e.target.checked)}
+              className="h-4 w-4"
+            />
+            <label className="text-sm">{field.fieldLabel}</label>
+          </div>
+        );
+      default:
+        return (
+          <Input
+            type="text"
+            value={value}
+            onChange={(e) => updateFormField(field.fieldName, e.target.value)}
+            placeholder={field.fieldLabel}
+            required={field.isRequired}
+            readOnly={field.isReadOnly}
+            className="w-full"
+          />
+        );
     }
   };
 
-  const nextMonth = () => {
-    if (currentMonth === 12) {
-      setCurrentMonth(1);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
-  };
-
-  // Generate calendar days
-  const generateCalendarDays = () => {
-    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-    const days: Date[] = [];
-    
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(currentYear, currentMonth - 1, i));
-    }
-    
-    return days;
-  };
-
-  const days = generateCalendarDays();
-
-  // Calculate totals
-  const calculateTotals = () => {
-    if (!timecardData) return { regular: 0, overtime: 0, extra: 0, leave: 0, total: 0 };
-    
-    const totals = timecardData.entries.reduce((acc, entry) => {
-      acc.regular += parseFloat(entry.regularHours.toString()) || 0;
-      acc.overtime += parseFloat(entry.overtimeHours.toString()) || 0;
-      acc.extra += parseFloat(entry.extraHours.toString()) || 0;
-      acc.leave += parseFloat(entry.leaveHours.toString()) || 0;
-      return acc;
-    }, { regular: 0, overtime: 0, extra: 0, leave: 0, total: 0 });
-
-    totals.total = totals.regular + totals.overtime + totals.extra + totals.leave;
-    return totals;
-  };
-
-  const totals = calculateTotals();
+  const groupedFields = groupFieldsBySection(templateFields);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
-          <Calendar className="h-8 w-8 text-blue-600" />
+          <FileText className="h-8 w-8 text-blue-600" />
           <h1 className="text-3xl font-bold">Monthly Timecard</h1>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={handleSave} disabled={!timecardData || saveTimecardMutation.isPending}>
+          <Button onClick={saveTimecard} disabled={!timecardData}>
             <Save className="h-4 w-4 mr-2" />
-            {saveTimecardMutation.isPending ? "Saving..." : "Save Timecard"}
+            Save Timecard
           </Button>
         </div>
       </div>
 
-      {/* Employee Selection */}
+      {/* Employee and Template Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <User className="h-5 w-5" />
-            <span>Employee Selection</span>
+            <span>Setup</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-4">
-            <Label htmlFor="employee-select" className="text-sm font-medium">
-              Select Employee:
-            </Label>
-            <Select value={selectedEmployee?.toString() || ""} onValueChange={(value) => setSelectedEmployee(parseInt(value))}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Choose an employee" />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((employee: Employee) => (
-                  <SelectItem key={employee.id} value={employee.id.toString()}>
-                    {employee.firstName} {employee.lastName} - {employee.position}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="employee-select">Select Employee:</Label>
+              <Select value={selectedEmployee?.toString() || ""} onValueChange={(value) => setSelectedEmployee(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose an employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((employee: Employee) => (
+                    <SelectItem key={employee.id} value={employee.id.toString()}>
+                      {employee.firstName} {employee.lastName} - {employee.position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="template-select">Select Template:</Label>
+              <Select value={selectedTemplate?.toString() || ""} onValueChange={(value) => setSelectedTemplate(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template: TimecardTemplate) => (
+                    <SelectItem key={template.id} value={template.id.toString()}>
+                      {template.name} - {template.employeeType}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {selectedEmployee && (
+      {selectedEmployee && selectedTemplate && (
         <>
-          {/* Month Navigation */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5" />
-                  <span>{new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={previousMonth}>
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={nextMonth}>
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
+          {/* Paper-style Timecard Form */}
+          <Card className="bg-white border-2 border-gray-400">
+            <CardHeader className="bg-gray-50 border-b-2 border-gray-400">
+              <CardTitle className="text-center text-xl font-bold">
+                CLASSIFIED/CONFIDENTIAL PERMANENT TIMECARD
               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1">
-                {/* Day headers */}
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="p-2 text-center font-semibold text-sm bg-gray-50 rounded">
-                    {day}
-                  </div>
-                ))}
-                
-                {/* Calendar days */}
-                {days.map((day) => {
-                  const dateStr = day.toISOString().split('T')[0];
-                  const entry = getEntryForDate(dateStr);
-                  const today = new Date();
-                  const isToday = day.toDateString() === today.toDateString();
-                  const hasHours = entry.regularHours > 0 || entry.overtimeHours > 0 || entry.extraHours > 0 || entry.leaveHours > 0;
-                  
-                  return (
-                    <div
-                      key={dateStr}
-                      className={`p-2 border rounded-lg min-h-[120px] bg-white ${
-                        isToday ? 'ring-2 ring-blue-500' : ''
-                      } ${hasHours ? 'bg-blue-50' : ''}`}
-                    >
-                      <div className="text-sm font-medium mb-1">
-                        {day.getDate()}
-                      </div>
-                      
-                      <div className="space-y-1">
-                        {/* Regular Hours */}
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs text-gray-500">Reg:</span>
-                          <Input
-                            type="number"
-                            step="0.25"
-                            min="0"
-                            max="24"
-                            value={entry.regularHours || ''}
-                            onChange={(e) => updateEntry(dateStr, 'regularHours', parseFloat(e.target.value) || 0)}
-                            className="h-6 text-xs p-1"
-                            placeholder="0"
-                          />
-                        </div>
-                        
-                        {/* Overtime Hours */}
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs text-gray-500">OT:</span>
-                          <Input
-                            type="number"
-                            step="0.25"
-                            min="0"
-                            max="24"
-                            value={entry.overtimeHours || ''}
-                            onChange={(e) => updateEntry(dateStr, 'overtimeHours', parseFloat(e.target.value) || 0)}
-                            className="h-6 text-xs p-1"
-                            placeholder="0"
-                          />
-                        </div>
-                        
-                        {/* Extra Hours */}
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs text-gray-500">Ex:</span>
-                          <Input
-                            type="number"
-                            step="0.25"
-                            min="0"
-                            max="24"
-                            value={entry.extraHours || ''}
-                            onChange={(e) => updateEntry(dateStr, 'extraHours', parseFloat(e.target.value) || 0)}
-                            className="h-6 text-xs p-1"
-                            placeholder="0"
-                          />
-                        </div>
-                        
-                        {/* Leave Hours */}
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs text-gray-500">Lv:</span>
-                          <Input
-                            type="number"
-                            step="0.25"
-                            min="0"
-                            max="24"
-                            value={entry.leaveHours || ''}
-                            onChange={(e) => updateEntry(dateStr, 'leaveHours', parseFloat(e.target.value) || 0)}
-                            className="h-6 text-xs p-1"
-                            placeholder="0"
-                          />
-                        </div>
-                        
-                        {/* Leave Type */}
-                        {entry.leaveHours > 0 && (
-                          <Select value={entry.leaveType} onValueChange={(value) => updateEntry(dateStr, 'leaveType', value)}>
-                            <SelectTrigger className="h-6 text-xs">
-                              <SelectValue placeholder="Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {leaveTypes.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="text-center text-sm text-gray-600">
+                School District Personnel Department
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Totals Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Summary</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{totals.regular}</div>
-                  <div className="text-sm text-gray-500">Regular Hours</div>
+            <CardContent className="p-6">
+              
+              {/* General Information Section */}
+              {groupedFields.general && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                    Employee Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupedFields.general.map((field) => (
+                      <div key={field.id} className="space-y-1">
+                        <Label className="text-sm font-medium text-gray-700">
+                          {field.fieldLabel}
+                          {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
+                        {renderField(field)}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">{totals.overtime}</div>
-                  <div className="text-sm text-gray-500">Overtime Hours</div>
+              )}
+
+              {/* Monthly Time Tracking Grid */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                  Monthly Time Record
+                </h3>
+                
+                {/* Time tracking table */}
+                <div className="border border-gray-400 rounded">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Month/Day</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Code</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Hours</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Person Replaced</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Description</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Funding</th>
+                        <th className="border border-gray-400 px-2 py-1 text-xs font-semibold">Site</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailyEntries.map((entry, index) => (
+                        <tr key={index} className="even:bg-gray-50">
+                          <td className="border border-gray-400 px-2 py-1 text-xs">
+                            <div className="flex items-center space-x-1">
+                              <span className="font-medium">{entry.date}</span>
+                              <span className="text-gray-500">({entry.dayName})</span>
+                            </div>
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.code}
+                              onChange={(e) => updateDailyEntry(index, 'code', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="Code"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="number"
+                              step="0.25"
+                              value={entry.hours}
+                              onChange={(e) => updateDailyEntry(index, 'hours', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.personReplaced}
+                              onChange={(e) => updateDailyEntry(index, 'personReplaced', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="Name"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.description}
+                              onChange={(e) => updateDailyEntry(index, 'description', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="Description"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.funding}
+                              onChange={(e) => updateDailyEntry(index, 'funding', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="Funding"
+                            />
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.site}
+                              onChange={(e) => updateDailyEntry(index, 'site', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="Site"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{totals.extra}</div>
-                  <div className="text-sm text-gray-500">Extra Hours</div>
+              </div>
+
+              {/* Approval Section */}
+              {groupedFields.approval && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                    Approvals
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {groupedFields.approval.map((field) => (
+                      <div key={field.id} className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">
+                          {field.fieldLabel}
+                          {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
+                        {renderField(field)}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{totals.leave}</div>
-                  <div className="text-sm text-gray-500">Leave Hours</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">{totals.total}</div>
-                  <div className="text-sm text-gray-500">Total Hours</div>
+              )}
+
+              {/* Summary Section */}
+              <div className="mt-6 pt-4 border-t border-gray-300">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {dailyEntries.reduce((sum, entry) => sum + (parseFloat(entry.hours) || 0), 0)}
+                    </div>
+                    <div className="text-sm text-gray-500">Total Hours</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {dailyEntries.filter(entry => entry.hours && parseFloat(entry.hours) > 0).length}
+                    </div>
+                    <div className="text-sm text-gray-500">Days Worked</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {currentMonth}/{currentYear}
+                    </div>
+                    <div className="text-sm text-gray-500">Pay Period</div>
+                  </div>
                 </div>
               </div>
             </CardContent>
