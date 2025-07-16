@@ -302,6 +302,18 @@ The system is designed to be scalable, maintainable, and specifically tailored f
   - Custom field labels now work properly across employee, timecard, leave, payroll, and onboarding forms
   - Districts can now successfully customize field terminology throughout the system
 
+- Added Payroll Processing Section to Time Cards with Automatic Calculation (July 16, 2025)
+  - Created comprehensive Payroll Processing section for admin-approved and payroll-processed time cards
+  - Added five new database fields: payroll_addon, payroll_units, payroll_rate, payroll_total, payroll_processing_notes
+  - Implemented automatic calculation functionality where Total = Units × Rate
+  - Built editing interface with real-time calculation updates when units or rate values change
+  - Added dedicated API endpoint for updating payroll processing fields with proper authentication
+  - Created purple-styled section that appears only for appropriate approval stages
+  - Features include: Addon description, Units input, Rate input, auto-calculated Total, and processing Notes
+  - Payroll staff can now track additional compensation calculations directly within time cards
+  - All payroll processing data is saved to database with proper audit logging
+  - System automatically updates totals when editing units or rates for accurate calculations
+
 - Fixed Leave Request Creation Error with OpenAI API Quota Handling (July 15, 2025)
   - Resolved 400 error when creating leave requests with substitute requirements
   - Added proper error handling for OpenAI API quota exceeded errors

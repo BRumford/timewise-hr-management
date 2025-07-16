@@ -30,6 +30,192 @@ const timeCardFormSchema = insertTimeCardSchema.extend({
 
 type TimeCardForm = z.infer<typeof timeCardFormSchema>;
 
+// Payroll Processing Section Component
+function PayrollProcessingSection({ timeCard, onUpdate }: { timeCard: any; onUpdate: (data: any) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    payrollAddon: timeCard.payrollAddon || '',
+    payrollUnits: timeCard.payrollUnits || 0,
+    payrollRate: timeCard.payrollRate || 0,
+    payrollTotal: timeCard.payrollTotal || 0,
+    payrollProcessingNotes: timeCard.payrollProcessingNotes || ''
+  });
+  const { toast } = useToast();
+
+  // Calculate total when units or rate changes
+  const calculateTotal = (units: number, rate: number) => {
+    return (units * rate).toFixed(2);
+  };
+
+  // Handle form field changes
+  const handleFieldChange = (field: string, value: any) => {
+    const newFormData = { ...formData, [field]: value };
+    
+    // Auto-calculate total when units or rate changes
+    if (field === 'payrollUnits' || field === 'payrollRate') {
+      const units = field === 'payrollUnits' ? parseFloat(value) || 0 : parseFloat(newFormData.payrollUnits) || 0;
+      const rate = field === 'payrollRate' ? parseFloat(value) || 0 : parseFloat(newFormData.payrollRate) || 0;
+      newFormData.payrollTotal = parseFloat(calculateTotal(units, rate));
+    }
+    
+    setFormData(newFormData);
+  };
+
+  // Save payroll processing data
+  const handleSave = async () => {
+    try {
+      const response = await apiRequest(`/api/time-cards/${timeCard.id}/payroll-processing`, 'PUT', formData);
+      onUpdate(response);
+      setIsEditing(false);
+      toast({
+        title: "Success",
+        description: "Payroll processing updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update payroll processing",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-semibold text-purple-800 flex items-center">
+          <Users className="h-4 w-4 mr-2" />
+          Payroll Processing
+        </h4>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setIsEditing(!isEditing)}
+        >
+          <Edit className="h-4 w-4 mr-1" />
+          {isEditing ? 'Cancel' : 'Edit'}
+        </Button>
+      </div>
+
+      {isEditing ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="payrollAddon" className="text-sm font-medium text-purple-700">Addon</Label>
+              <Input
+                id="payrollAddon"
+                value={formData.payrollAddon}
+                onChange={(e) => handleFieldChange('payrollAddon', e.target.value)}
+                placeholder="Enter addon description"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="payrollUnits" className="text-sm font-medium text-purple-700">Units</Label>
+              <Input
+                id="payrollUnits"
+                type="number"
+                step="0.01"
+                value={formData.payrollUnits}
+                onChange={(e) => handleFieldChange('payrollUnits', e.target.value)}
+                placeholder="Enter units"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="payrollRate" className="text-sm font-medium text-purple-700">Rate</Label>
+              <Input
+                id="payrollRate"
+                type="number"
+                step="0.01"
+                value={formData.payrollRate}
+                onChange={(e) => handleFieldChange('payrollRate', e.target.value)}
+                placeholder="Enter rate"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="payrollTotal" className="text-sm font-medium text-purple-700">Total (Auto-calculated)</Label>
+              <Input
+                id="payrollTotal"
+                type="number"
+                step="0.01"
+                value={formData.payrollTotal}
+                readOnly
+                className="mt-1 bg-gray-50"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="payrollProcessingNotes" className="text-sm font-medium text-purple-700">Notes</Label>
+            <Textarea
+              id="payrollProcessingNotes"
+              value={formData.payrollProcessingNotes}
+              onChange={(e) => handleFieldChange('payrollProcessingNotes', e.target.value)}
+              placeholder="Enter processing notes"
+              className="mt-1"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditing(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-purple-700">Addon:</span>
+              <div className="text-purple-600 mt-1">
+                {formData.payrollAddon || 'Not specified'}
+              </div>
+            </div>
+            <div>
+              <span className="font-medium text-purple-700">Units:</span>
+              <div className="text-purple-600 mt-1">
+                {formData.payrollUnits || 0}
+              </div>
+            </div>
+            <div>
+              <span className="font-medium text-purple-700">Rate:</span>
+              <div className="text-purple-600 mt-1">
+                ${formData.payrollRate || 0}
+              </div>
+            </div>
+            <div>
+              <span className="font-medium text-purple-700">Total:</span>
+              <div className="text-purple-600 mt-1 font-semibold">
+                ${formData.payrollTotal || 0}
+              </div>
+            </div>
+          </div>
+          
+          {formData.payrollProcessingNotes && (
+            <div className="text-sm">
+              <span className="font-medium text-purple-700">Notes:</span>
+              <div className="text-purple-600 mt-1">
+                {formData.payrollProcessingNotes}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case "draft": return "bg-gray-100 text-gray-800";
@@ -791,56 +977,15 @@ export default function TimeCards() {
                 </div>
               )}
 
-              {/* Payroll Use Only Section */}
+              {/* Payroll Processing Section */}
               {timeCard.status === "admin_approved" || timeCard.status === "payroll_processed" ? (
-                <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                  <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
-                    <Users className="h-4 w-4 mr-2" />
-                    Payroll Use Only
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-purple-700">Regular Hours:</span>
-                      <div className="text-purple-600">
-                        {timeCard.totalHours || 0}h
-                      </div>
-                    </div>
-                    <div>
-                      <span className="font-medium text-purple-700">Overtime Hours:</span>
-                      <div className="text-purple-600">
-                        {timeCard.overtimeHours || 0}h
-                      </div>
-                    </div>
-                    <div>
-                      <span className="font-medium text-purple-700">Total Pay:</span>
-                      <div className="text-purple-600">
-                        ${timeCard.totalPay || 0}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-purple-700">Processed Date:</span>
-                      <div className="text-purple-600">
-                        {timeCard.processedAt ? format(new Date(timeCard.processedAt), "MMM dd, yyyy") : "Not processed"}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="font-medium text-purple-700">Payroll Period:</span>
-                      <div className="text-purple-600">
-                        {timeCard.payrollPeriod || "Not assigned"}
-                      </div>
-                    </div>
-                  </div>
-                  {timeCard.payrollNotes && (
-                    <div className="mt-3 text-sm">
-                      <span className="font-medium text-purple-700">Payroll Notes:</span>
-                      <div className="text-purple-600 mt-1">
-                        {timeCard.payrollNotes}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <PayrollProcessingSection 
+                  timeCard={timeCard} 
+                  onUpdate={(updatedData) => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/time-cards"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/time-cards-admin"] });
+                  }}
+                />
               ) : null}
             </Card>
           );

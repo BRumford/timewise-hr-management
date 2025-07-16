@@ -1803,6 +1803,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update payroll processing fields for time cards
+  app.put("/api/time-cards/:id/payroll-processing", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { payrollAddon, payrollUnits, payrollRate, payrollTotal, payrollProcessingNotes } = req.body;
+      
+      const timeCard = await storage.updateTimeCard(parseInt(req.params.id), {
+        payrollAddon,
+        payrollUnits,
+        payrollRate,
+        payrollTotal,
+        payrollProcessingNotes
+      });
+      
+      await storage.createActivityLog({
+        userId: req.body.userId || "system",
+        action: "update_timecard_payroll",
+        entityType: "time_card",
+        entityId: parseInt(req.params.id),
+        description: `Updated payroll processing fields for time card`,
+      });
+      
+      res.json(timeCard);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update payroll processing", error: (error as Error).message });
+    }
+  });
+
   app.delete("/api/time-cards/:id", async (req, res) => {
     try {
       await storage.deleteTimeCard(parseInt(req.params.id));

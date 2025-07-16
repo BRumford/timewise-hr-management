@@ -299,6 +299,12 @@ export const timeCards = pgTable("time_cards", {
   employeeNotes: text("employee_notes"),
   adminNotes: text("admin_notes"),
   payrollNotes: text("payroll_notes"),
+  // Payroll Processing Fields
+  payrollAddon: varchar("payroll_addon"),
+  payrollUnits: decimal("payroll_units", { precision: 8, scale: 2 }),
+  payrollRate: decimal("payroll_rate", { precision: 8, scale: 2 }),
+  payrollTotal: decimal("payroll_total", { precision: 10, scale: 2 }),
+  payrollProcessingNotes: text("payroll_processing_notes"),
   submittedBy: integer("submitted_by"), // Secretary who submitted
   approvedByEmployee: integer("approved_by_employee"),
   approvedByAdmin: integer("approved_by_admin"),
