@@ -65,10 +65,7 @@ export default function MonthlyTimecard() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   
-  // Debug template changes
-  useEffect(() => {
-    console.log('selectedTemplate changed to:', selectedTemplate);
-  }, [selectedTemplate]);
+
   const [selectedSite, setSelectedSite] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -109,14 +106,7 @@ export default function MonthlyTimecard() {
     enabled: !!selectedTemplate,
   });
 
-  // Debug template fields
-  console.log('Template fields debug:', {
-    selectedTemplate,
-    templateFields,
-    templateFieldsLength: templateFields.length,
-    templateFieldsLoading,
-    templateFieldsError
-  });
+
 
   // Fetch dropdown options for timecard fields
   const { data: codeOptions = [] } = useQuery({
@@ -160,17 +150,9 @@ export default function MonthlyTimecard() {
 
   // Reset selected employee when site filter changes (but not when loading a timecard)
   useEffect(() => {
-    console.log('Site filter useEffect triggered:', {
-      selectedSite,
-      selectedEmployee,
-      hasTimecardData: !!timecardData,
-      filteredEmployeesLength: filteredEmployees.length
-    });
-    
     if (selectedSite && selectedSite !== 'all' && selectedEmployee && !timecardData) {
       const employeeInFilteredList = filteredEmployees.find((emp: Employee) => emp.id === selectedEmployee);
       if (!employeeInFilteredList) {
-        console.log('Resetting employee and template due to site filter');
         setSelectedEmployee(null);
         setSelectedTemplate(null);
       }
@@ -179,13 +161,6 @@ export default function MonthlyTimecard() {
 
   // Initialize form data when template changes
   useEffect(() => {
-    console.log('Form initialization useEffect triggered:', {
-      selectedTemplate,
-      selectedEmployee,
-      hasTimecardData: !!timecardData,
-      templatesLength: templates.length
-    });
-    
     if (selectedTemplate && selectedEmployee && !timecardData) {
       const template = templates.find((t: TimecardTemplate) => t.id === selectedTemplate);
       if (template) {
@@ -751,15 +726,8 @@ export default function MonthlyTimecard() {
         </Card>
       )}
 
-      <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-        Debug: selectedEmployee={selectedEmployee}, selectedTemplate={selectedTemplate}, templateFields={templateFields?.length || 0}, timecardData={timecardData?.id || 'null'}
-      </div>
-      
       {selectedEmployee && selectedTemplate && (
         <>
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            Form is rendering! Employee: {selectedEmployee}, Template: {selectedTemplate}, Fields: {templateFields.length}, Loading: {templateFieldsLoading ? 'Yes' : 'No'}
-          </div>
           {/* Paper-style Timecard Form */}
           <Card className="bg-white border-2 border-gray-400" data-testid="timecard-form">
             <CardHeader className="bg-gray-50 border-b-2 border-gray-400">
