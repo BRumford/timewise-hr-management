@@ -335,6 +335,11 @@ function AdminTimecardApproval() {
     };
   });
 
+  // Debug logging
+  console.log('Regular timecards:', regularTimecards.length);
+  console.log('Leave request timecards:', regularTimecards.filter((t: any) => t.leaveRequestId).length);
+  console.log('Draft timecards:', regularTimecards.filter((t: any) => t.status === 'draft').length);
+
   // Add type identifier to monthly timecards
   const monthlyTimecardsWithType = allTimecards.map((timecard: MonthlyTimecard) => ({
     ...timecard,
