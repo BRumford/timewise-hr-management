@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,32 +43,26 @@ interface SupportDocument {
   title: string;
   slug: string;
   content: string;
+  excerpt?: string;
   category: string;
-  subcategory?: string;
   tags: string[];
-  isPublished: boolean;
-  authorId: string;
-  viewCount: number;
-  lastViewedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  fileUrl?: string;
-  videoUrl?: string;
-  duration?: number;
+  is_published: boolean;
+  author_id: string;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  searchKeywords: string[];
 }
 
 interface SupportCategory {
   id: number;
   name: string;
-  slug: string;
   description?: string;
   icon?: string;
   color?: string;
-  sortOrder: number;
-  isActive: boolean;
-  createdAt: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 interface SupportFeedback {
@@ -99,20 +93,35 @@ export default function SupportDocumentation() {
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
       if (searchQuery) params.append('search', searchQuery);
       if (difficulty !== 'all') params.append('difficulty', difficulty);
-      return await apiRequest(`/api/support/documents?${params.toString()}`);
+      const response = await apiRequest(`/api/support/documents?${params.toString()}`);
+      return await response.json();
     },
   });
 
   // Fetch support categories
   const { data: categories = [] } = useQuery<SupportCategory[]>({
     queryKey: ['/api/support/categories'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/support/categories');
+      return await response.json();
+    },
   });
 
   // Fetch user bookmarks
   const { data: userBookmarks = [] } = useQuery<number[]>({
     queryKey: ['/api/support/bookmarks'],
-    onSuccess: (data) => setBookmarks(data),
+    queryFn: async () => {
+      const response = await apiRequest('/api/support/bookmarks');
+      return await response.json();
+    },
   });
+
+  // Update bookmarks state when data changes
+  useEffect(() => {
+    if (userBookmarks && userBookmarks.length >= 0) {
+      setBookmarks(userBookmarks);
+    }
+  }, [userBookmarks.length]);
 
   // Create document mutation
   const createDocumentMutation = useMutation({
@@ -200,16 +209,16 @@ export default function SupportDocumentation() {
     }
   };
 
-  const filteredDocuments = documents.filter(doc => {
+  const filteredDocuments = (documents || []).filter(doc => {
     const matchesSearch = !searchQuery || 
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.searchKeywords.some(keyword => keyword.toLowerCase().includes(searchQuery.toLowerCase()));
+      (doc.tags && doc.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
     
     const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
     const matchesDifficulty = difficulty === 'all' || doc.difficulty === difficulty;
     
-    return matchesSearch && matchesCategory && matchesDifficulty && doc.isPublished;
+    return matchesSearch && matchesCategory && matchesDifficulty && doc.is_published;
   });
 
   if (documentsLoading) {
@@ -347,11 +356,11 @@ export default function SupportDocumentation() {
               <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                 <div className="flex items-center gap-1">
                   <Eye className="h-3 w-3" />
-                  {doc.viewCount} views
+                  {doc.view_count} views
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {format(new Date(doc.updatedAt), 'MMM d, yyyy')}
+                  {format(new Date(doc.updated_at), 'MMM d, yyyy')}
                 </div>
               </div>
               
@@ -431,9 +440,9 @@ export default function SupportDocumentation() {
                   {selectedDocument.difficulty}
                 </Badge>
                 <span>•</span>
-                <span>{selectedDocument.viewCount} views</span>
+                <span>{selectedDocument.view_count} views</span>
                 <span>•</span>
-                <span>Updated {format(new Date(selectedDocument.updatedAt), 'MMM d, yyyy')}</span>
+                <span>Updated {format(new Date(selectedDocument.updated_at), 'MMM d, yyyy')}</span>
               </div>
             </DialogHeader>
             

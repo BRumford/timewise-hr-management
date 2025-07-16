@@ -3316,7 +3316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       queryText += ' ORDER BY created_at DESC';
       
       const result = await db.execute(sql.raw(queryText));
-      res.json(result.rows);
+      res.json(result.rows || result);
     } catch (error) {
       console.error('Error fetching support documents:', error);
       res.status(500).json({ message: 'Failed to fetch support documents' });
@@ -3347,7 +3347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await db.execute(sql`
         SELECT * FROM support_categories WHERE is_active = true ORDER BY sort_order
       `);
-      res.json(result.rows);
+      res.json(result.rows || result);
     } catch (error) {
       console.error('Error fetching support categories:', error);
       res.status(500).json({ message: 'Failed to fetch support categories' });
@@ -3357,10 +3357,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/support/bookmarks', isAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.id;
-      const bookmarks = await db.select({ documentId: schema.supportBookmarks.documentId })
-        .from(schema.supportBookmarks)
-        .where(eq(schema.supportBookmarks.userId, userId));
-      res.json(bookmarks.map(b => b.documentId));
+      const result = await db.execute(sql`
+        SELECT document_id FROM support_bookmarks WHERE user_id = ${userId}
+      `);
+      const bookmarks = (result.rows || result).map((row: any) => row.document_id);
+      res.json(bookmarks);
     } catch (error) {
       console.error('Error fetching support bookmarks:', error);
       res.status(500).json({ message: 'Failed to fetch support bookmarks' });
