@@ -5,10 +5,25 @@ import { DataEncryption } from "./encryption";
 import { requirePermission, PERMISSIONS } from "./accessControl";
 import { asyncErrorHandler } from "../errorHandler";
 
+// Session-based authentication for security routes
+const requireRole = (roles: string[]) => {
+  return async (req: any, res: any, next: any) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    next();
+  };
+};
+
 export function registerSecurityRoutes(app: Express): void {
   // Get audit logs (admin/hr only)
   app.get("/api/security/audit-logs", 
-    requirePermission(PERMISSIONS.AUDIT_LOGS),
+    requireRole(['admin', 'hr']),
     asyncErrorHandler(async (req, res) => {
       const { startDate, endDate, userId, action, resource } = req.query;
       
@@ -34,7 +49,7 @@ export function registerSecurityRoutes(app: Express): void {
 
   // Generate audit report
   app.post("/api/security/audit-report",
-    requirePermission(PERMISSIONS.AUDIT_LOGS),
+    requireRole(['admin', 'hr']),
     asyncErrorHandler(async (req, res) => {
       const { startDate, endDate, userId, action, resource } = req.body;
       
@@ -54,9 +69,11 @@ export function registerSecurityRoutes(app: Express): void {
     })
   );
 
+
+
   // Security dashboard
   app.get("/api/security/dashboard",
-    requirePermission(PERMISSIONS.AUDIT_LOGS),
+    requireRole(['admin', 'hr']),
     asyncErrorHandler(async (req, res) => {
       const now = new Date();
       const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -99,7 +116,7 @@ export function registerSecurityRoutes(app: Express): void {
 
   // Check for suspicious activity
   app.post("/api/security/check-suspicious",
-    requirePermission(PERMISSIONS.AUDIT_LOGS),
+    requireRole(['admin', 'hr']),
     asyncErrorHandler(async (req, res) => {
       const { userId, timeWindow } = req.body;
       
@@ -118,7 +135,7 @@ export function registerSecurityRoutes(app: Express): void {
 
   // Data encryption status
   app.get("/api/security/encryption-status",
-    requirePermission(PERMISSIONS.SYSTEM_SETTINGS),
+    requireRole(['admin', 'hr']),
     asyncErrorHandler(async (req, res) => {
       // Check encryption status of various data types
       const status = {
@@ -136,59 +153,7 @@ export function registerSecurityRoutes(app: Express): void {
     })
   );
 
-  // Security settings
-  app.get("/api/security/settings",
-    requirePermission(PERMISSIONS.SYSTEM_SETTINGS),
-    asyncErrorHandler(async (req, res) => {
-      const settings = {
-        mfaRequired: false,
-        sessionTimeout: 8 * 60 * 60 * 1000, // 8 hours
-        maxLoginAttempts: 5,
-        accountLockoutTime: 15 * 60 * 1000, // 15 minutes
-        passwordMinLength: 8,
-        passwordRequireSpecialChars: true,
-        auditLogRetention: 2555, // 7 years in days
-        fileEncryption: true,
-        ipWhitelist: process.env.ADMIN_IP_WHITELIST || '',
-        dataRetentionPolicy: {
-          employeeRecords: 2555, // 7 years
-          payrollRecords: 2555, // 7 years
-          auditLogs: 2555, // 7 years
-          securityEvents: 365 // 1 year
-        }
-      };
 
-      res.json(settings);
-    })
-  );
-
-  // Update security settings
-  app.put("/api/security/settings",
-    requirePermission(PERMISSIONS.SYSTEM_SETTINGS),
-    asyncErrorHandler(async (req, res) => {
-      const user = (req as any).user;
-      const settings = req.body;
-
-      // Log security settings change
-      await AuditLogger.logUserAction(
-        req,
-        'UPDATE_SECURITY_SETTINGS',
-        'SYSTEM',
-        'security_settings',
-        settings,
-        true
-      );
-
-      // In production, save settings to database
-      // For now, just return the updated settings
-      res.json({
-        message: 'Security settings updated successfully',
-        settings,
-        updatedBy: user.id,
-        updatedAt: new Date()
-      });
-    })
-  );
 }
 
 // Helper functions
