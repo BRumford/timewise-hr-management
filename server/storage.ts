@@ -71,6 +71,7 @@ import {
   type InsertTimecardTemplateField,
   timecardTemplates,
   timecardTemplateFields,
+  monthlyTimecards,
   type DistrictSettings,
   type InsertDistrictSettings,
   type PayPeriod,
@@ -2104,45 +2105,32 @@ export class DatabaseStorage implements IStorage {
       )
     );
     
-    if (!timecard) return null;
+    return timecard || null;
+  }
 
-    const entries = await db.select().from(monthlyTimecardEntries).where(
-      eq(monthlyTimecardEntries.timecardId, timecard.id)
-    );
-
-    return {
-      ...timecard,
-      entries
-    };
+  async getMonthlyTimecardsByEmployee(employeeId: number): Promise<any[]> {
+    const timecards = await db.select().from(monthlyTimecards)
+      .where(eq(monthlyTimecards.employeeId, employeeId))
+      .orderBy(desc(monthlyTimecards.year), desc(monthlyTimecards.month));
+    
+    return timecards;
   }
 
   async createMonthlyTimecard(data: any): Promise<any> {
     const [timecard] = await db.insert(monthlyTimecards).values({
       employeeId: data.employeeId,
+      templateId: data.templateId,
       month: data.month,
       year: data.year,
       payPeriodStart: data.payPeriodStart,
       payPeriodEnd: data.payPeriodEnd,
-      status: data.status || 'draft'
+      status: data.status || 'draft',
+      entries: JSON.stringify(data.entries || []),
+      customFieldsData: JSON.stringify(data.customFieldsData || {}),
+      notes: data.notes || null
     }).returning();
 
-    // Create entries for each day if provided
-    if (data.entries && data.entries.length > 0) {
-      const entries = data.entries.map((entry: any) => ({
-        timecardId: timecard.id,
-        date: entry.date,
-        regularHours: entry.regularHours || 0,
-        overtimeHours: entry.overtimeHours || 0,
-        extraHours: entry.extraHours || 0,
-        leaveHours: entry.leaveHours || 0,
-        leaveType: entry.leaveType || null,
-        notes: entry.notes || null
-      }));
-
-      await db.insert(monthlyTimecardEntries).values(entries);
-    }
-
-    return await this.getMonthlyTimecard(data.employeeId, data.month, data.year);
+    return timecard;
   }
 
   async updateMonthlyTimecard(id: number, data: any): Promise<any> {
@@ -2150,11 +2138,14 @@ export class DatabaseStorage implements IStorage {
     const shouldLock = data.status === 'submitted';
     
     // Update the timecard
-    await db.update(monthlyTimecards)
+    const [timecard] = await db.update(monthlyTimecards)
       .set({
         status: data.status,
         payPeriodStart: data.payPeriodStart,
         payPeriodEnd: data.payPeriodEnd,
+        entries: JSON.stringify(data.entries || []),
+        customFieldsData: JSON.stringify(data.customFieldsData || {}),
+        notes: data.notes,
         ...(shouldLock && {
           isLocked: true,
           lockedBy: 'System',
@@ -2163,37 +2154,10 @@ export class DatabaseStorage implements IStorage {
         }),
         updatedAt: new Date()
       })
-      .where(eq(monthlyTimecards.id, id));
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
 
-    // Update entries
-    if (data.entries && data.entries.length > 0) {
-      for (const entry of data.entries) {
-        await db.insert(monthlyTimecardEntries).values({
-          timecardId: id,
-          date: entry.date,
-          regularHours: entry.regularHours || 0,
-          overtimeHours: entry.overtimeHours || 0,
-          extraHours: entry.extraHours || 0,
-          leaveHours: entry.leaveHours || 0,
-          leaveType: entry.leaveType || null,
-          notes: entry.notes || null
-        })
-        .onConflictDoUpdate({
-          target: [monthlyTimecardEntries.timecardId, monthlyTimecardEntries.date],
-          set: {
-            regularHours: entry.regularHours || 0,
-            overtimeHours: entry.overtimeHours || 0,
-            extraHours: entry.extraHours || 0,
-            leaveHours: entry.leaveHours || 0,
-            leaveType: entry.leaveType || null,
-            notes: entry.notes || null,
-            updatedAt: new Date()
-          }
-        });
-      }
-    }
-
-    return await this.getMonthlyTimecard(data.employeeId, data.month, data.year);
+    return timecard;
   }
 
   async lockMonthlyTimecard(id: number, lockedBy: string, lockReason?: string): Promise<any> {

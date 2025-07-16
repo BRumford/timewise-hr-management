@@ -108,6 +108,12 @@ export default function MonthlyTimecard() {
     queryKey: ["/api/dropdown-options", "addon"],
   });
 
+  // Fetch existing monthly timecards for the selected employee
+  const { data: existingTimecards = [] } = useQuery({
+    queryKey: ["/api/monthly-timecards", selectedEmployee],
+    enabled: !!selectedEmployee,
+  });
+
   // Get unique sites from employees for filtering
   const uniqueSites = [...new Set(employees.map((emp: Employee) => emp.department).filter(Boolean))];
   
@@ -239,22 +245,39 @@ export default function MonthlyTimecard() {
     });
   };
 
-  // Save timecard (simulate API call for now)
+  // Save timecard mutation
+  const saveTimecardMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("/api/monthly-timecards", "POST", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Monthly timecard saved successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecards", selectedEmployee] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to save timecard",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Save timecard
   const saveTimecard = () => {
     if (!timecardData) return;
 
     const finalData = {
       ...timecardData,
       customFieldsData: formData,
-      entries: dailyEntries
+      entries: dailyEntries,
+      payrollEntries: payrollEntries
     };
 
-    toast({
-      title: "Success",
-      description: "Monthly timecard saved successfully",
-    });
-
-    console.log('Timecard data:', finalData);
+    saveTimecardMutation.mutate(finalData);
   };
 
   // Lock timecard mutation
@@ -896,6 +919,69 @@ export default function MonthlyTimecard() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {/* Existing Timecards Section */}
+      {selectedEmployee && existingTimecards.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>Existing Timecards for {selectedEmployeeData?.firstName} {selectedEmployeeData?.lastName}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {existingTimecards.map((timecard: any) => (
+                <div
+                  key={timecard.id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => {
+                    // Load the timecard data
+                    setTimecardData(timecard);
+                    setFormData(timecard.customFieldsData || {});
+                    setDailyEntries(timecard.entries || []);
+                    setPayrollEntries(timecard.payrollEntries || []);
+                    setCurrentMonth(timecard.month);
+                    setCurrentYear(timecard.year);
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-semibold text-lg">
+                        {timecard.month}/{timecard.year} - {templates.find((t: any) => t.id === timecard.templateId)?.name || 'Unknown Template'}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Pay Period: {new Date(timecard.payPeriodStart).toLocaleDateString()} - {new Date(timecard.payPeriodEnd).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Status: <span className={`px-2 py-1 rounded-full text-xs ${
+                          timecard.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          timecard.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                          timecard.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {timecard.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {timecard.isLocked && (
+                        <div className="flex items-center space-x-1 bg-red-100 text-red-700 px-2 py-1 rounded-md">
+                          <Lock className="h-4 w-4" />
+                          <span className="text-sm">Locked</span>
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-500">
+                        {timecard.entries?.reduce((sum: number, entry: any) => sum + (parseFloat(entry.hours) || 0), 0) || 0} hrs
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

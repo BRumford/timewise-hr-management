@@ -3813,6 +3813,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Monthly Timecards Routes
+  app.get('/api/monthly-timecards/:employeeId', isAuthenticated, async (req, res) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      const timecards = await storage.getMonthlyTimecardsByEmployee(employeeId);
+      res.json(timecards);
+    } catch (error) {
+      console.error('Error fetching monthly timecards:', error);
+      res.status(500).json({ message: 'Failed to fetch monthly timecards' });
+    }
+  });
+
+  app.post('/api/monthly-timecards', isAuthenticated, async (req, res) => {
+    try {
+      const timecard = await storage.createMonthlyTimecard(req.body);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error creating monthly timecard:', error);
+      res.status(500).json({ message: 'Failed to create monthly timecard' });
+    }
+  });
+
   // Timecard Locking Routes
   app.post('/api/monthly-timecards/:id/lock', requireRole(['admin', 'hr']), async (req, res) => {
     try {
