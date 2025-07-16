@@ -100,7 +100,7 @@ export default function SubstituteTimeCards() {
   });
 
   // Get substitute employees only
-  const substitutes = employees.filter((e: Employee) => e.type === "substitute");
+  const substitutes = employees.filter((e: Employee) => e.employeeType === "substitute");
 
   // Get substitute templates only
   const substituteTemplates = templates.filter((t: TimecardTemplate) => t.employeeType === "substitute");
