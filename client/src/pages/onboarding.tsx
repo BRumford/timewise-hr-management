@@ -137,7 +137,7 @@ export default function Onboarding() {
         
         return response.json();
       } else {
-        return await apiRequest("POST", "/api/onboarding/forms", data);
+        return await apiRequest("/api/onboarding/forms", "POST", data);
       }
     },
     onSuccess: () => {
@@ -161,7 +161,7 @@ export default function Onboarding() {
 
   const deleteFormMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("DELETE", `/api/onboarding/forms/${id}`);
+      return await apiRequest(`/api/onboarding/forms/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding/forms"] });
@@ -187,7 +187,7 @@ export default function Onboarding() {
         startDate: new Date().toISOString(),
         targetCompletionDate: data.targetCompletionDate || null,
       };
-      return await apiRequest("POST", "/api/onboarding", finalData);
+      return await apiRequest("/api/onboarding", "POST", finalData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
