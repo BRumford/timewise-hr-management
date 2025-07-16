@@ -67,7 +67,7 @@ export default function SubstituteTimeCards() {
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [timecardData, setTimecardData] = useState<SubstituteTimecardData | null>(null);
   const [formData, setFormData] = useState<any>({});
-  const [payrollData, setPayrollData] = useState<any>({});
+  const [payrollEntries, setPayrollEntries] = useState<any[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -94,9 +94,21 @@ export default function SubstituteTimeCards() {
     enabled: false, // Disable for now until we implement proper timecard fetching
   });
 
-  // Fetch dropdown options
-  const { data: dropdownOptions = [] } = useQuery({
-    queryKey: ["/api/dropdown-options"],
+  // Fetch dropdown options for timecard fields
+  const { data: codeOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "code"],
+  });
+
+  const { data: fundingOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "funding"],
+  });
+
+  const { data: siteOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "site"],
+  });
+
+  const { data: addonOptions = [] } = useQuery({
+    queryKey: ["/api/dropdown-options", "addon"],
   });
 
   // Get substitute employees only
@@ -105,21 +117,86 @@ export default function SubstituteTimeCards() {
   // Get substitute templates only
   const substituteTemplates = templates.filter((t: TimecardTemplate) => t.employeeType === "substitute");
 
+  // Get substitute data
+  const selectedSubstituteData = substitutes.find((sub: Employee) => sub.id === selectedSubstitute);
+
+  // Initialize form data when template changes
+  useEffect(() => {
+    if (selectedTemplate && selectedSubstitute) {
+      const template = templates.find((t: TimecardTemplate) => t.id === selectedTemplate);
+      if (template) {
+        setTimecardData({
+          substituteId: selectedSubstitute,
+          templateId: selectedTemplate,
+          workDate: new Date().toISOString().split('T')[0],
+          status: 'draft',
+          customFieldsData: {},
+          notes: ''
+        });
+        
+        // Initialize form data with substitute information
+        setFormData({
+          'Employee Name': `${selectedSubstituteData?.firstName || ''} ${selectedSubstituteData?.lastName || ''}`,
+          'Employee ID': selectedSubstituteData?.employeeId || '',
+          'Date': new Date().toLocaleDateString(),
+          'Position': selectedSubstituteData?.position || '',
+          'Department': selectedSubstituteData?.department || '',
+        });
+        
+        // Initialize payroll entries (10 rows)
+        initializePayrollEntries();
+      }
+    }
+  }, [selectedTemplate, selectedSubstitute, selectedSubstituteData, templates]);
+
+  // Initialize payroll entries (10 rows)
+  const initializePayrollEntries = () => {
+    const entries: any[] = [];
+    
+    for (let i = 0; i < 10; i++) {
+      entries.push({
+        addon: '',
+        units: '',
+        rate: '',
+        alias: '',
+        notes: ''
+      });
+    }
+    
+    setPayrollEntries(entries);
+  };
+
+  // Update form field
+  const updateFormField = (fieldName: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
+
+  // Update payroll entry
+  const updatePayrollEntry = (index: number, field: string, value: any) => {
+    setPayrollEntries(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        [field]: value
+      };
+      return updated;
+    });
+  };
+
   // Save timecard mutation
   const saveTimecard = useMutation({
     mutationFn: async (data: any) => {
       const timecardPayload = {
         substituteId: selectedSubstitute,
         templateId: selectedTemplate,
-        workDate: new Date().toISOString().split('T')[0], // Use current date
+        workDate: new Date().toISOString().split('T')[0],
         status: timecardData?.status || "draft",
         customFieldsData: formData,
         notes: data.notes || "",
-        payrollAddon: payrollData.payrollAddon || "",
-        payrollUnits: payrollData.payrollUnits || 0,
-        payrollRate: payrollData.payrollRate || 0,
-        payrollTotal: payrollData.payrollTotal || 0,
-        payrollProcessingNotes: payrollData.payrollProcessingNotes || "",
+        payrollEntries: payrollEntries,
       };
 
       if (timecardData?.id) {
@@ -129,13 +206,22 @@ export default function SubstituteTimeCards() {
       }
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Timecard saved successfully" });
+      toast({ title: "Success", description: "Substitute timecard saved successfully" });
       refetchTimecard();
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  // Save timecard function
+  const handleSaveTimecard = () => {
+    if (!timecardData) return;
+    
+    saveTimecard.mutate({
+      notes: formData.notes || ""
+    });
+  };
 
   // Lock timecard mutation
   const lockTimecard = useMutation({
@@ -330,8 +416,17 @@ export default function SubstituteTimeCards() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Substitute Time Cards</h1>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <FileText className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold">Substitute Time Cards</h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button onClick={handleSaveTimecard} disabled={!timecardData || timecardData?.isLocked}>
+            <Save className="h-4 w-4 mr-2" />
+            Save Timecard
+          </Button>
+        </div>
       </div>
 
       {/* Selection Controls */}
@@ -376,196 +471,186 @@ export default function SubstituteTimeCards() {
         </CardContent>
       </Card>
 
-      {/* Paper-like Timecard Form */}
-      {selectedSubstitute && selectedTemplate && templateFields.length > 0 && (
-        <Card className="max-w-4xl mx-auto">
-          <CardHeader className="bg-gray-50 border-b">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl">Substitute Timecard</CardTitle>
-                <p className="text-sm text-gray-600">
-                  {substitutes.find(s => s.id === selectedSubstitute)?.firstName} {substitutes.find(s => s.id === selectedSubstitute)?.lastName}
-                </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                {timecardData?.isLocked && (
-                  <div className="flex items-center space-x-1 text-red-600">
-                    <Lock className="h-4 w-4" />
-                    <span className="text-sm">Locked</span>
-                  </div>
-                )}
-                {user && (user.role === 'admin' || user.role === 'hr') && timecardData?.id && (
-                  <>
-                    {timecardData.isLocked ? (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={handleUnlock}
-                        disabled={unlockTimecard.isPending}
-                      >
-                        <Unlock className="h-4 w-4 mr-1" />
-                        Unlock
-                      </Button>
-                    ) : (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={handleLock}
-                        disabled={lockTimecard.isPending}
-                      >
-                        <Lock className="h-4 w-4 mr-1" />
-                        Lock
-                      </Button>
-                    )}
-                  </>
-                )}
-                <Button 
-                  onClick={handleSave}
-                  disabled={saveTimecard.isPending || timecardData?.isLocked}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              {/* Render form sections */}
-              {Object.entries(groupedFields).map(([section, fields]) => (
-                <div key={section} className="space-y-4">
-                  <h3 className="text-lg font-semibold capitalize border-b pb-2">
-                    {section.replace('_', ' ')}
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(fields as TimecardTemplateField[])
-                      .sort((a, b) => a.displayOrder - b.displayOrder)
-                      .map((field) => (
-                        <div key={field.id} className="space-y-2">
-                          <Label htmlFor={field.fieldName} className="text-sm font-medium">
-                            {field.fieldLabel}
-                            {field.isRequired && <span className="text-red-500 ml-1">*</span>}
-                          </Label>
-                          {renderFormField(field)}
-                        </div>
-                      ))}
+      {selectedSubstitute && selectedTemplate && (
+        <>
+          {/* Paper-style Timecard Form */}
+          <Card className="bg-white border-2 border-gray-400">
+            <CardHeader className="bg-gray-50 border-b-2 border-gray-400">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-center text-xl font-bold">
+                    SUBSTITUTE TIMECARD
+                  </CardTitle>
+                  <div className="text-center text-sm text-gray-600">
+                    School District Personnel Department
                   </div>
                 </div>
-              ))}
-
-              {/* Payroll Processing Section */}
-              {timecardData?.status === 'admin_approved' || timecardData?.status === 'payroll_processed' ? (
-                <div className="space-y-4 border-t pt-6">
-                  <h3 className="text-lg font-semibold text-purple-700 border-b pb-2">
-                    Payroll Processing
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-purple-50 rounded-lg">
-                    <div className="space-y-2">
-                      <Label htmlFor="payrollAddon" className="text-sm font-medium">
-                        Addon
-                      </Label>
-                      <Select 
-                        value={payrollData.payrollAddon || ""} 
-                        onValueChange={(val) => handlePayrollChange('payrollAddon', val)}
-                        disabled={timecardData?.isLocked}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select addon" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dropdownOptions
-                            .filter((option: any) => option.category === 'Addon')
-                            .map((option: any) => (
-                              <SelectItem key={option.id} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                
+                {/* Lock Status and Controls */}
+                <div className="flex items-center space-x-2">
+                  {timecardData?.isLocked ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 bg-red-100 text-red-700 px-2 py-1 rounded-md">
+                        <Lock className="h-4 w-4" />
+                        <span className="text-sm font-medium">Locked</span>
+                      </div>
+                      {user?.role === 'admin' || user?.role === 'hr' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleUnlock}
+                          disabled={unlockTimecard.isPending}
+                        >
+                          <Unlock className="h-4 w-4 mr-1" />
+                          Unlock
+                        </Button>
+                      ) : null}
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="payrollUnits" className="text-sm font-medium">
-                        Units
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={payrollData.payrollUnits || ''}
-                        onChange={(e) => handlePayrollChange('payrollUnits', e.target.value)}
-                        disabled={timecardData?.isLocked}
-                        placeholder="0.00"
-                      />
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 bg-green-100 text-green-700 px-2 py-1 rounded-md">
+                        <Unlock className="h-4 w-4" />
+                        <span className="text-sm font-medium">Unlocked</span>
+                      </div>
+                      {user?.role === 'admin' || user?.role === 'hr' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleLock}
+                          disabled={lockTimecard.isPending}
+                        >
+                          <Lock className="h-4 w-4 mr-1" />
+                          Lock
+                        </Button>
+                      ) : null}
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="payrollRate" className="text-sm font-medium">
-                        Rate ($)
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={payrollData.payrollRate || ''}
-                        onChange={(e) => handlePayrollChange('payrollRate', e.target.value)}
-                        disabled={timecardData?.isLocked}
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="payrollTotal" className="text-sm font-medium">
-                        Total ($)
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={payrollData.payrollTotal || ''}
-                        disabled={true}
-                        className="bg-gray-100"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2 space-y-2">
-                      <Label htmlFor="payrollProcessingNotes" className="text-sm font-medium">
-                        Processing Notes
-                      </Label>
-                      <Textarea
-                        value={payrollData.payrollProcessingNotes || ''}
-                        onChange={(e) => handlePayrollChange('payrollProcessingNotes', e.target.value)}
-                        disabled={timecardData?.isLocked}
-                        placeholder="Payroll processing notes..."
-                        rows={2}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
-              ) : null}
-
-              {/* Lock Status */}
+              </div>
+            </CardHeader>
+            <CardContent className={`p-6 ${timecardData?.isLocked ? 'opacity-75 pointer-events-none' : ''}`}>
+              
+              {/* Lock notification */}
               {timecardData?.isLocked && (
-                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                  <div className="flex items-center space-x-2 text-red-700">
-                    <AlertTriangle className="h-5 w-5" />
-                    <span className="font-medium">Timecard Locked</span>
-                  </div>
-                  <div className="mt-2 text-sm text-red-600">
-                    <p><strong>Locked by:</strong> {timecardData.lockedBy || 'System'}</p>
-                    {timecardData.lockedAt && (
-                      <p><strong>Locked at:</strong> {new Date(timecardData.lockedAt).toLocaleString()}</p>
-                    )}
-                    {timecardData.lockReason && (
-                      <p><strong>Reason:</strong> {timecardData.lockReason}</p>
-                    )}
+                <div className="bg-orange-100 border border-orange-300 text-orange-700 px-4 py-3 rounded-md mb-6">
+                  <div className="flex items-center">
+                    <AlertTriangle className="h-5 w-5 mr-2" />
+                    <div>
+                      <div className="font-medium">Timecard is locked</div>
+                      <div className="text-sm">
+                        Locked by {timecardData.lockedBy} on {timecardData.lockedAt ? new Date(timecardData.lockedAt).toLocaleDateString() : 'Unknown date'}
+                        {timecardData.lockReason && (
+                          <div className="mt-1">Reason: {timecardData.lockReason}</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+              
+              {/* General Information Section */}
+              {groupedFields.general && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                    Substitute Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupedFields.general.map((field) => (
+                      <div key={field.id} className="space-y-1">
+                        <Label className="text-sm font-medium text-gray-700">
+                          {field.fieldLabel}
+                          {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
+                        {renderField(field)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Approval Section */}
+              {groupedFields.approval && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                    Approvals
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {groupedFields.approval.map((field) => (
+                      <div key={field.id} className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">
+                          {field.fieldLabel}
+                          {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
+                        {renderField(field)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Payroll Processing Section */}
+              <div className="mt-6 pt-4 border-t-2 border-gray-400">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-300 pb-2">
+                  Payroll Processing Section
+                </h3>
+                <div className="border border-gray-400 rounded">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-purple-50">
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Line</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Addon</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Units</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Rate</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Total</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Alias</th>
+                        <th className="border border-gray-400 px-2 py-2 text-sm font-semibold text-purple-800">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: 10 }, (_, index) => (
+                        <PayrollProcessingRowInline key={index} lineNumber={index + 1} />
+                      ))}
+                      {/* Grand Total Row */}
+                      <tr className="bg-purple-100 border-t-2 border-purple-400">
+                        <td className="border border-gray-400 px-2 py-2 text-center text-sm font-bold text-purple-800" colSpan={4}>
+                          GRAND TOTAL
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-center text-lg font-bold text-purple-800">
+                          ${calculateGrandTotal().toFixed(2)}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2" colSpan={2}></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Summary Section */}
+              <div className="mt-6 pt-4 border-t border-gray-300">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {calculateGrandTotal().toFixed(2)}
+                    </div>
+                    <div className="text-sm text-gray-500">Total Amount</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {payrollEntries.filter(entry => entry.units && parseFloat(entry.units) > 0).length}
+                    </div>
+                    <div className="text-sm text-gray-500">Entries</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {new Date().toLocaleDateString()}
+                    </div>
+                    <div className="text-sm text-gray-500">Date</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Instructions */}
