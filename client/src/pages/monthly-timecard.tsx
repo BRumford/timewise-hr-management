@@ -48,9 +48,28 @@ const leaveTypes = [
 
 export default function MonthlyTimecard() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const date = new Date();
+    // Ensure we have a valid date
+    if (isNaN(date.getTime())) {
+      return new Date(2024, 0, 1); // Fallback to Jan 1, 2024
+    }
+    return date;
+  });
   const [timecardData, setTimecardData] = useState<MonthlyTimecard | null>(null);
   const { toast } = useToast();
+
+  // Safety check for current date
+  if (!currentDate || isNaN(currentDate.getTime())) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600">Error: Invalid Date</h1>
+          <p className="mt-2">Please refresh the page to try again.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Fetch employees for selection
   const { data: employees = [] } = useQuery({
@@ -163,11 +182,25 @@ export default function MonthlyTimecard() {
 
   // Navigate months
   const previousMonth = () => {
-    setCurrentDate(subMonths(currentDate, 1));
+    try {
+      const newDate = subMonths(currentDate, 1);
+      if (!isNaN(newDate.getTime())) {
+        setCurrentDate(newDate);
+      }
+    } catch (error) {
+      console.error('Error navigating to previous month:', error);
+    }
   };
 
   const nextMonth = () => {
-    setCurrentDate(addMonths(currentDate, 1));
+    try {
+      const newDate = addMonths(currentDate, 1);
+      if (!isNaN(newDate.getTime())) {
+        setCurrentDate(newDate);
+      }
+    } catch (error) {
+      console.error('Error navigating to next month:', error);
+    }
   };
 
   // Generate calendar days - with error handling
