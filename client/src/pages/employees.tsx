@@ -24,7 +24,7 @@ const editEmployeeSchema = z.object({
   employeeId: z.string().min(1, "Employee ID is required"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
   department: z.string().min(1, "Department is required"),

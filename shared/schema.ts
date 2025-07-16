@@ -62,7 +62,7 @@ export const employees = pgTable("employees", {
   employeeId: varchar("employee_id").notNull().unique(),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
-  email: varchar("email").notNull().unique(),
+  email: varchar("email").unique(),
   phoneNumber: varchar("phone_number"),
   address: text("address"),
   department: varchar("department").notNull(),
