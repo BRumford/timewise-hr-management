@@ -2229,13 +2229,66 @@ export class DatabaseStorage implements IStorage {
     return timecards;
   }
 
-  async approveMonthlyTimecard(id: number, approvedBy: string, notes?: string): Promise<any> {
+  async submitTimecardToEmployee(id: number, submittedBy: string): Promise<any> {
     const [timecard] = await db.update(monthlyTimecards)
       .set({
-        status: 'approved',
-        approvedBy,
-        approvedAt: new Date(),
-        approvalNotes: notes,
+        status: 'submitted_to_employee',
+        submittedBy,
+        submittedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async employeeApproveTimecard(id: number, employeeApprovedBy: string, notes?: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        status: 'employee_approved',
+        employeeApprovedBy,
+        employeeApprovedAt: new Date(),
+        employeeApprovalNotes: notes,
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async submitTimecardToAdmin(id: number, submittedBy: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        status: 'submitted_to_admin',
+        updatedAt: new Date()
+      })
+      .where(eq(monthlyTimecards.id, id))
+      .returning();
+    return timecard;
+  }
+
+  async batchSubmitTimecardsToAdmin(timecardIds: number[], submittedBy: string): Promise<any[]> {
+    const results = [];
+    for (const id of timecardIds) {
+      const [timecard] = await db.update(monthlyTimecards)
+        .set({
+          status: 'submitted_to_admin',
+          updatedAt: new Date()
+        })
+        .where(eq(monthlyTimecards.id, id))
+        .returning();
+      results.push(timecard);
+    }
+    return results;
+  }
+
+  async adminApproveTimecard(id: number, adminApprovedBy: string, notes?: string): Promise<any> {
+    const [timecard] = await db.update(monthlyTimecards)
+      .set({
+        status: 'admin_approved',
+        adminApprovedBy,
+        adminApprovedAt: new Date(),
+        adminApprovalNotes: notes,
         updatedAt: new Date()
       })
       .where(eq(monthlyTimecards.id, id))

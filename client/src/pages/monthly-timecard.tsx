@@ -304,24 +304,18 @@ export default function MonthlyTimecard() {
     saveTimecardMutation.mutate(finalData);
   };
 
-  // Submit timecard for approval mutation
+  // Submit timecard to employee for approval mutation
   const submitTimecardMutation = useMutation({
     mutationFn: async () => {
       if (!timecardData?.id) {
         throw new Error('Must save timecard before submitting');
       }
       
-      const submitPayload = {
-        status: 'submitted',
-        submittedBy: user?.id,
-        submittedAt: new Date().toISOString()
-      };
-
-      return await apiRequest(`/api/monthly-timecard/${timecardData.id}`, 'PUT', submitPayload);
+      return await apiRequest(`/api/monthly-timecards/${timecardData.id}/submit-to-employee`, 'POST');
     },
     onSuccess: (data) => {
       setTimecardData(data);
-      toast({ title: "Success", description: "Timecard submitted for approval" });
+      toast({ title: "Success", description: "Timecard submitted to employee for approval" });
       queryClient.invalidateQueries({ queryKey: [`/api/monthly-timecard/${selectedEmployee}/${currentMonth}/${currentYear}`] });
     },
     onError: (error) => {

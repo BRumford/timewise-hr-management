@@ -64,8 +64,9 @@ interface Employee {
 
 export default function AdminTimecardApproval() {
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('submitted');
+  const [selectedStatus, setSelectedStatus] = useState<string>('submitted_to_admin');
   const [selectedTimecard, setSelectedTimecard] = useState<MonthlyTimecard | null>(null);
+  const [selectedTimecardIds, setSelectedTimecardIds] = useState<number[]>([]);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
   const [approvalNotes, setApprovalNotes] = useState('');
@@ -97,16 +98,16 @@ export default function AdminTimecardApproval() {
 
   // Calculate statistics
   const stats = {
-    pending: filteredTimecards.filter(t => t.status === 'submitted').length,
-    approved: filteredTimecards.filter(t => t.status === 'approved').length,
+    pending: filteredTimecards.filter(t => ['submitted_to_employee', 'employee_approved', 'submitted_to_admin'].includes(t.status)).length,
+    approved: filteredTimecards.filter(t => t.status === 'admin_approved').length,
     rejected: filteredTimecards.filter(t => t.status === 'rejected').length,
     total: filteredTimecards.length
   };
 
-  // Approve timecard mutation
-  const approveTimecard = useMutation({
+  // Admin approve timecard mutation
+  const adminApproveTimecard = useMutation({
     mutationFn: async (data: { id: number; notes: string }) => {
-      return await apiRequest(`/api/monthly-timecards/${data.id}/approve`, "POST", { notes: data.notes });
+      return await apiRequest(`/api/monthly-timecards/${data.id}/admin-approve`, "POST", { notes: data.notes });
     },
     onSuccess: () => {
       toast({
@@ -122,6 +123,28 @@ export default function AdminTimecardApproval() {
       toast({
         title: "Error",
         description: error.message || "Failed to approve timecard",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Batch submit to admin mutation
+  const batchSubmitToAdmin = useMutation({
+    mutationFn: async (timecardIds: number[]) => {
+      return await apiRequest(`/api/monthly-timecards/batch-submit-to-admin`, "POST", { timecardIds });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: `${selectedTimecardIds.length} timecards submitted to admin successfully`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-timecards"] });
+      setSelectedTimecardIds([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit timecards to admin",
         variant: "destructive",
       });
     },
@@ -154,7 +177,41 @@ export default function AdminTimecardApproval() {
   // Handle approval
   const handleApprove = () => {
     if (!selectedTimecard) return;
-    approveTimecard.mutate({ id: selectedTimecard.id, notes: approvalNotes });
+    adminApproveTimecard.mutate({ id: selectedTimecard.id, notes: approvalNotes });
+  };
+
+  // Handle batch submission
+  const handleBatchSubmitToAdmin = () => {
+    if (selectedTimecardIds.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select timecards to submit",
+        variant: "destructive",
+      });
+      return;
+    }
+    batchSubmitToAdmin.mutate(selectedTimecardIds);
+  };
+
+  // Handle checkbox selection
+  const handleTimecardSelection = (timecardId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedTimecardIds([...selectedTimecardIds, timecardId]);
+    } else {
+      setSelectedTimecardIds(selectedTimecardIds.filter(id => id !== timecardId));
+    }
+  };
+
+  // Handle select all
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const employeeApprovedTimecards = filteredTimecards
+        .filter(t => t.status === 'employee_approved')
+        .map(t => t.id);
+      setSelectedTimecardIds(employeeApprovedTimecards);
+    } else {
+      setSelectedTimecardIds([]);
+    }
   };
 
   // Handle rejection
@@ -166,14 +223,18 @@ export default function AdminTimecardApproval() {
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'submitted':
+      case 'draft':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'submitted_to_employee':
         return 'bg-blue-100 text-blue-800';
-      case 'approved':
+      case 'employee_approved':
+        return 'bg-purple-100 text-purple-800';
+      case 'submitted_to_admin':
+        return 'bg-orange-100 text-orange-800';
+      case 'admin_approved':
         return 'bg-green-100 text-green-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -182,14 +243,18 @@ export default function AdminTimecardApproval() {
   // Get status icon
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'submitted':
+      case 'draft':
+        return <FileText className="h-4 w-4" />;
+      case 'submitted_to_employee':
         return <Clock className="h-4 w-4" />;
-      case 'approved':
+      case 'employee_approved':
+        return <User className="h-4 w-4" />;
+      case 'submitted_to_admin':
+        return <Building className="h-4 w-4" />;
+      case 'admin_approved':
         return <CheckCircle className="h-4 w-4" />;
       case 'rejected':
         return <XCircle className="h-4 w-4" />;
-      case 'draft':
-        return <FileText className="h-4 w-4" />;
       default:
         return <AlertCircle className="h-4 w-4" />;
     }
@@ -296,16 +361,60 @@ export default function AdminTimecardApproval() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="submitted">Submitted</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="submitted_to_employee">Submitted to Employee</SelectItem>
+                  <SelectItem value="employee_approved">Employee Approved</SelectItem>
+                  <SelectItem value="submitted_to_admin">Submitted to Admin</SelectItem>
+                  <SelectItem value="admin_approved">Admin Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Batch Submission Section - Only show for employee_approved status */}
+      {selectedStatus === 'employee_approved' && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Check className="h-5 w-5" />
+              <span>Batch Submit to Admin</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => handleSelectAll(true)}
+                  size="sm"
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleSelectAll(false)}
+                  size="sm"
+                >
+                  Clear Selection
+                </Button>
+                <span className="text-sm text-gray-600">
+                  {selectedTimecardIds.length} of {filteredTimecards.filter(t => t.status === 'employee_approved').length} selected
+                </span>
+              </div>
+              <Button
+                onClick={handleBatchSubmitToAdmin}
+                disabled={selectedTimecardIds.length === 0 || batchSubmitToAdmin.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {batchSubmitToAdmin.isPending ? 'Submitting...' : `Submit ${selectedTimecardIds.length} to Admin`}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Timecards List */}
       <Card>
@@ -339,6 +448,17 @@ export default function AdminTimecardApproval() {
                     className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
+                      {/* Checkbox for employee_approved timecards */}
+                      {timecard.status === 'employee_approved' && (
+                        <div className="flex items-center mr-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedTimecardIds.includes(timecard.id)}
+                            onChange={(e) => handleTimecardSelection(timecard.id, e.target.checked)}
+                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                        </div>
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center space-x-4">
                           <div>
@@ -523,8 +643,8 @@ export default function AdminTimecardApproval() {
               <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleApprove} disabled={approveTimecard.isPending}>
-                {approveTimecard.isPending ? 'Approving...' : 'Approve'}
+              <Button onClick={handleApprove} disabled={adminApproveTimecard.isPending}>
+                {adminApproveTimecard.isPending ? 'Approving...' : 'Approve'}
               </Button>
             </div>
           </div>

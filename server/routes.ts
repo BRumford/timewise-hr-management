@@ -3856,22 +3856,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Monthly Timecard Approval Routes
-  app.post('/api/monthly-timecards/:id/approve', requireRole(['admin', 'hr']), async (req, res) => {
+  // Monthly Timecard Workflow Routes
+  app.post('/api/monthly-timecards/:id/submit-to-employee', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const timecard = await storage.submitTimecardToEmployee(timecardId, user.id);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error submitting timecard to employee:', error);
+      res.status(500).json({ message: 'Failed to submit timecard to employee' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/:id/employee-approve', isAuthenticated, async (req, res) => {
     try {
       const timecardId = parseInt(req.params.id);
       const { notes } = req.body;
       const user = (req as any).user;
       
-      const timecard = await storage.approveMonthlyTimecard(timecardId, user.id, notes);
+      const timecard = await storage.employeeApproveTimecard(timecardId, user.id, notes);
       res.json(timecard);
     } catch (error) {
-      console.error('Error approving timecard:', error);
+      console.error('Error approving timecard by employee:', error);
       res.status(500).json({ message: 'Failed to approve timecard' });
     }
   });
 
-  app.post('/api/monthly-timecards/:id/reject', requireRole(['admin', 'hr']), async (req, res) => {
+  app.post('/api/monthly-timecards/:id/submit-to-admin', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const timecard = await storage.submitTimecardToAdmin(timecardId, user.id);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error submitting timecard to admin:', error);
+      res.status(500).json({ message: 'Failed to submit timecard to admin' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/batch-submit-to-admin', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { timecardIds } = req.body;
+      const user = (req as any).user;
+      
+      const results = await storage.batchSubmitTimecardsToAdmin(timecardIds, user.id);
+      res.json(results);
+    } catch (error) {
+      console.error('Error batch submitting timecards to admin:', error);
+      res.status(500).json({ message: 'Failed to batch submit timecards to admin' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/:id/admin-approve', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const timecardId = parseInt(req.params.id);
+      const { notes } = req.body;
+      const user = (req as any).user;
+      
+      const timecard = await storage.adminApproveTimecard(timecardId, user.id, notes);
+      res.json(timecard);
+    } catch (error) {
+      console.error('Error approving timecard by admin:', error);
+      res.status(500).json({ message: 'Failed to approve timecard' });
+    }
+  });
+
+  app.post('/api/monthly-timecards/:id/reject', isAuthenticated, async (req, res) => {
     try {
       const timecardId = parseInt(req.params.id);
       const { reason } = req.body;
