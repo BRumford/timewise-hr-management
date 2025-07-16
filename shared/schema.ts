@@ -820,8 +820,47 @@ export const personnelFilesRelations = relations(personnelFiles, ({ one }) => ({
 }));
 
 // Add insert schemas and types for new tables
-export const insertRetireeSchema = createInsertSchema(retirees).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertArchivedEmployeeSchema = createInsertSchema(archivedEmployees).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRetireeSchema = z.object({
+  employeeId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  retirementDate: z.coerce.date(),
+  yearsOfService: z.coerce.number().optional(),
+  pensionPlan: z.string().optional(),
+  pensionAmount: z.union([z.string(), z.number()]).optional(),
+  healthInsurance: z.string().optional(),
+  healthInsurancePremium: z.union([z.string(), z.number()]).optional(),
+  dentalInsurance: z.string().optional(),
+  visionInsurance: z.string().optional(),
+  lifeInsurance: z.string().optional(),
+  lifeInsuranceAmount: z.union([z.string(), z.number()]).optional(),
+  address: z.string().optional(),
+  emergencyContactName: z.string().optional(),
+  emergencyContactPhone: z.string().optional(),
+  emergencyContactRelation: z.string().optional(),
+  medicarePartA: z.boolean().optional(),
+  medicarePartB: z.boolean().optional(),
+  medicarePartD: z.boolean().optional(),
+  medicareNumber: z.string().optional(),
+  notes: z.string().optional(),
+});
+export const insertArchivedEmployeeSchema = z.object({
+  originalEmployeeId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().optional(),
+  department: z.string().optional(),
+  position: z.string().optional(),
+  hireDate: z.coerce.date().optional(),
+  terminationDate: z.coerce.date().optional(),
+  terminationReason: z.string().optional(),
+  archivedBy: z.string(),
+  archiveReason: z.string().optional(),
+  personnelFilesCount: z.coerce.number().optional(),
+  lastFileUpload: z.coerce.date().optional(),
+});
 export const insertPersonnelFileSchema = createInsertSchema(personnelFiles).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertRetiree = z.infer<typeof insertRetireeSchema>;
