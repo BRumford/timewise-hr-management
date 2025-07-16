@@ -28,6 +28,7 @@ import Retirees from "@/pages/retirees";
 import ArchivedEmployees from "@/pages/archived-employees";
 import SupportDocumentation from "@/pages/support-documentation";
 import SecurityUpdates from "@/pages/security-updates";
+import DropdownSettings from "@/pages/dropdown-settings";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -68,6 +69,7 @@ function Router() {
                 <Route path="/archived-employees" component={ArchivedEmployees} />
                 <Route path="/support-documentation" component={SupportDocumentation} />
                 <Route path="/security-updates" component={SecurityUpdates} />
+                <Route path="/dropdown-settings" component={DropdownSettings} />
                 <Route component={NotFound} />
               </Switch>
             </main>

@@ -45,6 +45,7 @@ const menuItems = [
   { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["admin", "hr"] },
   { path: "/security-updates", icon: ShieldCheck, label: "Security Updates", roles: ["admin", "hr"] },
   { path: "/security-monitoring", icon: Shield, label: "Security Monitoring", roles: ["admin", "hr"] },
+  { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["admin", "hr"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr"] },
 ];
 
