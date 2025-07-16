@@ -1048,3 +1048,405 @@ export type InsertSecureFile = z.infer<typeof insertSecureFileSchema>;
 export type SecureFile = typeof secureFiles.$inferSelect;
 export type InsertDataEncryptionKey = z.infer<typeof insertDataEncryptionKeySchema>;
 export type DataEncryptionKey = typeof dataEncryptionKeys.$inferSelect;
+
+// Support Documentation Library
+export const supportDocuments = pgTable("support_documents", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 100 }).notNull(), // user_manual, admin_guide, troubleshooting, video_tutorial
+  subcategory: varchar("subcategory", { length: 100 }),
+  tags: text("tags").array(),
+  isPublished: boolean("is_published").default(false),
+  authorId: varchar("author_id").notNull(),
+  viewCount: integer("view_count").default(0),
+  lastViewedAt: timestamp("last_viewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  fileUrl: varchar("file_url", { length: 500 }), // For PDF files or video URLs
+  videoUrl: varchar("video_url", { length: 500 }), // For video tutorials
+  duration: integer("duration"), // For video tutorials in seconds
+  difficulty: varchar("difficulty", { length: 20 }).default("beginner"), // beginner, intermediate, advanced
+  searchKeywords: text("search_keywords").array(),
+});
+
+export const supportCategories = pgTable("support_categories", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }),
+  color: varchar("color", { length: 20 }),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const supportFeedback = pgTable("support_feedback", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id").notNull().references(() => supportDocuments.id),
+  userId: varchar("user_id").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  isHelpful: boolean("is_helpful"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const supportBookmarks = pgTable("support_bookmarks", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  documentId: integer("document_id").notNull().references(() => supportDocuments.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Relations
+export const supportDocumentsRelations = relations(supportDocuments, ({ many }) => ({
+  feedback: many(supportFeedback),
+  bookmarks: many(supportBookmarks),
+}));
+
+export const supportCategoriesRelations = relations(supportCategories, ({ many }) => ({
+  documents: many(supportDocuments),
+}));
+
+export const supportFeedbackRelations = relations(supportFeedback, ({ one }) => ({
+  document: one(supportDocuments, {
+    fields: [supportFeedback.documentId],
+    references: [supportDocuments.id],
+  }),
+}));
+
+export const supportBookmarksRelations = relations(supportBookmarks, ({ one }) => ({
+  document: one(supportDocuments, {
+    fields: [supportBookmarks.documentId],
+    references: [supportDocuments.id],
+  }),
+}));
+
+// Insert schemas
+export const insertSupportDocumentSchema = createInsertSchema(supportDocuments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSupportCategorySchema = createInsertSchema(supportCategories).omit({ id: true, createdAt: true });
+export const insertSupportFeedbackSchema = createInsertSchema(supportFeedback).omit({ id: true, createdAt: true });
+export const insertSupportBookmarkSchema = createInsertSchema(supportBookmarks).omit({ id: true, createdAt: true });
+
+// Select types
+export type SupportDocument = typeof supportDocuments.$inferSelect;
+export type SupportCategory = typeof supportCategories.$inferSelect;
+export type SupportFeedback = typeof supportFeedback.$inferSelect;
+export type SupportBookmark = typeof supportBookmarks.$inferSelect;
+
+export type InsertSupportDocument = z.infer<typeof insertSupportDocumentSchema>;
+export type InsertSupportCategory = z.infer<typeof insertSupportCategorySchema>;
+export type InsertSupportFeedback = z.infer<typeof insertSupportFeedbackSchema>;
+export type InsertSupportBookmark = z.infer<typeof insertSupportBookmarkSchema>;
+
+// Support Ticket Management System
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  ticketNumber: varchar("ticket_number", { length: 50 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 100 }).notNull(), // technical, account, billing, feature_request, bug_report
+  priority: varchar("priority", { length: 20 }).notNull().default("medium"), // low, medium, high, urgent
+  status: varchar("status", { length: 20 }).notNull().default("open"), // open, in_progress, waiting_response, resolved, closed
+  assignedTo: varchar("assigned_to"), // Support agent ID
+  createdBy: varchar("created_by").notNull(),
+  tags: text("tags").array(),
+  affectedModule: varchar("affected_module", { length: 100 }), // employees, payroll, timecards, etc.
+  browserInfo: text("browser_info"),
+  errorMessage: text("error_message"),
+  stepsToReproduce: text("steps_to_reproduce"),
+  expectedBehavior: text("expected_behavior"),
+  actualBehavior: text("actual_behavior"),
+  workaround: text("workaround"),
+  resolution: text("resolution"),
+  resolutionTime: integer("resolution_time"), // in minutes
+  satisfactionRating: integer("satisfaction_rating"), // 1-5 stars
+  satisfactionComment: text("satisfaction_comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  closedAt: timestamp("closed_at"),
+  lastResponseAt: timestamp("last_response_at"),
+  responseDeadline: timestamp("response_deadline"),
+});
+
+export const supportTicketComments = pgTable("support_ticket_comments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => supportTickets.id),
+  userId: varchar("user_id").notNull(),
+  content: text("content").notNull(),
+  isInternal: boolean("is_internal").default(false), // Internal notes vs customer-facing
+  attachments: text("attachments").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const supportTicketAttachments = pgTable("support_ticket_attachments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => supportTickets.id),
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  fileType: varchar("file_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  filePath: varchar("file_path").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const supportTicketHistory = pgTable("support_ticket_history", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => supportTickets.id),
+  userId: varchar("user_id").notNull(),
+  action: varchar("action").notNull(), // created, updated, assigned, resolved, closed, reopened
+  fieldChanged: varchar("field_changed"),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const supportAgents = pgTable("support_agents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  name: varchar("name").notNull(),
+  email: varchar("email").notNull(),
+  department: varchar("department").notNull(),
+  specialties: text("specialties").array(), // Areas of expertise
+  maxActiveTickets: integer("max_active_tickets").default(10),
+  currentActiveTickets: integer("current_active_tickets").default(0),
+  isActive: boolean("is_active").default(true),
+  averageResponseTime: integer("average_response_time"), // in minutes
+  satisfactionScore: decimal("satisfaction_score", { precision: 3, scale: 2 }),
+  ticketsResolved: integer("tickets_resolved").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const supportKnowledgeBase = pgTable("support_knowledge_base", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  tags: text("tags").array(),
+  isPublished: boolean("is_published").default(false),
+  authorId: varchar("author_id").notNull(),
+  viewCount: integer("view_count").default(0),
+  helpfulCount: integer("helpful_count").default(0),
+  notHelpfulCount: integer("not_helpful_count").default(0),
+  relatedTickets: integer("related_tickets").array(), // Related ticket IDs
+  searchKeywords: text("search_keywords").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Relations for ticket system
+export const supportTicketsRelations = relations(supportTickets, ({ many, one }) => ({
+  comments: many(supportTicketComments),
+  attachments: many(supportTicketAttachments),
+  history: many(supportTicketHistory),
+  assignee: one(supportAgents, {
+    fields: [supportTickets.assignedTo],
+    references: [supportAgents.userId],
+  }),
+}));
+
+export const supportTicketCommentsRelations = relations(supportTicketComments, ({ one }) => ({
+  ticket: one(supportTickets, {
+    fields: [supportTicketComments.ticketId],
+    references: [supportTickets.id],
+  }),
+}));
+
+export const supportTicketAttachmentsRelations = relations(supportTicketAttachments, ({ one }) => ({
+  ticket: one(supportTickets, {
+    fields: [supportTicketAttachments.ticketId],
+    references: [supportTickets.id],
+  }),
+}));
+
+export const supportTicketHistoryRelations = relations(supportTicketHistory, ({ one }) => ({
+  ticket: one(supportTickets, {
+    fields: [supportTicketHistory.ticketId],
+    references: [supportTickets.id],
+  }),
+}));
+
+export const supportAgentsRelations = relations(supportAgents, ({ many }) => ({
+  assignedTickets: many(supportTickets),
+}));
+
+// Insert schemas for ticket system
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSupportTicketCommentSchema = createInsertSchema(supportTicketComments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSupportTicketAttachmentSchema = createInsertSchema(supportTicketAttachments).omit({ id: true, createdAt: true });
+export const insertSupportTicketHistorySchema = createInsertSchema(supportTicketHistory).omit({ id: true, createdAt: true });
+export const insertSupportAgentSchema = createInsertSchema(supportAgents).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSupportKnowledgeBaseSchema = createInsertSchema(supportKnowledgeBase).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Select types for ticket system
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type SupportTicketComment = typeof supportTicketComments.$inferSelect;
+export type SupportTicketAttachment = typeof supportTicketAttachments.$inferSelect;
+export type SupportTicketHistory = typeof supportTicketHistory.$inferSelect;
+export type SupportAgent = typeof supportAgents.$inferSelect;
+export type SupportKnowledgeBase = typeof supportKnowledgeBase.$inferSelect;
+
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type InsertSupportTicketComment = z.infer<typeof insertSupportTicketCommentSchema>;
+export type InsertSupportTicketAttachment = z.infer<typeof insertSupportTicketAttachmentSchema>;
+export type InsertSupportTicketHistory = z.infer<typeof insertSupportTicketHistorySchema>;
+export type InsertSupportAgent = z.infer<typeof insertSupportAgentSchema>;
+export type InsertSupportKnowledgeBase = z.infer<typeof insertSupportKnowledgeBaseSchema>;
+
+// Security Updates System
+export const securityUpdates = pgTable("security_updates", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+  category: varchar("category", { length: 100 }).notNull(), // security_patch, vulnerability, policy_update, compliance
+  version: varchar("version", { length: 50 }),
+  affectedSystems: text("affected_systems").array(),
+  patchDetails: text("patch_details"),
+  vulnerabilityDetails: text("vulnerability_details"),
+  riskAssessment: text("risk_assessment"),
+  mitigationSteps: text("mitigation_steps"),
+  installationInstructions: text("installation_instructions"),
+  rollbackInstructions: text("rollback_instructions"),
+  testingProcedures: text("testing_procedures"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, testing, approved, deployed, failed
+  isAutomatic: boolean("is_automatic").default(false),
+  requiresApproval: boolean("requires_approval").default(true),
+  requiresDowntime: boolean("requires_downtime").default(false),
+  estimatedDowntime: integer("estimated_downtime"), // in minutes
+  releasedBy: varchar("released_by").notNull(),
+  approvedBy: varchar("approved_by"),
+  deployedBy: varchar("deployed_by"),
+  scheduledFor: timestamp("scheduled_for"),
+  releasedAt: timestamp("released_at").defaultNow(),
+  approvedAt: timestamp("approved_at"),
+  deployedAt: timestamp("deployed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const securityUpdateLogs = pgTable("security_update_logs", {
+  id: serial("id").primaryKey(),
+  updateId: integer("update_id").notNull().references(() => securityUpdates.id),
+  userId: varchar("user_id").notNull(),
+  action: varchar("action").notNull(), // approved, rejected, deployed, rolled_back, tested
+  status: varchar("status").notNull(), // success, failed, in_progress
+  details: text("details"),
+  errorMessage: text("error_message"),
+  logOutput: text("log_output"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const securityNotifications = pgTable("security_notifications", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // alert, warning, info, update
+  severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+  targetAudience: varchar("target_audience", { length: 100 }).notNull(), // all, admins, hr, employees
+  isActive: boolean("is_active").default(true),
+  isDismissible: boolean("is_dismissible").default(true),
+  expiresAt: timestamp("expires_at"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const securityUpdateApprovals = pgTable("security_update_approvals", {
+  id: serial("id").primaryKey(),
+  updateId: integer("update_id").notNull().references(() => securityUpdates.id),
+  approverId: varchar("approver_id").notNull(),
+  status: varchar("status").notNull(), // pending, approved, rejected
+  comments: text("comments"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const securityPolicies = pgTable("security_policies", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  policyType: varchar("policy_type", { length: 100 }).notNull(), // password, access, data_retention, compliance
+  content: text("content").notNull(),
+  version: varchar("version", { length: 20 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  effectiveDate: timestamp("effective_date").notNull(),
+  expiryDate: timestamp("expiry_date"),
+  approvedBy: varchar("approved_by").notNull(),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const vulnerabilityAssessments = pgTable("vulnerability_assessments", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+  cvssScore: decimal("cvss_score", { precision: 3, scale: 1 }),
+  affectedSystems: text("affected_systems").array(),
+  discoveredBy: varchar("discovered_by"),
+  discoveredAt: timestamp("discovered_at").defaultNow(),
+  status: varchar("status", { length: 20 }).notNull().default("open"), // open, investigating, patched, closed
+  riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+  impactDescription: text("impact_description"),
+  exploitability: varchar("exploitability", { length: 20 }),
+  remediation: text("remediation"),
+  workaround: text("workaround"),
+  references: text("references").array(),
+  assignedTo: varchar("assigned_to"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Relations for security updates
+export const securityUpdatesRelations = relations(securityUpdates, ({ many }) => ({
+  logs: many(securityUpdateLogs),
+  approvals: many(securityUpdateApprovals),
+}));
+
+export const securityUpdateLogsRelations = relations(securityUpdateLogs, ({ one }) => ({
+  update: one(securityUpdates, {
+    fields: [securityUpdateLogs.updateId],
+    references: [securityUpdates.id],
+  }),
+}));
+
+export const securityUpdateApprovalsRelations = relations(securityUpdateApprovals, ({ one }) => ({
+  update: one(securityUpdates, {
+    fields: [securityUpdateApprovals.updateId],
+    references: [securityUpdates.id],
+  }),
+}));
+
+// Insert schemas for security updates
+export const insertSecurityUpdateSchema = createInsertSchema(securityUpdates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSecurityUpdateLogSchema = createInsertSchema(securityUpdateLogs).omit({ id: true, createdAt: true });
+export const insertSecurityNotificationSchema = createInsertSchema(securityNotifications).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSecurityUpdateApprovalSchema = createInsertSchema(securityUpdateApprovals).omit({ id: true, createdAt: true });
+export const insertSecurityPolicySchema = createInsertSchema(securityPolicies).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVulnerabilityAssessmentSchema = createInsertSchema(vulnerabilityAssessments).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Select types for security updates
+export type SecurityUpdate = typeof securityUpdates.$inferSelect;
+export type SecurityUpdateLog = typeof securityUpdateLogs.$inferSelect;
+export type SecurityNotification = typeof securityNotifications.$inferSelect;
+export type SecurityUpdateApproval = typeof securityUpdateApprovals.$inferSelect;
+export type SecurityPolicy = typeof securityPolicies.$inferSelect;
+export type VulnerabilityAssessment = typeof vulnerabilityAssessments.$inferSelect;
+
+export type InsertSecurityUpdate = z.infer<typeof insertSecurityUpdateSchema>;
+export type InsertSecurityUpdateLog = z.infer<typeof insertSecurityUpdateLogSchema>;
+export type InsertSecurityNotification = z.infer<typeof insertSecurityNotificationSchema>;
+export type InsertSecurityUpdateApproval = z.infer<typeof insertSecurityUpdateApprovalSchema>;
+export type InsertSecurityPolicy = z.infer<typeof insertSecurityPolicySchema>;
+export type InsertVulnerabilityAssessment = z.infer<typeof insertVulnerabilityAssessmentSchema>;
