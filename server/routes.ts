@@ -22,6 +22,11 @@ import { initSupportTables } from "./initSupportTables";
 import { SecurityMonitor, SecurityAudit, SecurityEventType, SecuritySeverity, IntrusionDetection } from "./security/monitoring";
 import { corsOptions } from "./security/middleware";
 import privacyRoutes from "./privacyRoutes";
+import performanceRoutes from "./performance/routes";
+import { monitoring } from "./performance/monitoring";
+import { loadBalancer } from "./performance/loadBalancer";
+import { cdn } from "./performance/cdn";
+import { cache } from "./performance/caching";
 import cors from "cors";
 import multer from 'multer';
 import path from 'path';
@@ -253,6 +258,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // app.use(rateLimiter);
   // app.use(auditLogger);
   // app.use(inputValidation);
+  
+  // Apply performance middleware (temporarily disabled for development)
+  // app.use(monitoring.requestMonitoring());
+  // app.use(monitoring.errorMonitoring());
+  // app.use(loadBalancer.middleware());
+  // app.use(loadBalancer.circuitBreakerMiddleware());
+  // app.use(loadBalancer.rateLimitMiddleware());
+  // app.use(cdn.middleware());
+  // app.use(cdn.preloadCriticalResources());
+  // app.use(cdn.securityHeaders());
   
   // Serve uploaded files
   app.use('/uploads', (req, res, next) => {
@@ -3772,6 +3787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register privacy compliance routes
   app.use('/api/privacy', isAuthenticated, privacyRoutes);
+  app.use('/api/performance', requireRole(['admin', 'hr']), performanceRoutes);
 
   // Support Documentation routes
   app.get('/api/support/documents', isAuthenticated, async (req, res) => {

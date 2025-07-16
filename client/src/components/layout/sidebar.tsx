@@ -20,7 +20,8 @@ import {
   Shield,
   BookOpen,
   ShieldCheck,
-  Trash2
+  Trash2,
+  Activity
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
@@ -49,6 +50,7 @@ const menuItems = [
   { path: "/security-monitoring", icon: Shield, label: "Security Monitoring", roles: ["admin", "hr"] },
   { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["admin", "hr"] },
   { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["admin", "hr"] },
+  { path: "/performance-dashboard", icon: Activity, label: "Performance Dashboard", roles: ["admin", "hr"] },
   { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["admin", "hr"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr"] },
 ];

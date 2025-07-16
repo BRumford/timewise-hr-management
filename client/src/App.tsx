@@ -32,6 +32,7 @@ import SecurityUpdates from "@/pages/security-updates";
 import DropdownSettings from "@/pages/dropdown-settings";
 import PrivacyPolicies from "@/pages/privacy-policies";
 import DataDeletionRequests from "@/pages/data-deletion-requests";
+import PerformanceDashboard from "@/pages/performance-dashboard";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -76,6 +77,7 @@ function Router() {
                 <Route path="/dropdown-settings" component={DropdownSettings} />
                 <Route path="/privacy-policies" component={PrivacyPolicies} />
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
+                <Route path="/performance-dashboard" component={PerformanceDashboard} />
                 <Route component={NotFound} />
               </Switch>
             </main>
