@@ -256,17 +256,17 @@ export default function SubstituteTimeCards() {
     if (existingTimecard) {
       setTimecardData(existingTimecard);
       setFormData(existingTimecard.customFieldsData || {});
-      setPayrollData({
-        payrollAddon: existingTimecard.payrollAddon || "",
-        payrollUnits: existingTimecard.payrollUnits || 0,
-        payrollRate: existingTimecard.payrollRate || 0,
-        payrollTotal: existingTimecard.payrollTotal || 0,
-        payrollProcessingNotes: existingTimecard.payrollProcessingNotes || "",
-      });
+      
+      // Initialize payroll entries from existing data if available
+      if (existingTimecard.payrollEntries && Array.isArray(existingTimecard.payrollEntries)) {
+        setPayrollEntries(existingTimecard.payrollEntries);
+      } else {
+        initializePayrollEntries();
+      }
     } else {
       setTimecardData(null);
       setFormData({});
-      setPayrollData({});
+      setPayrollEntries([]);
     }
   }, [existingTimecard]);
 
@@ -277,14 +277,6 @@ export default function SubstituteTimeCards() {
     }
   }, [selectedSubstitute]);
 
-  // Calculate payroll total when units or rate change
-  useEffect(() => {
-    const units = parseFloat(payrollData.payrollUnits) || 0;
-    const rate = parseFloat(payrollData.payrollRate) || 0;
-    const total = units * rate;
-    setPayrollData(prev => ({ ...prev, payrollTotal: total }));
-  }, [payrollData.payrollUnits, payrollData.payrollRate]);
-
   const handleFormFieldChange = (fieldName: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -292,14 +284,8 @@ export default function SubstituteTimeCards() {
     }));
   };
 
-  const handlePayrollChange = (fieldName: string, value: any) => {
-    setPayrollData(prev => ({
-      ...prev,
-      [fieldName]: value
-    }));
-  };
-
   const handleSave = () => {
+    if (!timecardData) return;
     saveTimecard.mutate({ notes: formData.notes || "" });
   };
 
@@ -413,6 +399,86 @@ export default function SubstituteTimeCards() {
     acc[field.section].push(field);
     return acc;
   }, {});
+
+  // PayrollProcessingRowInline component for payroll processing section
+  const PayrollProcessingRowInline = ({ lineNumber }: { lineNumber: number }) => {
+    const index = lineNumber - 1;
+    const entry = payrollEntries[index] || {};
+
+    // Calculate total automatically
+    const total = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
+
+    return (
+      <tr className="even:bg-gray-50">
+        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
+          {lineNumber}
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Select onValueChange={(value) => updatePayrollEntry(index, 'addon', value)} value={entry.addon || ''}>
+            <SelectTrigger className="h-8 text-sm border-0 bg-transparent p-1">
+              <SelectValue placeholder="Addon" />
+            </SelectTrigger>
+            <SelectContent>
+              {addonOptions.map((option) => (
+                <SelectItem key={option.id} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="number"
+            step="0.01"
+            value={entry.units || ''}
+            onChange={(e) => updatePayrollEntry(index, 'units', e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="0"
+          />
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="number"
+            step="0.01"
+            value={entry.rate || ''}
+            onChange={(e) => updatePayrollEntry(index, 'rate', e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="0.00"
+          />
+        </td>
+        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
+          ${total.toFixed(2)}
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="text"
+            value={entry.alias || ''}
+            onChange={(e) => updatePayrollEntry(index, 'alias', e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="Alias"
+          />
+        </td>
+        <td className="border border-gray-400 px-1 py-1">
+          <Input
+            type="text"
+            value={entry.notes || ''}
+            onChange={(e) => updatePayrollEntry(index, 'notes', e.target.value)}
+            className="h-8 text-sm border-0 bg-transparent p-1"
+            placeholder="Notes"
+          />
+        </td>
+      </tr>
+    );
+  };
+
+  // Calculate grand total for payroll processing
+  const calculateGrandTotal = () => {
+    return payrollEntries.reduce((total, entry) => {
+      const lineTotal = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
+      return total + lineTotal;
+    }, 0);
+  };
 
   return (
     <div className="space-y-6">
