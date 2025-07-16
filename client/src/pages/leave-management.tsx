@@ -22,14 +22,9 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const leaveRequestFormSchema = insertLeaveRequestSchema.extend({
-  startDate: z.union([z.coerce.date(), z.null()]).refine((val) => val !== null, {
-    message: "Start date is required",
-  }),
-  endDate: z.union([z.coerce.date(), z.null()]).refine((val) => val !== null, {
-    message: "End date is required",
-  }),
+  startDate: z.string().min(1, "Start date is required").transform((val) => new Date(val)),
+  endDate: z.string().min(1, "End date is required").transform((val) => new Date(val)),
 }).refine((data) => {
-  if (!data.startDate || !data.endDate) return true;
   return data.startDate <= data.endDate;
 }, {
   message: "Start date must be before or equal to end date",
@@ -77,8 +72,8 @@ export default function LeaveManagement() {
     defaultValues: {
       employeeId: user?.employee?.id || 0,
       leaveTypeId: 0,
-      startDate: null,
-      endDate: null,
+      startDate: "",
+      endDate: "",
       reason: "",
       substituteRequired: false,
       isWorkersComp: false,
@@ -493,20 +488,8 @@ export default function LeaveManagement() {
                         <FormControl>
                           <Input 
                             type="date" 
-                            value={field.value ? (() => {
-                              try {
-                                return format(new Date(field.value), 'yyyy-MM-dd');
-                              } catch {
-                                return '';
-                              }
-                            })() : ''}
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                field.onChange(new Date(e.target.value + 'T00:00:00'));
-                              } else {
-                                field.onChange(null);
-                              }
-                            }}
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -523,20 +506,8 @@ export default function LeaveManagement() {
                         <FormControl>
                           <Input 
                             type="date"
-                            value={field.value ? (() => {
-                              try {
-                                return format(new Date(field.value), 'yyyy-MM-dd');
-                              } catch {
-                                return '';
-                              }
-                            })() : ''}
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                field.onChange(new Date(e.target.value + 'T00:00:00'));
-                              } else {
-                                field.onChange(null);
-                              }
-                            }}
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
                           />
                         </FormControl>
                         <FormMessage />
