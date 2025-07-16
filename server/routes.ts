@@ -4411,6 +4411,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Security Settings Routes
+  app.get("/api/security/settings", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      // Return current security settings (mock implementation)
+      const settings = {
+        mfaRequired: false,
+        passwordExpiration: 90,
+        sessionTimeout: 30,
+        autoLockout: true,
+        emailAlerts: true,
+        auditLogging: true
+      };
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching security settings:", error);
+      res.status(500).json({ message: "Failed to fetch security settings" });
+    }
+  });
+
+  app.put("/api/security/settings", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const settings = req.body;
+      
+      // Validate settings
+      if (typeof settings.mfaRequired !== 'boolean' ||
+          typeof settings.passwordExpiration !== 'number' ||
+          typeof settings.sessionTimeout !== 'number' ||
+          typeof settings.autoLockout !== 'boolean' ||
+          typeof settings.emailAlerts !== 'boolean' ||
+          typeof settings.auditLogging !== 'boolean') {
+        return res.status(400).json({ message: "Invalid security settings format" });
+      }
+
+      // Mock implementation - in real app, save to database
+      console.log("Saving security settings:", settings);
+      
+      // Create activity log entry
+      await storage.createActivityLog({
+        userId: (req as any).user?.id || "system",
+        action: "update_security_settings",
+        entityType: "security",
+        entityId: null,
+        description: "Updated security settings",
+      });
+
+      res.json({ message: "Security settings updated successfully", settings });
+    } catch (error) {
+      console.error("Error saving security settings:", error);
+      res.status(500).json({ message: "Failed to save security settings" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

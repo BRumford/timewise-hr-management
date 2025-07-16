@@ -11,7 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Shield, 
   AlertTriangle, 
@@ -59,6 +60,7 @@ interface ComplianceReport {
 }
 
 export default function SecurityMonitoring() {
+  const { toast } = useToast();
   const [selectedTimeRange, setSelectedTimeRange] = useState("30");
   const [selectedFramework, setSelectedFramework] = useState("FERPA");
   const [securitySettings, setSecuritySettings] = useState({
@@ -84,6 +86,42 @@ export default function SecurityMonitoring() {
   const { data: complianceData, isLoading: complianceLoading } = useQuery({
     queryKey: ['/api/security/compliance', selectedFramework],
   });
+
+  // Fetch security settings
+  const { data: settingsData, isLoading: settingsLoading } = useQuery({
+    queryKey: ['/api/security/settings'],
+  });
+
+  // Update local state when settings data is loaded
+  useEffect(() => {
+    if (settingsData) {
+      setSecuritySettings(settingsData);
+    }
+  }, [settingsData]);
+
+  // Save security settings mutation
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (settings: typeof securitySettings) => {
+      return await apiRequest('/api/security/settings', 'PUT', settings);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings saved",
+        description: "Security settings have been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error saving settings",
+        description: "Failed to save security settings. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleSaveSettings = () => {
+    saveSettingsMutation.mutate(securitySettings);
+  };
 
   // Use real data from API or fallback to mock data
   const currentDashboard = dashboardData || {
@@ -564,8 +602,11 @@ export default function SecurityMonitoring() {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button>
-                    Save Settings
+                  <Button 
+                    onClick={handleSaveSettings}
+                    disabled={saveSettingsMutation.isPending}
+                  >
+                    {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
                   </Button>
                 </div>
               </div>
