@@ -320,34 +320,24 @@ export const timeCards = pgTable("time_cards", {
 // Substitute time cards table
 export const substituteTimeCards = pgTable("substitute_time_cards", {
   id: serial("id").primaryKey(),
-  substituteId: integer("substitute_id").notNull(),
-  payPeriodId: integer("pay_period_id").references(() => payPeriods.id),
-  assignmentId: integer("assignment_id"), // Reference to substitute assignment
-  date: timestamp("date").notNull(),
-  clockIn: timestamp("clock_in"),
-  clockOut: timestamp("clock_out"),
-  breakStart: timestamp("break_start"),
-  breakEnd: timestamp("break_end"),
-  totalHours: decimal("total_hours", { precision: 5, scale: 2 }),
-  overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }).default("0"),
-  dailyRate: decimal("daily_rate", { precision: 8, scale: 2 }), // Daily substitute rate
-  totalPay: decimal("total_pay", { precision: 8, scale: 2 }), // Calculated total pay
-  status: varchar("status").notNull().default("draft"), // draft, secretary_submitted, admin_approved, payroll_processed, rejected
-  currentApprovalStage: varchar("current_approval_stage").default("secretary"), // secretary, administrator, payroll
+  substituteId: integer("substitute_id").references(() => employees.id).notNull(),
+  templateId: integer("template_id").references(() => timecardTemplates.id).notNull(),
+  workDate: date("work_date").notNull(),
+  status: varchar("status").notNull().default("draft"), // draft, submitted, approved, rejected, processed
+  customFieldsData: jsonb("custom_fields_data"), // Template field data
   notes: text("notes"),
-  secretaryNotes: text("secretary_notes"),
-  adminNotes: text("admin_notes"),
-  payrollNotes: text("payroll_notes"),
-  submittedBy: integer("submitted_by"), // Secretary who submitted
-  approvedByAdmin: integer("approved_by_admin"),
-  processedByPayroll: integer("processed_by_payroll"),
+  submittedBy: varchar("submitted_by"),
   submittedAt: timestamp("submitted_at"),
-  adminApprovedAt: timestamp("admin_approved_at"),
-  payrollProcessedAt: timestamp("payroll_processed_at"),
   isLocked: boolean("is_locked").default(false),
   lockedBy: varchar("locked_by"),
   lockedAt: timestamp("locked_at"),
   lockReason: text("lock_reason"),
+  // Payroll processing fields
+  payrollAddon: varchar("payroll_addon"),
+  payrollUnits: decimal("payroll_units", { precision: 8, scale: 2 }),
+  payrollRate: decimal("payroll_rate", { precision: 8, scale: 2 }),
+  payrollTotal: decimal("payroll_total", { precision: 8, scale: 2 }),
+  payrollProcessingNotes: text("payroll_processing_notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -648,11 +638,7 @@ export const timeCardsRelations = relations(timeCards, ({ one }) => ({
 
 export const substituteTimeCardsRelations = relations(substituteTimeCards, ({ one }) => ({
   substitute: one(employees, { fields: [substituteTimeCards.substituteId], references: [employees.id] }),
-  payPeriod: one(payPeriods, { fields: [substituteTimeCards.payPeriodId], references: [payPeriods.id] }),
-  assignment: one(substituteAssignments, { fields: [substituteTimeCards.assignmentId], references: [substituteAssignments.id] }),
-  submitter: one(employees, { fields: [substituteTimeCards.submittedBy], references: [employees.id] }),
-  adminApprover: one(employees, { fields: [substituteTimeCards.approvedByAdmin], references: [employees.id] }),
-  payrollProcessor: one(employees, { fields: [substituteTimeCards.processedByPayroll], references: [employees.id] }),
+  template: one(timecardTemplates, { fields: [substituteTimeCards.templateId], references: [timecardTemplates.id] }),
 }));
 
 export const activityLogsRelations = relations(activityLogs, ({ one }) => ({

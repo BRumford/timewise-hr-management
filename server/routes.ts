@@ -1956,6 +1956,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get individual substitute timecard by substitute, template, and date
+  app.get('/api/substitute-time-cards/:substituteId/:templateId/:date', async (req, res) => {
+    try {
+      const { substituteId, templateId, date } = req.params;
+      const timecard = await storage.getSubstituteTimecardByParams(
+        parseInt(substituteId),
+        parseInt(templateId),
+        date
+      );
+      
+      if (timecard) {
+        res.json(timecard);
+      } else {
+        res.status(404).json({ message: "Timecard not found" });
+      }
+    } catch (error) {
+      console.error('Error fetching substitute timecard:', error);
+      res.status(500).json({ message: "Failed to fetch substitute timecard" });
+    }
+  });
+
   // Export substitute time cards for accounting
   app.get('/api/substitute-time-cards/export', async (req, res) => {
     try {
@@ -2096,6 +2117,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error rejecting substitute time card:', error);
       res.status(500).json({ message: "Failed to reject substitute time card" });
+    }
+  });
+
+  // Update substitute time card
+  app.put('/api/substitute-time-cards/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const substituteTimeCard = await storage.updateSubstituteTimeCard(id, updateData);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error updating substitute time card:', error);
+      res.status(500).json({ message: "Failed to update substitute time card", error: (error as Error).message });
+    }
+  });
+
+  // Lock substitute time card
+  app.post('/api/substitute-time-cards/:id/lock', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { lockReason } = req.body;
+      const userId = (req as any).user?.id || (req as any).currentUser?.id;
+      
+      const substituteTimeCard = await storage.lockSubstituteTimeCard(id, userId, lockReason);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error locking substitute time card:', error);
+      res.status(500).json({ message: "Failed to lock substitute time card", error: (error as Error).message });
+    }
+  });
+
+  // Unlock substitute time card
+  app.post('/api/substitute-time-cards/:id/unlock', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const substituteTimeCard = await storage.unlockSubstituteTimeCard(id);
+      res.json(substituteTimeCard);
+    } catch (error) {
+      console.error('Error unlocking substitute time card:', error);
+      res.status(500).json({ message: "Failed to unlock substitute time card", error: (error as Error).message });
     }
   });
 

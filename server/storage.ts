@@ -1322,6 +1322,17 @@ export class DatabaseStorage implements IStorage {
     return timeCard;
   }
 
+  async getSubstituteTimecardByParams(substituteId: number, templateId: number, workDate: string): Promise<SubstituteTimeCard | undefined> {
+    const [timeCard] = await db.select().from(substituteTimeCards).where(
+      and(
+        eq(substituteTimeCards.substituteId, substituteId),
+        eq(substituteTimeCards.templateId, templateId),
+        eq(substituteTimeCards.workDate, workDate)
+      )
+    );
+    return timeCard;
+  }
+
   async createSubstituteTimeCard(timeCard: InsertSubstituteTimeCard): Promise<SubstituteTimeCard> {
     const [created] = await db.insert(substituteTimeCards).values(timeCard).returning();
     return created;
