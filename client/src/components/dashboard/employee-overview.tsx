@@ -124,7 +124,10 @@ export default function EmployeeOverview() {
                   <div>
                     <p className="text-sm font-medium">Leave Request</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(new Date(request.startDate), 'MMM dd')} - {formatDate(new Date(request.endDate), 'MMM dd')}
+                      {request.startDate && request.endDate ? 
+                        `${formatDate(new Date(request.startDate), 'MMM dd')} - ${formatDate(new Date(request.endDate), 'MMM dd')}` : 
+                        'Date not available'
+                      }
                     </p>
                   </div>
                 </div>
@@ -141,7 +144,7 @@ export default function EmployeeOverview() {
                   <div>
                     <p className="text-sm font-medium">Time Card</p>
                     <p className="text-xs text-muted-foreground">
-                      Week of {formatDate(new Date(card.weekStarting), 'MMM dd, yyyy')}
+                      {card.date ? formatDate(new Date(card.date), 'MMM dd, yyyy') : 'Date not available'}
                     </p>
                   </div>
                 </div>
