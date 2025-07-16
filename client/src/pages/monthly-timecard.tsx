@@ -170,25 +170,31 @@ export default function MonthlyTimecard() {
     setCurrentDate(addMonths(currentDate, 1));
   };
 
-  // Generate calendar days
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const startDate = new Date(monthStart);
-  startDate.setDate(startDate.getDate() - getDay(monthStart));
-  const endDate = new Date(monthEnd);
-  endDate.setDate(endDate.getDate() + (6 - getDay(monthEnd)));
+  // Generate calendar days - with error handling
+  let days: Date[] = [];
+  try {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const startDate = new Date(monthStart);
+    startDate.setDate(startDate.getDate() - getDay(monthStart));
+    const endDate = new Date(monthEnd);
+    endDate.setDate(endDate.getDate() + (6 - getDay(monthEnd)));
 
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
+    days = eachDayOfInterval({ start: startDate, end: endDate });
+  } catch (error) {
+    console.error('Error generating calendar days:', error);
+    days = [];
+  }
 
   // Calculate totals
   const calculateTotals = () => {
     if (!timecardData) return { regular: 0, overtime: 0, extra: 0, leave: 0, total: 0 };
     
     const totals = timecardData.entries.reduce((acc, entry) => {
-      acc.regular += entry.regularHours;
-      acc.overtime += entry.overtimeHours;
-      acc.extra += entry.extraHours;
-      acc.leave += entry.leaveHours;
+      acc.regular += parseFloat(entry.regularHours.toString()) || 0;
+      acc.overtime += parseFloat(entry.overtimeHours.toString()) || 0;
+      acc.extra += parseFloat(entry.extraHours.toString()) || 0;
+      acc.leave += parseFloat(entry.leaveHours.toString()) || 0;
       return acc;
     }, { regular: 0, overtime: 0, extra: 0, leave: 0, total: 0 });
 
@@ -250,7 +256,7 @@ export default function MonthlyTimecard() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Clock className="h-5 w-5" />
-                  <span>{format(currentDate, 'MMMM yyyy')}</span>
+                  <span>{currentDate && !isNaN(currentDate.getTime()) ? format(currentDate, 'MMMM yyyy') : 'Invalid Date'}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button variant="outline" size="sm" onClick={previousMonth}>
@@ -273,6 +279,10 @@ export default function MonthlyTimecard() {
                 
                 {/* Calendar days */}
                 {days.map((day) => {
+                  if (!day || isNaN(day.getTime())) {
+                    return null; // Skip invalid dates
+                  }
+                  
                   const dateStr = format(day, 'yyyy-MM-dd');
                   const entry = getEntryForDate(dateStr);
                   const isCurrentMonth = isSameMonth(day, currentDate);
