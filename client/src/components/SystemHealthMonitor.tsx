@@ -24,6 +24,7 @@ import {
   Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import DataRetentionInfo from "./DataRetentionInfo";
 
 interface SystemHealthStatus {
   overall: 'healthy' | 'warning' | 'critical';
@@ -185,9 +186,10 @@ export default function SystemHealthMonitor() {
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="components">Components</TabsTrigger>
+          <TabsTrigger value="retention">Data Retention</TabsTrigger>
           <TabsTrigger value="testing">Alert Testing</TabsTrigger>
         </TabsList>
 
@@ -347,6 +349,10 @@ export default function SystemHealthMonitor() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="retention" className="space-y-4">
+          <DataRetentionInfo />
         </TabsContent>
 
         <TabsContent value="testing" className="space-y-4">

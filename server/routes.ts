@@ -15,6 +15,7 @@ import {
 } from "./errorHandler";
 import { systemHealthMonitor } from "./monitoring/systemHealth";
 import { emailAlerts } from "./emailAlerts";
+import { dataRetentionMonitor } from "./monitoring/dataRetention";
 
 // Simple authentication middleware for demo purposes
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
@@ -2768,6 +2769,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       handleCriticalError(error as Error, 'Failed to get system metrics');
       res.status(500).json({ message: "Failed to get system metrics", error: (error as Error).message });
+    }
+  }));
+
+  // Data retention information endpoint
+  app.get("/api/system/retention", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const retentionInfo = await dataRetentionMonitor.getRetentionInfo();
+      res.json(retentionInfo);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get data retention info');
+      res.status(500).json({ message: "Failed to get data retention info", error: (error as Error).message });
+    }
+  }));
+
+  // Storage estimation endpoint
+  app.post("/api/system/estimate-storage", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const { employeeCount } = req.body;
+      const estimate = await dataRetentionMonitor.estimateStorageForEmployees(employeeCount);
+      res.json(estimate);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to estimate storage');
+      res.status(500).json({ message: "Failed to estimate storage", error: (error as Error).message });
+    }
+  }));
+
+  // Retention policy recommendations endpoint
+  app.get("/api/system/retention-policies", requireRole(['admin', 'hr']), asyncErrorHandler(async (req, res) => {
+    try {
+      const policies = await dataRetentionMonitor.getRetentionPolicyRecommendations();
+      res.json(policies);
+    } catch (error) {
+      handleCriticalError(error as Error, 'Failed to get retention policies');
+      res.status(500).json({ message: "Failed to get retention policies", error: (error as Error).message });
     }
   }));
 
