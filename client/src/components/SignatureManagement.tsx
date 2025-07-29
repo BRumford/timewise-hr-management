@@ -186,12 +186,12 @@ export function SignatureManagement({
     );
   }
 
-  const filteredRequests = signatureRequests.filter((request: any) => {
+  const filteredRequests = Array.isArray(signatureRequests) ? signatureRequests.filter((request: any) => {
     if (documentType && documentId) {
       return request.documentType === documentType && request.documentId === documentId;
     }
     return true;
-  });
+  }) : [];
 
   return (
     <div className="space-y-6">
