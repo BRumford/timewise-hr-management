@@ -9,7 +9,8 @@ import {
   decimal, 
   jsonb,
   index,
-  date
+  date,
+  uniqueIndex
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -571,7 +572,7 @@ export const districtSettings = pgTable("district_settings", {
 // Custom field labels table for employee forms
 export const customFieldLabels = pgTable("custom_field_labels", {
   id: serial("id").primaryKey(),
-  fieldName: varchar("field_name").notNull().unique(), // e.g., "firstName", "lastName", "department"
+  fieldName: varchar("field_name").notNull(), // e.g., "firstName", "lastName", "department"
   displayLabel: varchar("display_label").notNull(), // e.g., "First Name", "Given Name", "Department"
   description: text("description"), // Optional description for the field
   isRequired: boolean("is_required").default(false), // Whether field is required
@@ -580,7 +581,10 @@ export const customFieldLabels = pgTable("custom_field_labels", {
   displayOrder: integer("display_order").default(0), // Order for displaying fields
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Create a unique constraint on fieldName + category combination instead of just fieldName
+  uniqueFieldCategory: uniqueIndex("unique_field_category").on(table.fieldName, table.category)
+}));
 
 // Pay periods table
 export const payPeriods = pgTable("pay_periods", {
