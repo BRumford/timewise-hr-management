@@ -4027,21 +4027,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { category, search, difficulty } = req.query;
       
-      let queryText = 'SELECT * FROM support_documents WHERE is_published = true';
+      // Build query conditions safely using Drizzle's sql template literals
+      const conditions = [sql`is_published = true`];
       
       if (category) {
-        queryText += ` AND category = '${category}'`;
+        conditions.push(sql`category = ${category}`);
       }
       if (difficulty) {
-        queryText += ` AND difficulty = '${difficulty}'`;
+        conditions.push(sql`difficulty = ${difficulty}`);
       }
       if (search) {
-        queryText += ` AND (title ILIKE '%${search}%' OR content ILIKE '%${search}%')`;
+        conditions.push(sql`(title ILIKE ${'%' + search + '%'} OR content ILIKE ${'%' + search + '%'})`);
       }
       
-      queryText += ' ORDER BY created_at DESC';
+      const whereClause = conditions.length > 1 
+        ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
+        : sql`WHERE ${conditions[0]}`;
       
-      const result = await db.execute(sql.raw(queryText));
+      const result = await db.execute(sql`
+        SELECT * FROM support_documents ${whereClause} ORDER BY created_at DESC
+      `);
       res.json(result.rows || result);
     } catch (error) {
       console.error('Error fetching support documents:', error);
