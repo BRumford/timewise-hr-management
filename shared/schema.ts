@@ -60,6 +60,23 @@ export const rolePermissions = pgTable("role_permissions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Individual employee account management
+export const employeeAccounts = pgTable("employee_accounts", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  hasAccess: boolean("has_access").default(false),
+  accessGrantedBy: varchar("access_granted_by").references(() => users.id),
+  accessGrantedAt: timestamp("access_granted_at"),
+  accessRevokedBy: varchar("access_revoked_by").references(() => users.id),
+  accessRevokedAt: timestamp("access_revoked_at"),
+  temporaryAccessUntil: timestamp("temporary_access_until"),
+  loginEnabled: boolean("login_enabled").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Password reset tokens table
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
@@ -1820,6 +1837,33 @@ export const signatureTemplatesRelations = relations(signatureTemplates, ({ one 
     references: [users.id],
   }),
 }));
+
+// Employee Accounts Relations
+export const employeeAccountsRelations = relations(employeeAccounts, ({ one }) => ({
+  employee: one(employees, {
+    fields: [employeeAccounts.employeeId],
+    references: [employees.id],
+  }),
+  user: one(users, {
+    fields: [employeeAccounts.userId],
+    references: [users.id],
+  }),
+  accessGranter: one(users, {
+    fields: [employeeAccounts.accessGrantedBy],
+    references: [users.id],
+  }),
+  accessRevoker: one(users, {
+    fields: [employeeAccounts.accessRevokedBy],
+    references: [users.id],
+  }),
+}));
+
+// Employee Accounts Insert schema
+export const insertEmployeeAccountSchema = createInsertSchema(employeeAccounts).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Employee Accounts Select type
+export type EmployeeAccount = typeof employeeAccounts.$inferSelect;
+export type InsertEmployeeAccount = z.infer<typeof insertEmployeeAccountSchema>;
 
 // Signature Insert schemas
 export const insertSignatureRequestSchema = createInsertSchema(signatureRequests).omit({ id: true, createdAt: true, updatedAt: true });

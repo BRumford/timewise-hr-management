@@ -4944,6 +4944,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Employee Account Management Routes
+  app.get('/api/employee-accounts', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const accounts = await storage.getEmployeeAccounts();
+      res.json(accounts);
+    } catch (error) {
+      console.error('Error fetching employee accounts:', error);
+      res.status(500).json({ message: "Failed to fetch employee accounts" });
+    }
+  });
+
+  app.post('/api/employee-accounts/create', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { employeeId, username, password, tempPassword } = req.body;
+      const user = (req as any).user;
+      
+      const account = await storage.createEmployeeAccount({
+        employeeId,
+        username,
+        password,
+        tempPassword,
+        createdBy: user.id
+      });
+      
+      res.json(account);
+    } catch (error) {
+      console.error('Error creating employee account:', error);
+      res.status(500).json({ message: "Failed to create employee account" });
+    }
+  });
+
+  app.post('/api/employee-accounts/:id/grant-access', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const { temporaryUntil, notes } = req.body;
+      const user = (req as any).user;
+      
+      const account = await storage.grantEmployeeAccess(accountId, user.id, temporaryUntil, notes);
+      res.json(account);
+    } catch (error) {
+      console.error('Error granting employee access:', error);
+      res.status(500).json({ message: "Failed to grant employee access" });
+    }
+  });
+
+  app.post('/api/employee-accounts/:id/revoke-access', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const { notes } = req.body;
+      const user = (req as any).user;
+      
+      const account = await storage.revokeEmployeeAccess(accountId, user.id, notes);
+      res.json(account);
+    } catch (error) {
+      console.error('Error revoking employee access:', error);
+      res.status(500).json({ message: "Failed to revoke employee access" });
+    }
+  });
+
+  app.post('/api/employee-accounts/:id/reset-password', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const { newPassword, requirePasswordChange } = req.body;
+      const user = (req as any).user;
+      
+      const result = await storage.resetEmployeePassword(accountId, newPassword, requirePasswordChange, user.id);
+      res.json(result);
+    } catch (error) {
+      console.error('Error resetting employee password:', error);
+      res.status(500).json({ message: "Failed to reset employee password" });
+    }
+  });
+
+  app.put('/api/employee-accounts/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const { loginEnabled, notes } = req.body;
+      const user = (req as any).user;
+      
+      const account = await storage.updateEmployeeAccount(accountId, {
+        loginEnabled,
+        notes,
+        updatedBy: user.id
+      });
+      
+      res.json(account);
+    } catch (error) {
+      console.error('Error updating employee account:', error);
+      res.status(500).json({ message: "Failed to update employee account" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

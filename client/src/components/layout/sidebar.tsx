@@ -53,6 +53,7 @@ const menuItems = [
   { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["admin", "hr"] },
   { path: "/performance-dashboard", icon: Activity, label: "Performance Dashboard", roles: ["admin", "hr"] },
   { path: "/compliance-dashboard", icon: ShieldAlert, label: "Compliance Dashboard", roles: ["admin", "hr"] },
+  { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["admin", "hr"] },
   { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["admin", "hr"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["admin", "hr"] },
 ];

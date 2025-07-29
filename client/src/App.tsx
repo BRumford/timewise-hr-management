@@ -34,6 +34,7 @@ import PrivacyPolicies from "@/pages/privacy-policies";
 import DataDeletionRequests from "@/pages/data-deletion-requests";
 import PerformanceDashboard from "@/pages/performance-dashboard";
 import ComplianceDashboard from "@/pages/compliance-dashboard";
+import EmployeeAccessManagement from "@/pages/employee-access-management";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -80,6 +81,7 @@ function Router() {
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
                 <Route path="/performance-dashboard" component={PerformanceDashboard} />
                 <Route path="/compliance-dashboard" component={ComplianceDashboard} />
+                <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route component={NotFound} />
               </Switch>
             </main>

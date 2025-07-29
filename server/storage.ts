@@ -28,8 +28,11 @@ import {
   secureFiles,
   dataEncryptionKeys,
   rolePermissions,
+  employeeAccounts,
   type User,
   type UpsertUser,
+  type EmployeeAccount,
+  type InsertEmployeeAccount,
   type RolePermission,
   type InsertRolePermission,
   type Employee,
@@ -102,6 +105,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
   // User operations (required for authentication)
@@ -2776,6 +2780,157 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(signatureTemplates)
       .where(eq(signatureTemplates.isActive, true))
       .orderBy(desc(signatureTemplates.createdAt));
+  }
+
+  // Employee Account Management methods
+  async getEmployeeAccounts(): Promise<any[]> {
+    return await db.select({
+      id: employeeAccounts.id,
+      employeeId: employeeAccounts.employeeId,
+      userId: employeeAccounts.userId,
+      hasAccess: employeeAccounts.hasAccess,
+      loginEnabled: employeeAccounts.loginEnabled,
+      accessGrantedBy: employeeAccounts.accessGrantedBy,
+      accessGrantedAt: employeeAccounts.accessGrantedAt,
+      accessRevokedBy: employeeAccounts.accessRevokedBy,
+      accessRevokedAt: employeeAccounts.accessRevokedAt,
+      temporaryAccessUntil: employeeAccounts.temporaryAccessUntil,
+      notes: employeeAccounts.notes,
+      createdAt: employeeAccounts.createdAt,
+      updatedAt: employeeAccounts.updatedAt,
+      // Join employee data
+      firstName: employees.firstName,
+      lastName: employees.lastName,
+      email: employees.email,
+      employeeIdNumber: employees.employeeId,
+      department: employees.department,
+      position: employees.position,
+      status: employees.status,
+      // Join user data
+      userEmail: users.email,
+      lastLoginAt: users.lastLoginAt,
+      accountLocked: users.accountLocked,
+    }).from(employeeAccounts)
+      .leftJoin(employees, eq(employeeAccounts.employeeId, employees.id))
+      .leftJoin(users, eq(employeeAccounts.userId, users.id))
+      .orderBy(desc(employeeAccounts.createdAt));
+  }
+
+  async createEmployeeAccount(data: {
+    employeeId: number;
+    username: string;
+    password: string;
+    tempPassword: boolean;
+    createdBy: string;
+  }): Promise<any> {
+    // First create the user account
+    const hashedPassword = await bcrypt.hash(data.password, 12);
+    
+    const [user] = await db.insert(users).values({
+      id: data.username,
+      email: data.username,
+      role: 'employee',
+      passwordHash: hashedPassword,
+      passwordChangedAt: data.tempPassword ? null : new Date(),
+    }).returning();
+
+    // Then create the employee account record
+    const [account] = await db.insert(employeeAccounts).values({
+      employeeId: data.employeeId,
+      userId: user.id,
+      hasAccess: true,
+      loginEnabled: true,
+      accessGrantedBy: data.createdBy,
+      accessGrantedAt: new Date(),
+      notes: data.tempPassword ? 'Account created with temporary password - requires password change on first login' : 'Account created with permanent password',
+    }).returning();
+
+    return { account, user };
+  }
+
+  async grantEmployeeAccess(accountId: number, grantedBy: string, temporaryUntil?: string, notes?: string): Promise<EmployeeAccount> {
+    const [account] = await db.update(employeeAccounts)
+      .set({
+        hasAccess: true,
+        loginEnabled: true,
+        accessGrantedBy: grantedBy,
+        accessGrantedAt: new Date(),
+        temporaryAccessUntil: temporaryUntil ? new Date(temporaryUntil) : null,
+        notes: notes || 'Access granted by HR/Admin',
+        updatedAt: new Date(),
+      })
+      .where(eq(employeeAccounts.id, accountId))
+      .returning();
+    return account;
+  }
+
+  async revokeEmployeeAccess(accountId: number, revokedBy: string, notes?: string): Promise<EmployeeAccount> {
+    const [account] = await db.update(employeeAccounts)
+      .set({
+        hasAccess: false,
+        loginEnabled: false,
+        accessRevokedBy: revokedBy,
+        accessRevokedAt: new Date(),
+        notes: notes || 'Access revoked by HR/Admin',
+        updatedAt: new Date(),
+      })
+      .where(eq(employeeAccounts.id, accountId))
+      .returning();
+    return account;
+  }
+
+  async resetEmployeePassword(accountId: number, newPassword: string, requirePasswordChange: boolean, resetBy: string): Promise<{ success: boolean; message: string }> {
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    
+    // Get the employee account to find the user
+    const [account] = await db.select().from(employeeAccounts).where(eq(employeeAccounts.id, accountId));
+    if (!account) {
+      throw new Error('Employee account not found');
+    }
+
+    // Update the password
+    await db.update(users)
+      .set({
+        passwordHash: hashedPassword,
+        passwordChangedAt: requirePasswordChange ? null : new Date(),
+        failedLoginAttempts: 0,
+        accountLocked: false,
+        lockedUntil: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, account.userId));
+
+    // Update the account notes
+    const noteMessage = requirePasswordChange 
+      ? `Password reset by ${resetBy} - requires password change on next login`
+      : `Password reset by ${resetBy}`;
+
+    await db.update(employeeAccounts)
+      .set({
+        notes: noteMessage,
+        updatedAt: new Date(),
+      })
+      .where(eq(employeeAccounts.id, accountId));
+
+    return {
+      success: true,
+      message: 'Password reset successfully'
+    };
+  }
+
+  async updateEmployeeAccount(accountId: number, data: {
+    loginEnabled?: boolean;
+    notes?: string;
+    updatedBy: string;
+  }): Promise<EmployeeAccount> {
+    const [account] = await db.update(employeeAccounts)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(employeeAccounts.id, accountId))
+      .returning();
+    return account;
   }
 }
 
