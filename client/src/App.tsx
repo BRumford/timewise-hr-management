@@ -33,6 +33,7 @@ import DropdownSettings from "@/pages/dropdown-settings";
 import PrivacyPolicies from "@/pages/privacy-policies";
 import DataDeletionRequests from "@/pages/data-deletion-requests";
 import PerformanceDashboard from "@/pages/performance-dashboard";
+import ComplianceDashboard from "@/pages/compliance-dashboard";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -78,6 +79,7 @@ function Router() {
                 <Route path="/privacy-policies" component={PrivacyPolicies} />
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
                 <Route path="/performance-dashboard" component={PerformanceDashboard} />
+                <Route path="/compliance-dashboard" component={ComplianceDashboard} />
                 <Route component={NotFound} />
               </Switch>
             </main>

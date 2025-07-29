@@ -23,6 +23,7 @@ import { SecurityMonitor, SecurityAudit, SecurityEventType, SecuritySeverity, In
 import { corsOptions } from "./security/middleware";
 import privacyRoutes from "./privacyRoutes";
 import performanceRoutes from "./performance/routes";
+import complianceRoutes from "./compliance/complianceRoutes";
 import { monitoring } from "./performance/monitoring";
 import { loadBalancer } from "./performance/loadBalancer";
 import { cdn } from "./performance/cdn";
@@ -3788,6 +3789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register privacy compliance routes
   app.use('/api/privacy', isAuthenticated, privacyRoutes);
   app.use('/api/performance', requireRole(['admin', 'hr']), performanceRoutes);
+  app.use('/api/compliance', requireRole(['admin', 'hr']), complianceRoutes);
 
   // Support Documentation routes
   app.get('/api/support/documents', isAuthenticated, async (req, res) => {

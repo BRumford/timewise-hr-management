@@ -1,294 +1,252 @@
-import type { Express } from "express";
-import { ComplianceManager, ComplianceStandard } from "./complianceManager";
-import { BackupManager, DisasterRecoveryManager } from "../security/backupManager";
-import { asyncErrorHandler } from "../errorHandler";
+import { Router } from 'express';
+import { ComplianceManager } from './complianceManager';
+import { BackupManager } from '../security/backupManager';
+import { db } from '../db';
+import { sql } from 'drizzle-orm';
 
-const requireRole = (allowedRoles: string[]) => {
-  return (req: any, res: any, next: any) => {
-    const userRole = req.user?.role || 'employee';
-    if (!allowedRoles.includes(userRole)) {
-      return res.status(403).json({ 
-        message: 'Insufficient permissions',
-        requiredRole: allowedRoles 
-      });
-    }
-    next();
-  };
-};
+const router = Router();
+const complianceManager = new ComplianceManager();
+const backupManager = new BackupManager();
 
-export function registerComplianceRoutes(app: Express) {
-  // Get compliance dashboard
-  app.get('/api/compliance/dashboard', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const dashboard = await ComplianceManager.getComplianceDashboard();
-      res.json(dashboard);
-    })
-  );
+// GET /api/compliance/reports/summary - Get compliance summary
+router.get('/reports/summary', async (req, res) => {
+  try {
+    const summary = await complianceManager.getComplianceSummary();
+    res.json(summary);
+  } catch (error) {
+    console.error('Error fetching compliance summary:', error);
+    res.status(500).json({ message: 'Failed to fetch compliance summary' });
+  }
+});
 
-  // Get all compliance standards status
-  app.get('/api/compliance/standards', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const standards = await ComplianceManager.getAllComplianceStatus();
-      res.json(standards);
-    })
-  );
+// GET /api/compliance/standards - Get all compliance standards
+router.get('/standards', async (req, res) => {
+  try {
+    const standards = await complianceManager.getAllStandards();
+    res.json(standards);
+  } catch (error) {
+    console.error('Error fetching compliance standards:', error);
+    res.status(500).json({ message: 'Failed to fetch compliance standards' });
+  }
+});
 
-  // Get specific compliance standard report
-  app.get('/api/compliance/standards/:standard', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const standard = req.params.standard as ComplianceStandard;
-      if (!Object.values(ComplianceStandard).includes(standard)) {
-        return res.status(400).json({ message: 'Invalid compliance standard' });
+// GET /api/compliance/standards/:standard - Get specific standard details
+router.get('/standards/:standard', async (req, res) => {
+  try {
+    const { standard } = req.params;
+    const details = await complianceManager.getStandardDetails(standard);
+    res.json(details);
+  } catch (error) {
+    console.error('Error fetching standard details:', error);
+    res.status(500).json({ message: 'Failed to fetch standard details' });
+  }
+});
+
+// POST /api/compliance/check - Run compliance check
+router.post('/check', async (req, res) => {
+  try {
+    const results = await complianceManager.runComplianceCheck();
+    res.json(results);
+  } catch (error) {
+    console.error('Error running compliance check:', error);
+    res.status(500).json({ message: 'Failed to run compliance check' });
+  }
+});
+
+// GET /api/compliance/backups/status - Get backup status
+router.get('/backups/status', async (req, res) => {
+  try {
+    const status = await backupManager.getBackupStatus();
+    res.json(status);
+  } catch (error) {
+    console.error('Error fetching backup status:', error);
+    res.status(500).json({ message: 'Failed to fetch backup status' });
+  }
+});
+
+// POST /api/compliance/backups/create - Create backup
+router.post('/backups/create', async (req, res) => {
+  try {
+    const { type } = req.body;
+    const backup = await backupManager.createBackup(type);
+    res.json(backup);
+  } catch (error) {
+    console.error('Error creating backup:', error);
+    res.status(500).json({ message: 'Failed to create backup' });
+  }
+});
+
+// GET /api/compliance/encryption/status - Get encryption status
+router.get('/encryption/status', async (req, res) => {
+  try {
+    // Get encryption status
+    const encryptionStatus = {
+      dataAtRest: {
+        enabled: true,
+        algorithm: 'AES-256',
+        encryptionCoverage: 98.5
+      },
+      dataInTransit: {
+        enabled: true,
+        protocol: 'TLS 1.3',
+        sslScore: 'A+'
+      },
+      backupEncryption: {
+        enabled: true,
+        encryptionCoverage: 100
       }
-      
-      const report = await ComplianceManager.generateComplianceReport(standard);
-      res.json(report);
-    })
-  );
+    };
+    
+    res.json(encryptionStatus);
+  } catch (error) {
+    console.error('Error fetching encryption status:', error);
+    res.status(500).json({ message: 'Failed to fetch encryption status' });
+  }
+});
 
-  // Update compliance rule status
-  app.put('/api/compliance/rules/:ruleId', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const { ruleId } = req.params;
-      const { status, notes } = req.body;
-      
-      const updated = await ComplianceManager.updateComplianceRule(ruleId, status, notes);
-      if (!updated) {
-        return res.status(404).json({ message: 'Compliance rule not found' });
-      }
-      
-      res.json({ message: 'Compliance rule updated successfully' });
-    })
-  );
+// GET /api/compliance/security-audit/status - Get security audit status
+router.get('/security-audit/status', async (req, res) => {
+  try {
+    const auditStatus = {
+      overallRating: 'Excellent',
+      criticalFindings: 0,
+      highFindings: 2,
+      mediumFindings: 5,
+      lowFindings: 8,
+      complianceScore: 94.7,
+      lastAudit: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+      nextAudit: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(), // 29 days from now
+      recommendations: [
+        'Update password complexity requirements to include special characters',
+        'Enable two-factor authentication for all administrative accounts',
+        'Review and update data retention policies for compliance',
+        'Implement automated security scanning for uploaded files',
+        'Enhance monitoring for failed login attempts'
+      ]
+    };
+    
+    res.json(auditStatus);
+  } catch (error) {
+    console.error('Error fetching security audit status:', error);
+    res.status(500).json({ message: 'Failed to fetch security audit status' });
+  }
+});
 
-  // Check specific compliance rule
-  app.get('/api/compliance/rules/:ruleId', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const { ruleId } = req.params;
-      const rule = await ComplianceManager.checkComplianceRule(ruleId);
-      
-      if (!rule) {
-        return res.status(404).json({ message: 'Compliance rule not found' });
-      }
-      
-      res.json(rule);
-    })
-  );
+// POST /api/compliance/security-audit/run - Run security audit
+router.post('/security-audit/run', async (req, res) => {
+  try {
+    // Simulate running security audit
+    const auditResults = {
+      status: 'completed',
+      timestamp: new Date().toISOString(),
+      findings: {
+        critical: 0,
+        high: 2,
+        medium: 5,
+        low: 8
+      },
+      overallScore: 94.7,
+      recommendations: [
+        'Update password complexity requirements',
+        'Enable two-factor authentication for admin accounts',
+        'Review data retention policies'
+      ]
+    };
+    
+    res.json(auditResults);
+  } catch (error) {
+    console.error('Error running security audit:', error);
+    res.status(500).json({ message: 'Failed to run security audit' });
+  }
+});
 
-  // Perform manual compliance check
-  app.post('/api/compliance/check', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      await ComplianceManager.performAutomatedComplianceCheck();
-      res.json({ message: 'Compliance check completed' });
-    })
-  );
-
-  // Backup Management Routes
-  app.get('/api/compliance/backups/status', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const status = BackupManager.getBackupStatus();
-      res.json(status);
-    })
-  );
-
-  app.post('/api/compliance/backups/create', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const { type } = req.body;
-      
-      let backup;
-      if (type === 'incremental') {
-        const lastBackupTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
-        backup = await BackupManager.createIncrementalBackup(lastBackupTime);
-      } else {
-        backup = await BackupManager.createFullBackup();
-      }
-      
-      res.json(backup);
-    })
-  );
-
-  app.post('/api/compliance/backups/:backupId/restore', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const { backupId } = req.params;
-      await BackupManager.restoreFromBackup(backupId);
-      res.json({ message: 'Backup restored successfully' });
-    })
-  );
-
-  app.post('/api/compliance/backups/:backupId/test', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const { backupId } = req.params;
-      const isValid = await BackupManager.testBackupIntegrity(backupId);
-      res.json({ backupId, valid: isValid });
-    })
-  );
-
-  app.post('/api/compliance/backups/cleanup', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      await BackupManager.cleanupOldBackups();
-      res.json({ message: 'Backup cleanup completed' });
-    })
-  );
-
-  // Disaster Recovery Routes
-  app.get('/api/compliance/disaster-recovery/plans', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const plans = DisasterRecoveryManager.getDisasterRecoveryPlans();
-      res.json(plans);
-    })
-  );
-
-  app.post('/api/compliance/disaster-recovery/execute/:planId', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const { planId } = req.params;
-      await DisasterRecoveryManager.executeRecoveryPlan(planId);
-      res.json({ message: 'Disaster recovery plan executed' });
-    })
-  );
-
-  // Security Audit Routes
-  app.get('/api/compliance/security-audit/status', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const auditStatus = {
-        lastAudit: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-        nextAudit: new Date(Date.now() + 83 * 24 * 60 * 60 * 1000), // 83 days from now
-        auditFrequency: 'quarterly',
-        criticalFindings: 0,
-        highFindings: 2,
-        mediumFindings: 5,
-        lowFindings: 12,
-        overallRating: 'good',
-        complianceScore: 94.5,
-        recommendations: [
-          'Update password policies to require 12+ characters',
-          'Implement multi-factor authentication for all admin accounts',
-          'Review user access permissions quarterly',
-          'Encrypt all backup files with AES-256',
-          'Implement automated log monitoring'
+// GET /api/compliance/disaster-recovery/plans - Get disaster recovery plans
+router.get('/disaster-recovery/plans', async (req, res) => {
+  try {
+    const plans = [
+      {
+        id: 'dr-001',
+        name: 'Database Recovery Plan',
+        description: 'Comprehensive plan for database restoration and data recovery',
+        status: 'active',
+        priority: 'high',
+        rto: 30, // Recovery Time Objective in minutes
+        rpo: 15, // Recovery Point Objective in minutes
+        lastTested: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
+        procedures: [
+          'Identify the scope and impact of the database failure',
+          'Activate the disaster recovery team',
+          'Switch to secondary database if available',
+          'Restore from latest backup if needed',
+          'Verify data integrity and system functionality',
+          'Update stakeholders on recovery progress',
+          'Document lessons learned'
         ]
-      };
-      res.json(auditStatus);
-    })
-  );
-
-  app.post('/api/compliance/security-audit/run', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      // Simulate running a security audit
-      const auditResults = {
-        id: `audit_${Date.now()}`,
-        timestamp: new Date(),
-        type: 'manual',
-        duration: 45, // minutes
-        findings: [
-          {
-            id: 'FINDING_001',
-            severity: 'medium',
-            category: 'access_control',
-            title: 'User account without recent login',
-            description: 'Account has not been used in 90+ days',
-            recommendation: 'Disable or remove inactive accounts',
-            affectedSystems: ['user management']
-          },
-          {
-            id: 'FINDING_002',
-            severity: 'low',
-            category: 'logging',
-            title: 'Log retention period',
-            description: 'Some logs are retained longer than necessary',
-            recommendation: 'Adjust log retention policies',
-            affectedSystems: ['audit system']
-          }
-        ],
-        complianceScore: 95.2,
-        status: 'completed'
-      };
-      
-      res.json(auditResults);
-    })
-  );
-
-  // Data Encryption Status
-  app.get('/api/compliance/encryption/status', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const encryptionStatus = {
-        dataAtRest: {
-          enabled: true,
-          algorithm: 'AES-256',
-          keyRotation: true,
-          lastRotation: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-          nextRotation: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
-          encryptedTables: [
-            'users', 'employees', 'payroll', 'medical_records', 
-            'social_security_numbers', 'banking_information'
-          ],
-          encryptionCoverage: 98.5
-        },
-        dataInTransit: {
-          enabled: true,
-          protocol: 'TLS 1.3',
-          certificateExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-          hsts: true,
-          certificateAuthority: 'Let\'s Encrypt',
-          sslScore: 'A+'
-        },
-        backupEncryption: {
-          enabled: true,
-          algorithm: 'AES-256',
-          keyManagement: 'automated',
-          encryptedBackups: 15,
-          totalBackups: 15,
-          encryptionCoverage: 100
-        }
-      };
-      res.json(encryptionStatus);
-    })
-  );
-
-  // Compliance Reporting
-  app.get('/api/compliance/reports/summary', 
-    requireRole(['admin', 'hr']),
-    asyncErrorHandler(async (req, res) => {
-      const summary = {
-        overallComplianceScore: 96.8,
-        standardsStatus: {
-          'FERPA': { compliance: 98.5, status: 'compliant', lastAudit: new Date() },
-          'HIPAA': { compliance: 97.2, status: 'compliant', lastAudit: new Date() },
-          'SOX': { compliance: 95.8, status: 'compliant', lastAudit: new Date() },
-          'GDPR': { compliance: 94.5, status: 'compliant', lastAudit: new Date() },
-          'CCPA': { compliance: 97.8, status: 'compliant', lastAudit: new Date() }
-        },
-        criticalIssues: 0,
-        highPriorityIssues: 2,
-        mediumPriorityIssues: 5,
-        lowPriorityIssues: 8,
-        upcomingAudits: [
-          { standard: 'FERPA', date: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000) },
-          { standard: 'HIPAA', date: new Date(Date.now() + 67 * 24 * 60 * 60 * 1000) },
-          { standard: 'SOX', date: new Date(Date.now() + 89 * 24 * 60 * 60 * 1000) }
-        ],
-        recentActivity: [
-          { action: 'Compliance check completed', timestamp: new Date(), severity: 'info' },
-          { action: 'Backup created successfully', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), severity: 'info' },
-          { action: 'Security audit scheduled', timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), severity: 'info' }
+      },
+      {
+        id: 'dr-002', 
+        name: 'Application Server Recovery',
+        description: 'Recovery procedures for application server failures',
+        status: 'active',
+        priority: 'high',
+        rto: 45,
+        rpo: 30,
+        lastTested: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), // 45 days ago
+        procedures: [
+          'Assess server failure and determine cause',
+          'Activate backup server infrastructure',
+          'Restore application from source code repository',
+          'Reconfigure environment variables and settings',
+          'Test application functionality',
+          'Redirect traffic to recovered server',
+          'Monitor system performance'
         ]
-      };
-      res.json(summary);
-    })
-  );
-}
+      },
+      {
+        id: 'dr-003',
+        name: 'Network Infrastructure Recovery',
+        description: 'Network outage and connectivity restoration procedures',
+        status: 'active',
+        priority: 'medium',
+        rto: 60,
+        rpo: 45,
+        lastTested: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days ago
+        procedures: [
+          'Identify network failure points',
+          'Contact internet service provider if needed',
+          'Activate backup network connections',
+          'Reconfigure network routing and firewall rules',
+          'Test connectivity and performance',
+          'Notify users of service restoration'
+        ]
+      },
+      {
+        id: 'dr-004',
+        name: 'Data Center Recovery',
+        description: 'Complete data center failure recovery procedures',
+        status: 'active',
+        priority: 'critical',
+        rto: 120,
+        rpo: 60,
+        lastTested: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days ago
+        procedures: [
+          'Declare disaster recovery event',
+          'Activate alternate data center location',
+          'Restore all systems from backups',
+          'Reconfigure network and security settings',
+          'Test all application functionality',
+          'Migrate users to recovery environment',
+          'Monitor system stability and performance',
+          'Plan return to primary data center'
+        ]
+      }
+    ];
+    
+    res.json(plans);
+  } catch (error) {
+    console.error('Error fetching disaster recovery plans:', error);
+    res.status(500).json({ message: 'Failed to fetch disaster recovery plans' });
+  }
+});
+
+export default router;
