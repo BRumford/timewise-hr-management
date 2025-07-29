@@ -1802,13 +1802,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate and send welcome letter
       const welcomeLetterData = {
+        title: `Welcome Letter - ${employee.firstName} ${employee.lastName}`,
         employeeId: employeeId,
         letterType: 'welcome',
         templateContent: generateWelcomeLetter(employee),
         processedContent: generateWelcomeLetter(employee),
         status: 'generated',
-        generatedBy: req.user?.id || 'system',
-        generatedAt: new Date()
+        createdBy: req.user?.id || 'system',
+        processedAt: new Date()
       };
 
       const welcomeLetter = await storage.createLetter(welcomeLetterData);
