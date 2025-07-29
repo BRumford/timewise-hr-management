@@ -56,6 +56,7 @@ export default function ArchivedEmployees() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isFilesDialogOpen, setIsFilesDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<ArchivedEmployee | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
@@ -263,6 +264,11 @@ export default function ArchivedEmployees() {
     setSelectedEmployee(employee);
     uploadForm.reset();
     setIsUploadDialogOpen(true);
+  };
+
+  const handleViewFiles = (employee: ArchivedEmployee) => {
+    setSelectedEmployee(employee);
+    setIsFilesDialogOpen(true);
   };
 
   const handleDownloadFile = async (file: PersonnelFile) => {
@@ -480,22 +486,65 @@ export default function ArchivedEmployees() {
     </Form>
   );
 
-  const FileUploadForm = () => (
-    <Form {...uploadForm}>
-      <form onSubmit={uploadForm.handleSubmit(handleFileUpload)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="file-upload">Select File</Label>
-          <Input
-            id="file-upload"
-            type="file"
-            ref={fileInputRef}
-            accept=".pdf,.jpg,.jpeg,.png,.tiff,.doc,.docx"
-            className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
-          <p className="text-sm text-gray-600">
-            Supported formats: PDF, JPEG, PNG, TIFF, DOC, DOCX (max 10MB)
-          </p>
-        </div>
+  const FileUploadForm = () => {
+    const [dragActive, setDragActive] = useState(false);
+
+    const handleDrag = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.type === "dragenter" || e.type === "dragover") {
+        setDragActive(true);
+      } else if (e.type === "dragleave") {
+        setDragActive(false);
+      }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      
+      if (e.dataTransfer.files && e.dataTransfer.files[0] && fileInputRef.current) {
+        fileInputRef.current.files = e.dataTransfer.files;
+      }
+    };
+
+    return (
+      <Form {...uploadForm}>
+        <form onSubmit={uploadForm.handleSubmit(handleFileUpload)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="file-upload">Upload Personnel File</Label>
+            
+            {/* Drag and Drop Area */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className={`h-10 w-10 mx-auto mb-4 ${dragActive ? 'text-blue-500' : 'text-gray-400'}`} />
+              <p className="text-sm font-medium text-gray-600 mb-1">
+                {dragActive ? 'Drop file here' : 'Click to upload or drag and drop'}
+              </p>
+              <p className="text-xs text-gray-500">
+                PDF, JPEG, PNG, TIFF, DOC, DOCX (max 10MB)
+              </p>
+            </div>
+            
+            <Input
+              id="file-upload"
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf,.jpg,.jpeg,.png,.tiff,.doc,.docx"
+              className="hidden"
+            />
+          </div>
         
         <FormField
           control={uploadForm.control}
@@ -589,6 +638,7 @@ export default function ArchivedEmployees() {
       </form>
     </Form>
   );
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -602,6 +652,26 @@ export default function ArchivedEmployees() {
           Add Archived Employee
         </Button>
       </div>
+
+      {/* Quick Upload Banner */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Upload className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-blue-900">Upload Personnel Files</h3>
+                <p className="text-sm text-blue-700">Click on any employee card to view files or upload new documents</p>
+              </div>
+            </div>
+            <div className="text-sm text-blue-600">
+              <span className="font-medium">{archivedEmployees.reduce((acc, emp) => acc + (emp.personnelFilesCount || 0), 0)}</span> files stored
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -700,6 +770,9 @@ export default function ArchivedEmployees() {
                     <CardDescription>ID: {employee.originalEmployeeId}</CardDescription>
                   </div>
                   <div className="flex space-x-1">
+                    <Button size="sm" variant="outline" onClick={() => handleViewFiles(employee)} title="View Files">
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => handleUploadFiles(employee)} title="Upload Files">
                       <Upload className="h-4 w-4" />
                     </Button>
@@ -729,7 +802,11 @@ export default function ArchivedEmployees() {
                 </div>
                 
                 <div className="flex items-center justify-between mt-3">
-                  <Badge variant="outline" className="text-xs">
+                  <Badge 
+                    variant={employee.personnelFilesCount > 0 ? "default" : "outline"} 
+                    className="text-xs cursor-pointer hover:bg-blue-600 hover:text-white transition-colors"
+                    onClick={() => handleViewFiles(employee)}
+                  >
                     <FileText className="h-3 w-3 mr-1" />
                     {employee.personnelFilesCount || 0} Files
                   </Badge>
@@ -739,6 +816,12 @@ export default function ArchivedEmployees() {
                     </Badge>
                   )}
                 </div>
+                
+                {employee.lastFileUpload && (
+                  <div className="text-xs text-gray-500 mt-2">
+                    Last upload: {new Date(employee.lastFileUpload).toLocaleDateString()}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))
@@ -775,6 +858,125 @@ export default function ArchivedEmployees() {
             </DialogDescription>
           </DialogHeader>
           <FileUploadForm />
+        </DialogContent>
+      </Dialog>
+
+      {/* Files View Dialog */}
+      <Dialog open={isFilesDialogOpen} onOpenChange={setIsFilesDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Personnel Files</DialogTitle>
+            <DialogDescription>
+              Files for {selectedEmployee?.firstName} {selectedEmployee?.lastName} ({selectedEmployee?.originalEmployeeId})
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Quick upload button */}
+            <div className="flex justify-between items-center border-b pb-4">
+              <div className="text-sm text-gray-600">
+                {personnelFiles.length} file{personnelFiles.length !== 1 ? 's' : ''} total
+              </div>
+              <Button 
+                onClick={() => {
+                  setIsFilesDialogOpen(false);
+                  handleUploadFiles(selectedEmployee!);
+                }}
+                size="sm"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload New File
+              </Button>
+            </div>
+
+            {/* Files list */}
+            {isLoadingFiles ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              </div>
+            ) : personnelFiles.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-4">No files uploaded yet</p>
+                <Button onClick={() => {
+                  setIsFilesDialogOpen(false);
+                  handleUploadFiles(selectedEmployee!);
+                }}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload First File
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {personnelFiles.map((file: PersonnelFile) => (
+                  <Card key={file.id} className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3 flex-1">
+                        <div className="p-2 bg-blue-50 rounded-lg">
+                          <File className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm truncate">{file.originalFileName}</h4>
+                          <p className="text-sm text-gray-600 mt-1">{file.description || 'No description'}</p>
+                          
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {file.category.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                            {file.documentDate && (
+                              <Badge variant="outline" className="text-xs">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {new Date(file.documentDate).toLocaleDateString()}
+                              </Badge>
+                            )}
+                            {file.tags && file.tags.length > 0 && (
+                              <div className="flex gap-1">
+                                {file.tags.map((tag, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs">
+                                    <Tag className="h-3 w-3 mr-1" />
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                            <span>{(file.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                            <span>Uploaded: {new Date(file.createdAt).toLocaleDateString()}</span>
+                            <span>By: {file.uploadedBy}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-2 ml-4">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => window.open(`/api/personnel-files/${file.id}/download`, '_blank')}
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete "${file.originalFileName}"?`)) {
+                              deleteFile.mutate(file.id);
+                            }
+                          }}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
