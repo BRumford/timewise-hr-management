@@ -1020,6 +1020,40 @@ export const personnelFiles = pgTable("personnel_files", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Signature requests table for e-signature functionality
+export const signatureRequests = pgTable("signature_requests", {
+  id: serial("id").primaryKey(),
+  documentType: varchar("document_type", { length: 50 }).notNull(), // 'onboarding_form', 'extra_pay_contract', 'letter', 'document'
+  documentId: integer("document_id").notNull(), // references the specific document/form/contract
+  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  requesterId: varchar("requester_id", { length: 255 }).notNull(), // user who requested the signature
+  status: varchar("status", { length: 20 }).default("pending"), // 'pending', 'signed', 'declined', 'expired'
+  signatureData: text("signature_data"), // base64 encoded signature image
+  signedAt: timestamp("signed_at"),
+  signedBy: varchar("signed_by", { length: 255 }), // employee who signed
+  expiresAt: timestamp("expires_at"),
+  emailSentAt: timestamp("email_sent_at"),
+  reminderCount: integer("reminder_count").default(0),
+  notes: text("notes"),
+  ipAddress: varchar("ip_address", { length: 45 }), // for audit trail
+  userAgent: text("user_agent"), // for audit trail
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Signature templates table for reusable signature requirements
+export const signatureTemplates = pgTable("signature_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  documentType: varchar("document_type", { length: 50 }).notNull(),
+  description: text("description"),
+  signatureFields: jsonb("signature_fields"), // positions and requirements for signatures
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Add relations for new tables
 export const retireesRelations = relations(retirees, ({ one }) => ({
   // No direct relations, but could link to original employee records if needed
@@ -1767,5 +1801,34 @@ export const dropdownOptions = pgTable("dropdown_options", {
 export const insertDropdownOptionSchema = createInsertSchema(dropdownOptions).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertDropdownOption = z.infer<typeof insertDropdownOptionSchema>;
 export type DropdownOption = typeof dropdownOptions.$inferSelect;
+
+// Signature relations
+export const signatureRequestsRelations = relations(signatureRequests, ({ one }) => ({
+  employee: one(employees, {
+    fields: [signatureRequests.employeeId],
+    references: [employees.id],
+  }),
+  requester: one(users, {
+    fields: [signatureRequests.requesterId],
+    references: [users.id],
+  }),
+}));
+
+export const signatureTemplatesRelations = relations(signatureTemplates, ({ one }) => ({
+  creator: one(users, {
+    fields: [signatureTemplates.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// Signature Insert schemas
+export const insertSignatureRequestSchema = createInsertSchema(signatureRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSignatureTemplateSchema = createInsertSchema(signatureTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Signature Select types
+export type SignatureRequest = typeof signatureRequests.$inferSelect;
+export type SignatureTemplate = typeof signatureTemplates.$inferSelect;
+export type InsertSignatureRequest = z.infer<typeof insertSignatureRequestSchema>;
+export type InsertSignatureTemplate = z.infer<typeof insertSignatureTemplateSchema>;
 
 

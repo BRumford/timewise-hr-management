@@ -31,8 +31,10 @@ import {
   Edit,
   Eye,
   FolderOpen,
-  Settings
+  Settings,
+  FileSignature
 } from "lucide-react";
+import { SignatureManagement } from "@/components/SignatureManagement";
 import { useState } from "react";
 import { format } from "date-fns";
 import type { OnboardingForm } from "@shared/schema";
@@ -54,7 +56,7 @@ type WorkflowFormData = z.infer<typeof workflowFormSchema>;
 export default function Onboarding() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState<"workflows" | "forms">("workflows");
+  const [activeTab, setActiveTab] = useState<"workflows" | "forms" | "signatures">("workflows");
   const [isCreateFormDialogOpen, setIsCreateFormDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<OnboardingForm | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -333,6 +335,13 @@ export default function Onboarding() {
           >
             <FolderOpen className="mr-2 h-4 w-4" />
             Forms
+          </Button>
+          <Button
+            onClick={() => setActiveTab("signatures")}
+            variant={activeTab === "signatures" ? "default" : "outline"}
+          >
+            <FileSignature className="mr-2 h-4 w-4" />
+            E-Signatures
           </Button>
         </div>
       </div>
@@ -1313,6 +1322,14 @@ export default function Onboarding() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* E-Signatures Tab */}
+      {activeTab === "signatures" && (
+        <SignatureManagement 
+          documentType="onboarding_form"
+          showCreateButton={true}
+        />
+      )}
     </div>
   );
 }

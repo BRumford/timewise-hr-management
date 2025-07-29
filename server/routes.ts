@@ -35,7 +35,11 @@ import fs from 'fs';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
 import * as schema from '@shared/schema';
-import { insertDropdownOptionSchema } from '@shared/schema';
+import { 
+  insertDropdownOptionSchema,
+  insertSignatureRequestSchema,
+  insertSignatureTemplateSchema 
+} from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { generateOnboardingChecklist } from './openai';
 
@@ -4713,6 +4717,232 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+
+  // E-Signature API endpoints
+  app.get('/api/signature-requests', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const requests = await storage.getSignatureRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching signature requests:', error);
+      res.status(500).json({ message: "Failed to fetch signature requests" });
+    }
+  });
+
+  app.get('/api/signature-requests/pending', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const requests = await storage.getPendingSignatureRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching pending signature requests:', error);
+      res.status(500).json({ message: "Failed to fetch pending signature requests" });
+    }
+  });
+
+  app.get('/api/signature-requests/employee/:employeeId', isAuthenticated, async (req, res) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      const requests = await storage.getSignatureRequestsByEmployee(employeeId);
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching signature requests by employee:', error);
+      res.status(500).json({ message: "Failed to fetch signature requests" });
+    }
+  });
+
+  app.get('/api/signature-requests/document/:documentType/:documentId', isAuthenticated, async (req, res) => {
+    try {
+      const { documentType, documentId } = req.params;
+      const requests = await storage.getSignatureRequestsByDocument(documentType, parseInt(documentId));
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching signature requests by document:', error);
+      res.status(500).json({ message: "Failed to fetch signature requests" });
+    }
+  });
+
+  app.get('/api/signature-requests/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const request = await storage.getSignatureRequest(id);
+      if (!request) {
+        return res.status(404).json({ message: "Signature request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      console.error('Error fetching signature request:', error);
+      res.status(500).json({ message: "Failed to fetch signature request" });
+    }
+  });
+
+  app.post('/api/signature-requests', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const validation = insertSignatureRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const request = await storage.createSignatureRequest(validation.data);
+      res.json(request);
+    } catch (error) {
+      console.error('Error creating signature request:', error);
+      res.status(500).json({ message: "Failed to create signature request" });
+    }
+  });
+
+  app.put('/api/signature-requests/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertSignatureRequestSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const request = await storage.updateSignatureRequest(id, validation.data);
+      res.json(request);
+    } catch (error) {
+      console.error('Error updating signature request:', error);
+      res.status(500).json({ message: "Failed to update signature request" });
+    }
+  });
+
+  app.delete('/api/signature-requests/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSignatureRequest(id);
+      res.json({ message: "Signature request deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting signature request:', error);
+      res.status(500).json({ message: "Failed to delete signature request" });
+    }
+  });
+
+  app.post('/api/signature-requests/:id/sign', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { signatureData, signedBy } = req.body;
+      const ipAddress = req.ip;
+      const userAgent = req.get('User-Agent');
+      
+      const request = await storage.markSignatureRequestSigned(id, signatureData, signedBy, ipAddress, userAgent);
+      res.json(request);
+    } catch (error) {
+      console.error('Error signing signature request:', error);
+      res.status(500).json({ message: "Failed to sign signature request" });
+    }
+  });
+
+  app.post('/api/signature-requests/:id/decline', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { notes } = req.body;
+      
+      const request = await storage.markSignatureRequestDeclined(id, notes);
+      res.json(request);
+    } catch (error) {
+      console.error('Error declining signature request:', error);
+      res.status(500).json({ message: "Failed to decline signature request" });
+    }
+  });
+
+  app.post('/api/signature-requests/:id/reminder', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const request = await storage.sendSignatureRequestReminder(id);
+      res.json(request);
+    } catch (error) {
+      console.error('Error sending signature request reminder:', error);
+      res.status(500).json({ message: "Failed to send reminder" });
+    }
+  });
+
+  // Signature Templates API endpoints
+  app.get('/api/signature-templates', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const templates = await storage.getSignatureTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching signature templates:', error);
+      res.status(500).json({ message: "Failed to fetch signature templates" });
+    }
+  });
+
+  app.get('/api/signature-templates/active', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const templates = await storage.getActiveSignatureTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching active signature templates:', error);
+      res.status(500).json({ message: "Failed to fetch active signature templates" });
+    }
+  });
+
+  app.get('/api/signature-templates/document-type/:documentType', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { documentType } = req.params;
+      const templates = await storage.getSignatureTemplatesByDocumentType(documentType);
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching signature templates by document type:', error);
+      res.status(500).json({ message: "Failed to fetch signature templates" });
+    }
+  });
+
+  app.get('/api/signature-templates/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await storage.getSignatureTemplate(id);
+      if (!template) {
+        return res.status(404).json({ message: "Signature template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching signature template:', error);
+      res.status(500).json({ message: "Failed to fetch signature template" });
+    }
+  });
+
+  app.post('/api/signature-templates', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const validation = insertSignatureTemplateSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const template = await storage.createSignatureTemplate(validation.data);
+      res.json(template);
+    } catch (error) {
+      console.error('Error creating signature template:', error);
+      res.status(500).json({ message: "Failed to create signature template" });
+    }
+  });
+
+  app.put('/api/signature-templates/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertSignatureTemplateSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const template = await storage.updateSignatureTemplate(id, validation.data);
+      res.json(template);
+    } catch (error) {
+      console.error('Error updating signature template:', error);
+      res.status(500).json({ message: "Failed to update signature template" });
+    }
+  });
+
+  app.delete('/api/signature-templates/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSignatureTemplate(id);
+      res.json({ message: "Signature template deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting signature template:', error);
+      res.status(500).json({ message: "Failed to delete signature template" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

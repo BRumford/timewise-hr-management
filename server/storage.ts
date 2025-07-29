@@ -88,16 +88,12 @@ import {
   passwordResetTokens,
   type AuditLog,
   type InsertAuditLog,
-  type SecurityEvent,
-  type InsertSecurityEvent,
-  type SecurityAlert,
-  type InsertSecurityAlert,
-  type UserSession,
-  type InsertUserSession,
-  type SecureFile,
-  type InsertSecureFile,
-  type DataEncryptionKey,
-  type InsertDataEncryptionKey,
+  signatureRequests,
+  signatureTemplates,
+  type SignatureRequest,
+  type InsertSignatureRequest,
+  type SignatureTemplate,
+  type InsertSignatureTemplate,
   type PasswordResetToken,
   type InsertPasswordResetToken,
   dropdownOptions,
@@ -314,6 +310,29 @@ export interface IStorage {
   cleanupExpiredTokens(): Promise<void>;
   updateUserPassword(userId: string, passwordHash: string): Promise<void>;
   getUserByEmail(email: string): Promise<User | undefined>;
+
+  // E-Signature functionality
+  getSignatureRequests(): Promise<SignatureRequest[]>;
+  getSignatureRequest(id: number): Promise<SignatureRequest | undefined>;
+  createSignatureRequest(request: InsertSignatureRequest): Promise<SignatureRequest>;
+  updateSignatureRequest(id: number, request: Partial<InsertSignatureRequest>): Promise<SignatureRequest>;
+  deleteSignatureRequest(id: number): Promise<void>;
+  getSignatureRequestsByEmployee(employeeId: number): Promise<SignatureRequest[]>;
+  getSignatureRequestsByDocument(documentType: string, documentId: number): Promise<SignatureRequest[]>;
+  getPendingSignatureRequests(): Promise<SignatureRequest[]>;
+  markSignatureRequestSigned(id: number, signatureData: string, signedBy: string, ipAddress?: string, userAgent?: string): Promise<SignatureRequest>;
+  markSignatureRequestDeclined(id: number, notes?: string): Promise<SignatureRequest>;
+  expireSignatureRequest(id: number): Promise<SignatureRequest>;
+  sendSignatureRequestReminder(id: number): Promise<SignatureRequest>;
+
+  // Signature Templates
+  getSignatureTemplates(): Promise<SignatureTemplate[]>;
+  getSignatureTemplate(id: number): Promise<SignatureTemplate | undefined>;
+  createSignatureTemplate(template: InsertSignatureTemplate): Promise<SignatureTemplate>;
+  updateSignatureTemplate(id: number, template: Partial<InsertSignatureTemplate>): Promise<SignatureTemplate>;
+  deleteSignatureTemplate(id: number): Promise<void>;
+  getSignatureTemplatesByDocumentType(documentType: string): Promise<SignatureTemplate[]>;
+  getActiveSignatureTemplates(): Promise<SignatureTemplate[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2620,6 +2639,143 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRolePermission(id: number): Promise<void> {
     await db.delete(rolePermissions).where(eq(rolePermissions.id, id));
+  }
+
+  // E-Signature functionality implementation
+  async getSignatureRequests(): Promise<SignatureRequest[]> {
+    return await db.select().from(signatureRequests).orderBy(desc(signatureRequests.createdAt));
+  }
+
+  async getSignatureRequest(id: number): Promise<SignatureRequest | undefined> {
+    const [request] = await db.select().from(signatureRequests).where(eq(signatureRequests.id, id));
+    return request;
+  }
+
+  async createSignatureRequest(request: InsertSignatureRequest): Promise<SignatureRequest> {
+    const [newRequest] = await db.insert(signatureRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async updateSignatureRequest(id: number, request: Partial<InsertSignatureRequest>): Promise<SignatureRequest> {
+    const [updatedRequest] = await db.update(signatureRequests)
+      .set({ ...request, updatedAt: new Date() })
+      .where(eq(signatureRequests.id, id))
+      .returning();
+    return updatedRequest;
+  }
+
+  async deleteSignatureRequest(id: number): Promise<void> {
+    await db.delete(signatureRequests).where(eq(signatureRequests.id, id));
+  }
+
+  async getSignatureRequestsByEmployee(employeeId: number): Promise<SignatureRequest[]> {
+    return await db.select().from(signatureRequests)
+      .where(eq(signatureRequests.employeeId, employeeId))
+      .orderBy(desc(signatureRequests.createdAt));
+  }
+
+  async getSignatureRequestsByDocument(documentType: string, documentId: number): Promise<SignatureRequest[]> {
+    return await db.select().from(signatureRequests)
+      .where(and(
+        eq(signatureRequests.documentType, documentType),
+        eq(signatureRequests.documentId, documentId)
+      ))
+      .orderBy(desc(signatureRequests.createdAt));
+  }
+
+  async getPendingSignatureRequests(): Promise<SignatureRequest[]> {
+    return await db.select().from(signatureRequests)
+      .where(eq(signatureRequests.status, 'pending'))
+      .orderBy(desc(signatureRequests.createdAt));
+  }
+
+  async markSignatureRequestSigned(id: number, signatureData: string, signedBy: string, ipAddress?: string, userAgent?: string): Promise<SignatureRequest> {
+    const [signedRequest] = await db.update(signatureRequests)
+      .set({
+        status: 'signed',
+        signatureData,
+        signedBy,
+        signedAt: new Date(),
+        ipAddress,
+        userAgent,
+        updatedAt: new Date()
+      })
+      .where(eq(signatureRequests.id, id))
+      .returning();
+    return signedRequest;
+  }
+
+  async markSignatureRequestDeclined(id: number, notes?: string): Promise<SignatureRequest> {
+    const [declinedRequest] = await db.update(signatureRequests)
+      .set({
+        status: 'declined',
+        notes,
+        updatedAt: new Date()
+      })
+      .where(eq(signatureRequests.id, id))
+      .returning();
+    return declinedRequest;
+  }
+
+  async expireSignatureRequest(id: number): Promise<SignatureRequest> {
+    const [expiredRequest] = await db.update(signatureRequests)
+      .set({
+        status: 'expired',
+        updatedAt: new Date()
+      })
+      .where(eq(signatureRequests.id, id))
+      .returning();
+    return expiredRequest;
+  }
+
+  async sendSignatureRequestReminder(id: number): Promise<SignatureRequest> {
+    const [reminderRequest] = await db.update(signatureRequests)
+      .set({
+        reminderCount: sql`${signatureRequests.reminderCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(signatureRequests.id, id))
+      .returning();
+    return reminderRequest;
+  }
+
+  // Signature Templates implementation
+  async getSignatureTemplates(): Promise<SignatureTemplate[]> {
+    return await db.select().from(signatureTemplates).orderBy(desc(signatureTemplates.createdAt));
+  }
+
+  async getSignatureTemplate(id: number): Promise<SignatureTemplate | undefined> {
+    const [template] = await db.select().from(signatureTemplates).where(eq(signatureTemplates.id, id));
+    return template;
+  }
+
+  async createSignatureTemplate(template: InsertSignatureTemplate): Promise<SignatureTemplate> {
+    const [newTemplate] = await db.insert(signatureTemplates).values(template).returning();
+    return newTemplate;
+  }
+
+  async updateSignatureTemplate(id: number, template: Partial<InsertSignatureTemplate>): Promise<SignatureTemplate> {
+    const [updatedTemplate] = await db.update(signatureTemplates)
+      .set({ ...template, updatedAt: new Date() })
+      .where(eq(signatureTemplates.id, id))
+      .returning();
+    return updatedTemplate;
+  }
+
+  async deleteSignatureTemplate(id: number): Promise<void> {
+    await db.delete(signatureTemplates).where(eq(signatureTemplates.id, id));
+  }
+
+  async getSignatureTemplatesByDocumentType(documentType: string): Promise<SignatureTemplate[]> {
+    return await db.select().from(signatureTemplates)
+      .where(eq(signatureTemplates.documentType, documentType))
+      .orderBy(desc(signatureTemplates.createdAt));
+  }
+
+  async getActiveSignatureTemplates(): Promise<SignatureTemplate[]> {
+    return await db.select().from(signatureTemplates)
+      .where(eq(signatureTemplates.isActive, true))
+      .orderBy(desc(signatureTemplates.createdAt));
   }
 }
 

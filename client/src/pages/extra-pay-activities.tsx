@@ -14,7 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, FileText, Calendar, User, Building, Clock, Edit, Settings, Wrench, Eye, EyeOff } from "lucide-react";
+import { Plus, DollarSign, FileText, Calendar, User, Building, Clock, Edit, Settings, Wrench, Eye, EyeOff, FileSignature } from "lucide-react";
+import { SignatureManagement } from "@/components/SignatureManagement";
 import { format } from "date-fns";
 import { 
   insertExtraPayContractSchema, 
@@ -738,9 +739,13 @@ export default function ExtraPayActivities() {
       </div>
 
       <Tabs defaultValue="contracts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="contracts">Contracts</TabsTrigger>
           <TabsTrigger value="requests">Payment Requests</TabsTrigger>
+          <TabsTrigger value="signatures">
+            <FileSignature className="w-4 h-4 mr-2" />
+            E-Signatures
+          </TabsTrigger>
           <TabsTrigger value="custom-fields">
             <Settings className="w-4 h-4 mr-2" />
             Custom Fields
@@ -962,6 +967,13 @@ export default function ExtraPayActivities() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="signatures" className="space-y-4">
+          <SignatureManagement 
+            documentType="extra_pay_contract"
+            showCreateButton={true}
+          />
         </TabsContent>
 
         <TabsContent value="custom-fields" className="space-y-4">
