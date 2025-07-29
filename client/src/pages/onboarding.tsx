@@ -64,6 +64,7 @@ export default function Onboarding() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<any>(null);
   const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false);
   const [isUpdateWorkflowDialogOpen, setIsUpdateWorkflowDialogOpen] = useState(false);
+  const [selectedEmployeeForAutomation, setSelectedEmployeeForAutomation] = useState<string>("");
   const { toast } = useToast();
 
   const { data: workflows, isLoading } = useQuery({
@@ -196,6 +197,29 @@ export default function Onboarding() {
       toast({
         title: "Success",
         description: "Onboarding workflow started successfully with AI-powered checklist",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const automatedOnboardingMutation = useMutation({
+    mutationFn: async (employeeId: number) => {
+      const result = await apiRequest(`/api/onboarding/trigger/${employeeId}`, "POST", {});
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/letters"] });
+      setSelectedEmployeeForAutomation(""); // Reset selection
+      toast({
+        title: "Automated Onboarding Complete!",
+        description: data.message + ". Welcome letter has been generated automatically.",
       });
     },
     onError: (error) => {
@@ -388,6 +412,86 @@ export default function Onboarding() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Automated Onboarding Section */}
+      {activeTab === "workflows" && (
+        <Card className="border-l-4 border-l-blue-500 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-blue-600" />
+              Automated Onboarding
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-700">
+                Start automated onboarding for new employees. This will automatically create workflows, send welcome letters, 
+                and attach required paperwork based on employee type (certificated or classified).
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <div className="flex-1">
+                  <Label htmlFor="employee-select" className="text-sm font-medium">
+                    Select Employee for Automated Onboarding
+                  </Label>
+                  <Select value={selectedEmployeeForAutomation} onValueChange={setSelectedEmployeeForAutomation}>
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Choose an employee to onboard..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees?.filter((emp: any) => {
+                        // Filter out employees who already have onboarding workflows
+                        const hasWorkflow = workflows?.some((w: any) => w.employeeId === emp.id);
+                        return !hasWorkflow;
+                      }).map((emp: any) => (
+                        <SelectItem key={emp.id} value={emp.id.toString()}>
+                          {emp.firstName} {emp.lastName} - {emp.employeeType} ({emp.position || 'No Position'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex flex-col gap-2 pt-6">
+                  <Button
+                    onClick={() => {
+                      if (selectedEmployeeForAutomation) {
+                        automatedOnboardingMutation.mutate(parseInt(selectedEmployeeForAutomation));
+                      } else {
+                        toast({
+                          title: "No Employee Selected",
+                          description: "Please select an employee to start automated onboarding.",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    disabled={automatedOnboardingMutation.isPending || !selectedEmployeeForAutomation}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {automatedOnboardingMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Start Automated Onboarding
+                      </>
+                    )}
+                  </Button>
+                  
+                  <div className="text-xs text-gray-600">
+                    ✓ Creates workflow with required documents<br/>
+                    ✓ Generates personalized welcome letter<br/>
+                    ✓ Sets up 14-day completion timeline
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Workflows Tab */}
       {activeTab === "workflows" && (

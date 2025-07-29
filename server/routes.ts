@@ -37,6 +37,58 @@ import { db } from './db';
 import * as schema from '@shared/schema';
 import { insertDropdownOptionSchema } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { generateOnboardingChecklist } from './openai';
+
+// Welcome letter generation function
+function generateWelcomeLetter(employee: any): string {
+  const currentDate = new Date().toLocaleDateString();
+  const employeeType = employee.employeeType || 'team member';
+  
+  let specificContent = '';
+  if (employee.employeeType === 'certificated') {
+    specificContent = `As a certificated staff member, you will be joining our dedicated team of educators. Your teaching expertise and commitment to student success are valued assets to our district. You will receive additional information about curriculum resources, professional development opportunities, and classroom assignment details in the coming days.`;
+  } else if (employee.employeeType === 'classified') {
+    specificContent = `As a classified staff member, you play an essential role in supporting our educational mission. Your skills and dedication help create an environment where students can thrive. You will receive specific information about your department's procedures, safety protocols, and professional development opportunities.`;
+  } else {
+    specificContent = `We appreciate your willingness to join our school district team. Your contributions will help us maintain our commitment to educational excellence and student success.`;
+  }
+
+  return `Dear ${employee.firstName} ${employee.lastName},
+
+Welcome to our school district family! We are delighted to have you join our team as a ${employee.position || employeeType} in the ${employee.department || 'district'}.
+
+${specificContent}
+
+Your first day is scheduled for ${employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : 'your designated start date'}. Please report to the main office at 8:00 AM where you will meet with HR staff to complete your onboarding process.
+
+During your first week, you will:
+• Complete all required paperwork and documentation
+• Attend orientation sessions specific to your role
+• Meet your supervisor and team members
+• Receive necessary equipment and access credentials
+• Review district policies and procedures
+
+Please bring the following items on your first day:
+• Government-issued photo ID
+• Social Security card
+• Completed I-9 form documentation
+• Direct deposit information (bank routing and account numbers)
+• Emergency contact information
+
+If you have any questions before your start date, please don't hesitate to contact the HR department at [phone number] or [email address].
+
+We look forward to working with you and supporting your success in our district.
+
+Sincerely,
+
+Human Resources Department
+${employee.department || 'School District'}
+
+Date: ${currentDate}
+
+---
+This welcome letter was automatically generated as part of your onboarding workflow.`;
+}
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -1680,6 +1732,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(document);
     } catch (error) {
       res.status(400).json({ message: "Failed to update document", error: (error as Error).message });
+    }
+  });
+
+  // Automated onboarding trigger
+  app.post("/api/onboarding/trigger/:employeeId", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      const employee = await storage.getEmployee(employeeId);
+      
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      // Check if onboarding workflow already exists
+      const existingWorkflows = await storage.getOnboardingWorkflows();
+      const hasExistingWorkflow = existingWorkflows.some((w: any) => w.employeeId === employeeId);
+      
+      if (hasExistingWorkflow) {
+        return res.status(400).json({ message: "Onboarding workflow already exists for this employee" });
+      }
+
+      // Generate AI-powered checklist based on employee type
+      let requiredDocuments = [];
+      let currentStep = "welcome";
+      
+      try {
+        const checklist = await generateOnboardingChecklist(employee.employeeType, employee.department || "General");
+        requiredDocuments = checklist.requiredDocuments;
+        currentStep = checklist.steps[0]?.step || "welcome";
+      } catch (aiError) {
+        console.warn("AI checklist generation failed, using defaults:", (aiError as Error).message);
+        // Default documents based on employee type
+        if (employee.employeeType === 'certificated') {
+          requiredDocuments = [
+            "Teaching Certificate", "Background Check", "TB Test", 
+            "Employee Handbook", "W-4 Form", "I-9 Form", "Benefits Enrollment",
+            "Emergency Contact Form", "Direct Deposit Form", "Technology Agreement"
+          ];
+        } else if (employee.employeeType === 'classified') {
+          requiredDocuments = [
+            "Background Check", "TB Test", "Employee Handbook", 
+            "W-4 Form", "I-9 Form", "Benefits Enrollment",
+            "Emergency Contact Form", "Direct Deposit Form", "Safety Training"
+          ];
+        } else {
+          requiredDocuments = [
+            "Employee Handbook", "W-4 Form", "I-9 Form", 
+            "Emergency Contact Form", "Background Check"
+          ];
+        }
+      }
+
+      // Create onboarding workflow
+      const workflowData = {
+        employeeId: employeeId,
+        workflowType: employee.employeeType || 'general',
+        status: 'in_progress',
+        currentStep: currentStep,
+        startDate: new Date(),
+        targetCompletionDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+        assignedTo: req.user?.id || 'system',
+        requiredDocuments: requiredDocuments,
+        completedSteps: [],
+        notes: `Automated onboarding workflow created for ${employee.employeeType} employee`
+      };
+
+      const workflow = await storage.createOnboardingWorkflow(workflowData);
+
+      // Generate and send welcome letter
+      const welcomeLetterData = {
+        employeeId: employeeId,
+        letterType: 'welcome',
+        templateContent: generateWelcomeLetter(employee),
+        processedContent: generateWelcomeLetter(employee),
+        status: 'generated',
+        generatedBy: req.user?.id || 'system',
+        generatedAt: new Date()
+      };
+
+      const welcomeLetter = await storage.createLetter(welcomeLetterData);
+
+      // Log the automated process
+      await storage.createActivityLog({
+        userId: req.user?.id || 'system',
+        action: "automated_onboarding",
+        entityType: "onboarding",
+        entityId: workflow.id,
+        description: `Automated onboarding triggered for ${employee.firstName} ${employee.lastName} (${employee.employeeType})`
+      });
+
+      res.status(201).json({
+        workflow,
+        welcomeLetter,
+        message: `Automated onboarding started for ${employee.firstName} ${employee.lastName}`
+      });
+
+    } catch (error) {
+      console.error("Automated onboarding error:", error);
+      res.status(500).json({ message: "Failed to trigger automated onboarding", error: (error as Error).message });
     }
   });
 
