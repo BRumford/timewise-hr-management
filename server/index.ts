@@ -55,7 +55,7 @@ const limiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for certain paths in development
     if (process.env.NODE_ENV === 'development') {
-      return req.path.startsWith('/src') || req.path.startsWith('/@') || req.path.includes('vite');
+      return req.url?.startsWith('/src') || req.url?.startsWith('/@') || req.url?.includes('vite') || false;
     }
     return false;
   },
