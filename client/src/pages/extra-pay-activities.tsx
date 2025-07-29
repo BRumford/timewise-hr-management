@@ -14,13 +14,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, FileText, Calendar, User, Building, Clock, Edit } from "lucide-react";
+import { Plus, DollarSign, FileText, Calendar, User, Building, Clock, Edit, Settings, Wrench, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { 
   insertExtraPayContractSchema, 
   insertExtraPayRequestSchema,
+  insertExtraPayCustomFieldSchema,
   type ExtraPayContract,
   type ExtraPayRequest,
+  type ExtraPayCustomField,
   type Employee
 } from "@shared/schema";
 
@@ -31,6 +33,9 @@ export default function ExtraPayActivities() {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<ExtraPayContract | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCustomFieldsDialogOpen, setIsCustomFieldsDialogOpen] = useState(false);
+  const [editingCustomField, setEditingCustomField] = useState<ExtraPayCustomField | null>(null);
+  const [selectedSection, setSelectedSection] = useState("contract");
 
   // Queries
   const { data: contracts = [], isLoading: contractsLoading } = useQuery<ExtraPayContract[]>({
@@ -44,6 +49,20 @@ export default function ExtraPayActivities() {
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ['/api/employees'],
   });
+
+  // Custom fields query
+  const { data: customFields = [], isLoading: customFieldsLoading } = useQuery<ExtraPayCustomField[]>({
+    queryKey: ['/api/extra-pay-custom-fields'],
+  });
+
+  // Filter custom fields by section
+  const contractFields = customFields.filter(field => field.section === 'contract' && field.isVisible);
+  const requestFields = customFields.filter(field => field.section === 'request' && field.isVisible);
+  const approvalFields = customFields.filter(field => field.section === 'approval' && field.isVisible);
+
+  // Statistics  
+  const activeContracts = contracts.filter(c => c.status === 'active');
+  const pendingRequests = requests.filter(r => r.status === 'pending');
 
   // Contract form
   const contractForm = useForm({
@@ -86,11 +105,32 @@ export default function ExtraPayActivities() {
     resolver: zodResolver(insertExtraPayRequestSchema),
     defaultValues: {
       contractId: "",
-      requestDate: new Date().toISOString().split('T')[0],
+      dateWorked: new Date().toISOString().split('T')[0],
+      employeeId: "",
       hoursWorked: "",
       description: "",
       amount: "",
-      status: "pending"
+      status: "pending",
+      customFieldsData: {}
+    }
+  });
+
+  // Custom field form
+  const customFieldForm = useForm({
+    resolver: zodResolver(insertExtraPayCustomFieldSchema),
+    defaultValues: {
+      fieldName: "",
+      displayLabel: "",
+      fieldType: "text",
+      section: "contract",
+      category: "contracts",
+      isRequired: false,
+      isVisible: true,
+      displayOrder: 0,
+      fieldOptions: {},
+      validationRules: {},
+      helpText: "",
+      defaultValue: ""
     }
   });
 
@@ -160,6 +200,55 @@ export default function ExtraPayActivities() {
     }
   });
 
+  // Custom field mutations
+  const createCustomFieldMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('/api/extra-pay-custom-fields', 'POST', data),
+    onSuccess: () => {
+      toast({ title: "Custom field created successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
+      setIsCustomFieldsDialogOpen(false);
+      customFieldForm.reset();
+    },
+    onError: (error) => {
+      toast({ title: "Error creating custom field", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const updateCustomFieldMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => 
+      apiRequest(`/api/extra-pay-custom-fields/${id}`, 'PUT', data),
+    onSuccess: () => {
+      toast({ title: "Custom field updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
+      setEditingCustomField(null);
+    },
+    onError: (error) => {
+      toast({ title: "Error updating custom field", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const deleteCustomFieldMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/extra-pay-custom-fields/${id}`, 'DELETE'),
+    onSuccess: () => {
+      toast({ title: "Custom field deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
+    },
+    onError: (error) => {
+      toast({ title: "Error deleting custom field", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const initializeCustomFieldsMutation = useMutation({
+    mutationFn: () => apiRequest('/api/extra-pay-custom-fields/initialize', 'POST'),
+    onSuccess: () => {
+      toast({ title: "Default custom fields initialized successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
+    },
+    onError: (error) => {
+      toast({ title: "Error initializing custom fields", description: error.message, variant: "destructive" });
+    }
+  });
+
   const onContractSubmit = (data: any) => {
     createContractMutation.mutate(data);
   };
@@ -171,6 +260,17 @@ export default function ExtraPayActivities() {
   const onEditSubmit = (data: any) => {
     if (editingContract) {
       updateContractMutation.mutate({ id: editingContract.id.toString(), data });
+    }
+  };
+
+  const onCustomFieldSubmit = (data: any) => {
+    if (editingCustomField) {
+      updateCustomFieldMutation.mutate({ 
+        id: editingCustomField.id, 
+        data: { ...data, updatedAt: new Date() } 
+      });
+    } else {
+      createCustomFieldMutation.mutate(data);
     }
   };
 
@@ -206,12 +306,10 @@ export default function ExtraPayActivities() {
     );
   };
 
-  const getEmployeeName = (employeeId: string) => {
+  const getEmployeeName = (employeeId: number) => {
     const employee = employees.find(e => e.id === employeeId);
     return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
   };
-
-  const activeContracts = contracts.filter(c => c.status === 'active');
 
   return (
     <div className="p-6 space-y-6">
@@ -395,8 +493,8 @@ export default function ExtraPayActivities() {
                           </FormControl>
                           <SelectContent>
                             {activeContracts.map((contract) => (
-                              <SelectItem key={contract.id} value={contract.id}>
-                                {contract.contractType} - {getEmployeeName(contract.employeeId)}
+                              <SelectItem key={contract.id} value={contract.id.toString()}>
+                                {contract.title} - {contract.contractType}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -407,10 +505,34 @@ export default function ExtraPayActivities() {
                   />
                   <FormField
                     control={requestForm.control}
-                    name="requestDate"
+                    name="employeeId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Request Date</FormLabel>
+                        <FormLabel>Employee</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select employee" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {employees.map((employee) => (
+                              <SelectItem key={employee.id} value={employee.id.toString()}>
+                                {employee.firstName} {employee.lastName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={requestForm.control}
+                    name="dateWorked"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Work Date</FormLabel>
                         <FormControl>
                           <Input {...field} type="date" />
                         </FormControl>
@@ -616,9 +738,13 @@ export default function ExtraPayActivities() {
       </div>
 
       <Tabs defaultValue="contracts" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="contracts">Contracts</TabsTrigger>
           <TabsTrigger value="requests">Payment Requests</TabsTrigger>
+          <TabsTrigger value="custom-fields">
+            <Settings className="w-4 h-4 mr-2" />
+            Custom Fields
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="contracts" className="space-y-4">
@@ -801,9 +927,9 @@ export default function ExtraPayActivities() {
                       const contract = contracts.find(c => c.id === request.contractId);
                       return (
                         <TableRow key={request.id}>
-                          <TableCell>{format(new Date(request.requestDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{format(new Date(request.dateWorked), 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{contract?.contractType || 'Unknown'}</TableCell>
-                          <TableCell>{contract ? getEmployeeName(contract.employeeId) : 'Unknown'}</TableCell>
+                          <TableCell>{getEmployeeName(request.employeeId)}</TableCell>
                           <TableCell>{request.hoursWorked}</TableCell>
                           <TableCell>${request.amount}</TableCell>
                           <TableCell className="max-w-xs truncate">{request.description}</TableCell>
@@ -814,14 +940,14 @@ export default function ExtraPayActivities() {
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => updateRequestStatusMutation.mutate({ id: request.id, status: 'approved' })}
+                                  onClick={() => updateRequestStatusMutation.mutate({ id: request.id.toString(), status: 'approved' })}
                                 >
                                   Approve
                                 </Button>
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => updateRequestStatusMutation.mutate({ id: request.id, status: 'rejected' })}
+                                  onClick={() => updateRequestStatusMutation.mutate({ id: request.id.toString(), status: 'rejected' })}
                                 >
                                   Reject
                                 </Button>
@@ -836,6 +962,404 @@ export default function ExtraPayActivities() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="custom-fields" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium">Custom Fields Management</h3>
+              <p className="text-sm text-gray-600">Configure additional fields for contracts, requests, and approval workflows</p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => initializeCustomFieldsMutation.mutate()}
+                disabled={initializeCustomFieldsMutation.isPending || customFields.length > 0}
+              >
+                <Wrench className="w-4 h-4 mr-2" />
+                Initialize Default Fields
+              </Button>
+              <Dialog open={isCustomFieldsDialogOpen} onOpenChange={setIsCustomFieldsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Custom Field
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create Custom Field</DialogTitle>
+                  </DialogHeader>
+                  <Form {...customFieldForm}>
+                    <form onSubmit={customFieldForm.handleSubmit(onCustomFieldSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={customFieldForm.control}
+                          name="fieldName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Field Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., specialEquipment" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={customFieldForm.control}
+                          name="displayLabel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Display Label</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., Special Equipment Required" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={customFieldForm.control}
+                          name="fieldType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Field Type</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="text">Text</SelectItem>
+                                  <SelectItem value="number">Number</SelectItem>
+                                  <SelectItem value="date">Date</SelectItem>
+                                  <SelectItem value="select">Select/Dropdown</SelectItem>
+                                  <SelectItem value="checkbox">Checkbox</SelectItem>
+                                  <SelectItem value="textarea">Textarea</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={customFieldForm.control}
+                          name="section"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Section</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="contract">Contract Fields</SelectItem>
+                                  <SelectItem value="request">Request Fields</SelectItem>
+                                  <SelectItem value="approval">Approval Fields</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={customFieldForm.control}
+                          name="displayOrder"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Display Order</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="number" onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={customFieldForm.control}
+                        name="helpText"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Help Text</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder="Optional help text for users..." />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex items-center gap-4">
+                        <FormField
+                          control={customFieldForm.control}
+                          name="isRequired"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value}
+                                  onChange={field.onChange}
+                                  className="rounded border-gray-300"
+                                />
+                              </FormControl>
+                              <FormLabel className="!mt-0">Required Field</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={customFieldForm.control}
+                          name="isVisible"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value}
+                                  onChange={field.onChange}
+                                  className="rounded border-gray-300"
+                                />
+                              </FormControl>
+                              <FormLabel className="!mt-0">Visible in Forms</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsCustomFieldsDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={createCustomFieldMutation.isPending}>
+                          {createCustomFieldMutation.isPending ? "Creating..." : "Create Field"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          <Tabs value={selectedSection} onValueChange={setSelectedSection} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="contract">Contract Fields ({contractFields.length})</TabsTrigger>
+              <TabsTrigger value="request">Request Fields ({requestFields.length})</TabsTrigger>
+              <TabsTrigger value="approval">Approval Fields ({approvalFields.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="contract" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="w-5 h-5" />
+                    Contract Custom Fields
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {customFieldsLoading ? (
+                    <div className="text-center py-4">Loading custom fields...</div>
+                  ) : contractFields.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Settings className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-lg font-medium">No Contract Fields</p>
+                      <p className="text-sm">Create custom fields to enhance your contract forms</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {contractFields.map((field) => (
+                        <div key={field.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{field.displayLabel}</h4>
+                              <Badge variant={field.isRequired ? "default" : "secondary"}>
+                                {field.isRequired ? "Required" : "Optional"}
+                              </Badge>
+                              <Badge variant="outline">{field.fieldType}</Badge>
+                              {!field.isVisible && (
+                                <Badge variant="secondary">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  Hidden
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Field Name: <code className="bg-gray-100 px-1 rounded">{field.fieldName}</code>
+                              {field.helpText && ` • ${field.helpText}`}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingCustomField(field);
+                                customFieldForm.reset(field);
+                                setIsCustomFieldsDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteCustomFieldMutation.mutate(field.id)}
+                              disabled={deleteCustomFieldMutation.isPending}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="request" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Request Custom Fields
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {customFieldsLoading ? (
+                    <div className="text-center py-4">Loading custom fields...</div>
+                  ) : requestFields.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Settings className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-lg font-medium">No Request Fields</p>
+                      <p className="text-sm">Create custom fields to enhance your payment request forms</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {requestFields.map((field) => (
+                        <div key={field.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{field.displayLabel}</h4>
+                              <Badge variant={field.isRequired ? "default" : "secondary"}>
+                                {field.isRequired ? "Required" : "Optional"}
+                              </Badge>
+                              <Badge variant="outline">{field.fieldType}</Badge>
+                              {!field.isVisible && (
+                                <Badge variant="secondary">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  Hidden
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Field Name: <code className="bg-gray-100 px-1 rounded">{field.fieldName}</code>
+                              {field.helpText && ` • ${field.helpText}`}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingCustomField(field);
+                                customFieldForm.reset(field);
+                                setIsCustomFieldsDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteCustomFieldMutation.mutate(field.id)}
+                              disabled={deleteCustomFieldMutation.isPending}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="approval" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="w-5 h-5" />
+                    Approval Custom Fields
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {customFieldsLoading ? (
+                    <div className="text-center py-4">Loading custom fields...</div>
+                  ) : approvalFields.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Settings className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-lg font-medium">No Approval Fields</p>
+                      <p className="text-sm">Create custom fields to enhance your approval workflows</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {approvalFields.map((field) => (
+                        <div key={field.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{field.displayLabel}</h4>
+                              <Badge variant={field.isRequired ? "default" : "secondary"}>
+                                {field.isRequired ? "Required" : "Optional"}
+                              </Badge>
+                              <Badge variant="outline">{field.fieldType}</Badge>
+                              {!field.isVisible && (
+                                <Badge variant="secondary">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  Hidden
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Field Name: <code className="bg-gray-100 px-1 rounded">{field.fieldName}</code>
+                              {field.helpText && ` • ${field.helpText}`}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingCustomField(field);
+                                customFieldForm.reset(field);
+                                setIsCustomFieldsDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteCustomFieldMutation.mutate(field.id)}
+                              disabled={deleteCustomFieldMutation.isPending}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

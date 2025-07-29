@@ -18,6 +18,7 @@ import {
   activityLogs,
   extraPayContracts,
   extraPayRequests,
+  extraPayCustomFields,
   districtSettings,
   payPeriods,
   auditLogs,
@@ -65,6 +66,8 @@ import {
   type InsertExtraPayContract,
   type ExtraPayRequest,
   type InsertExtraPayRequest,
+  type ExtraPayCustomField,
+  type InsertExtraPayCustomField,
   type Letter,
   type InsertLetter,
   letters,
@@ -2001,6 +2004,143 @@ export class DatabaseStorage implements IStorage {
     // Insert all default labels
     for (const label of defaultLabels) {
       await this.createCustomFieldLabel(label);
+    }
+  }
+
+  // Extra Pay Custom Fields operations
+  async getExtraPayCustomFields(): Promise<ExtraPayCustomField[]> {
+    return await db.select().from(extraPayCustomFields).orderBy(extraPayCustomFields.section, extraPayCustomFields.displayOrder);
+  }
+
+  async getExtraPayCustomFieldsBySection(section: string): Promise<ExtraPayCustomField[]> {
+    return await db.select().from(extraPayCustomFields)
+      .where(and(eq(extraPayCustomFields.section, section), eq(extraPayCustomFields.isVisible, true)))
+      .orderBy(extraPayCustomFields.displayOrder);
+  }
+
+  async createExtraPayCustomField(field: InsertExtraPayCustomField): Promise<ExtraPayCustomField> {
+    const [newField] = await db.insert(extraPayCustomFields).values(field).returning();
+    return newField;
+  }
+
+  async updateExtraPayCustomField(id: number, field: Partial<InsertExtraPayCustomField>): Promise<ExtraPayCustomField> {
+    const [updated] = await db.update(extraPayCustomFields).set({
+      ...field,
+      updatedAt: new Date(),
+    }).where(eq(extraPayCustomFields.id, id)).returning();
+    return updated;
+  }
+
+  async deleteExtraPayCustomField(id: number): Promise<void> {
+    await db.delete(extraPayCustomFields).where(eq(extraPayCustomFields.id, id));
+  }
+
+  async initializeDefaultExtraPayCustomFields(): Promise<void> {
+    // Check if fields already exist
+    const existingFields = await this.getExtraPayCustomFields();
+    if (existingFields.length > 0) {
+      return; // Already initialized
+    }
+
+    // Default custom fields for extra pay system
+    const defaultCustomFields: InsertExtraPayCustomField[] = [
+      // Contract fields
+      {
+        fieldName: 'specialEquipment',
+        displayLabel: 'Special Equipment Required',
+        fieldType: 'text',
+        section: 'contract',
+        category: 'contracts',
+        isRequired: false,
+        displayOrder: 1,
+        helpText: 'List any special equipment needed for this position'
+      },
+      {
+        fieldName: 'minimumQualifications',
+        displayLabel: 'Minimum Qualifications',
+        fieldType: 'textarea',
+        section: 'contract',
+        category: 'contracts',
+        isRequired: false,
+        displayOrder: 2,
+        helpText: 'Specify minimum qualifications or certifications required'
+      },
+      {
+        fieldName: 'contractLocation',
+        displayLabel: 'Primary Work Location',
+        fieldType: 'select',
+        section: 'contract',
+        category: 'contracts',
+        isRequired: false,
+        displayOrder: 3,
+        fieldOptions: JSON.stringify({
+          options: ['Main Office', 'Elementary School', 'Middle School', 'High School', 'Multiple Locations']
+        })
+      },
+      
+      // Request fields
+      {
+        fieldName: 'overtimeRate',
+        displayLabel: 'Overtime Rate Applied',
+        fieldType: 'number',
+        section: 'request',
+        category: 'requests',
+        isRequired: false,
+        displayOrder: 1,
+        validationRules: JSON.stringify({ min: 0, step: 0.01 }),
+        helpText: 'Enter overtime rate if applicable'
+      },
+      {
+        fieldName: 'additionalDuties',
+        displayLabel: 'Additional Duties Performed',
+        fieldType: 'textarea',
+        section: 'request',
+        category: 'requests',
+        isRequired: false,
+        displayOrder: 2,
+        helpText: 'Describe any additional duties beyond the standard contract'
+      },
+      {
+        fieldName: 'workingConditions',
+        displayLabel: 'Special Working Conditions',
+        fieldType: 'select',
+        section: 'request',
+        category: 'requests',
+        isRequired: false,
+        displayOrder: 3,
+        fieldOptions: JSON.stringify({
+          options: ['Normal', 'Evening/Night', 'Weekend', 'Holiday', 'Emergency']
+        })
+      },
+      
+      // Approval fields
+      {
+        fieldName: 'budgetAccount',
+        displayLabel: 'Budget Account Code',
+        fieldType: 'text',
+        section: 'approval',
+        category: 'requests',
+        isRequired: false,
+        displayOrder: 1,
+        helpText: 'Enter the budget account code for this expense'
+      },
+      {
+        fieldName: 'approvalPriority',
+        displayLabel: 'Approval Priority',
+        fieldType: 'select',
+        section: 'approval',
+        category: 'requests',
+        isRequired: false,
+        displayOrder: 2,
+        fieldOptions: JSON.stringify({
+          options: ['Low', 'Normal', 'High', 'Urgent']
+        })
+      }
+    ];
+
+    // Insert all default custom fields
+    for (const field of defaultCustomFields) {
+      await this.createExtraPayCustomField(field);
     }
   }
 

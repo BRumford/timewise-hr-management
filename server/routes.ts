@@ -196,6 +196,7 @@ import {
   insertSubstituteTimeCardSchema,
   insertExtraPayContractSchema,
   insertExtraPayRequestSchema,
+  insertExtraPayCustomFieldSchema,
   insertLetterSchema,
   insertTimecardTemplateSchema,
   insertTimecardTemplateFieldSchema,
@@ -2706,6 +2707,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error marking extra pay request as paid:', error);
       res.status(500).json({ message: "Failed to mark extra pay request as paid" });
+    }
+  });
+
+  // Extra Pay Custom Fields API routes
+  app.get('/api/extra-pay-custom-fields', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const fields = await storage.getExtraPayCustomFields();
+      res.json(fields);
+    } catch (error) {
+      console.error('Error fetching extra pay custom fields:', error);
+      res.status(500).json({ message: "Failed to fetch custom fields" });
+    }
+  });
+
+  app.get('/api/extra-pay-custom-fields/section/:section', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { section } = req.params;
+      const fields = await storage.getExtraPayCustomFieldsBySection(section);
+      res.json(fields);
+    } catch (error) {
+      console.error('Error fetching extra pay custom fields by section:', error);
+      res.status(500).json({ message: "Failed to fetch custom fields" });
+    }
+  });
+
+  app.post('/api/extra-pay-custom-fields', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const validation = insertExtraPayCustomFieldSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const field = await storage.createExtraPayCustomField(validation.data);
+      res.json(field);
+    } catch (error) {
+      console.error('Error creating extra pay custom field:', error);
+      res.status(500).json({ message: "Failed to create custom field" });
+    }
+  });
+
+  app.put('/api/extra-pay-custom-fields/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertExtraPayCustomFieldSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const field = await storage.updateExtraPayCustomField(id, validation.data);
+      res.json(field);
+    } catch (error) {
+      console.error('Error updating extra pay custom field:', error);
+      res.status(500).json({ message: "Failed to update custom field" });
+    }
+  });
+
+  app.delete('/api/extra-pay-custom-fields/:id', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteExtraPayCustomField(id);
+      res.json({ message: "Custom field deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting extra pay custom field:', error);
+      res.status(500).json({ message: "Failed to delete custom field" });
+    }
+  });
+
+  app.post('/api/extra-pay-custom-fields/initialize', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      await storage.initializeDefaultExtraPayCustomFields();
+      res.json({ message: "Default custom fields initialized successfully" });
+    } catch (error) {
+      console.error('Error initializing extra pay custom fields:', error);
+      res.status(500).json({ message: "Failed to initialize custom fields" });
     }
   });
 

@@ -517,9 +517,31 @@ export const extraPayRequests = pgTable("extra_pay_requests", {
   paidAt: timestamp("paid_at"),
   notes: text("notes"),
   supportingDocuments: text("supporting_documents").array(),
+  customFieldsData: jsonb("custom_fields_data").default({}), // Store custom field values
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Extra Pay Custom Fields Configuration
+export const extraPayCustomFields = pgTable("extra_pay_custom_fields", {
+  id: serial("id").primaryKey(),
+  fieldName: varchar("field_name").notNull(), // e.g., "specialEquipment", "overtimeRate"
+  displayLabel: varchar("display_label").notNull(), // e.g., "Special Equipment Needed", "Overtime Rate"
+  fieldType: varchar("field_type").notNull(), // text, number, date, select, checkbox, textarea
+  fieldOptions: jsonb("field_options").default({}), // For select options, validation rules, etc.
+  section: varchar("section").notNull(), // contract, request, approval
+  category: varchar("category").notNull(), // contracts, requests
+  isRequired: boolean("is_required").default(false),
+  isVisible: boolean("is_visible").default(true),
+  displayOrder: integer("display_order").default(0),
+  validationRules: jsonb("validation_rules").default({}), // min/max values, patterns, etc.
+  helpText: text("help_text"), // Help text for the field
+  defaultValue: text("default_value"), // Default value for the field
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueFieldSection: uniqueIndex("unique_field_section").on(table.fieldName, table.section)
+}));
 
 // Letters table for automated document generation
 export const letters = pgTable("letters", {
@@ -837,6 +859,7 @@ export const insertSubstituteTimeCardSchema = createInsertSchema(substituteTimeC
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export const insertExtraPayContractSchema = createInsertSchema(extraPayContracts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExtraPayRequestSchema = createInsertSchema(extraPayRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExtraPayCustomFieldSchema = createInsertSchema(extraPayCustomFields).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLetterSchema = createInsertSchema(letters).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTimecardTemplateSchema = createInsertSchema(timecardTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTimecardTemplateFieldSchema = createInsertSchema(timecardTemplateFields).omit({ id: true, createdAt: true, updatedAt: true });
@@ -884,6 +907,8 @@ export type InsertExtraPayContract = z.infer<typeof insertExtraPayContractSchema
 export type ExtraPayContract = typeof extraPayContracts.$inferSelect;
 export type InsertExtraPayRequest = z.infer<typeof insertExtraPayRequestSchema>;
 export type ExtraPayRequest = typeof extraPayRequests.$inferSelect;
+export type InsertExtraPayCustomField = z.infer<typeof insertExtraPayCustomFieldSchema>;
+export type ExtraPayCustomField = typeof extraPayCustomFields.$inferSelect;
 export type InsertLetter = z.infer<typeof insertLetterSchema>;
 export type Letter = typeof letters.$inferSelect;
 export type InsertTimecardTemplate = z.infer<typeof insertTimecardTemplateSchema>;
