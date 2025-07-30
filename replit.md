@@ -122,12 +122,14 @@ The application uses a comprehensive schema with the following main entities:
 The system is designed to be scalable, maintainable, and specifically tailored for the complex needs of school district HR departments, with AI automation reducing manual workload while ensuring compliance and efficiency.
 
 ## Recent Changes
-- Enhanced Monthly Timecard with Editable Month/Day Fields (July 30, 2025)
-  - Modified Month/Day column in monthly timecard table to be fillable input fields instead of read-only date display
+- Enhanced Both Monthly and Substitute Timecards with Editable Month/Day Fields (July 30, 2025)
+  - Modified Month/Day column in both monthly timecard and substitute timecard tables to be fillable input fields
+  - Converted read-only date displays to editable input fields with MM/DD placeholder text
   - Users can now manually enter custom dates in MM/DD format for flexible time tracking
-  - Input fields maintain consistent styling with other timecard form elements
-  - Enhanced data entry flexibility for irregular work schedules and date corrections
-  - Streamlined user experience for timecard completion with direct date input capability
+  - Input fields maintain consistent styling with other timecard form elements (compact height, transparent borders)
+  - Enhanced data entry flexibility for irregular work schedules, substitute assignments, and date corrections
+  - Both timecard systems now provide identical functionality for direct date input capability
+  - Streamlined user experience across all timecard types with unified fillable date fields
 
 - Successfully Implemented Clean Navigation with Settings Dropdown Menu (July 30, 2025)
   - Created organized "Settings" dropdown menu in sidebar to reduce navigation clutter

@@ -758,11 +758,14 @@ export default function SubstituteTimeCards() {
                     <tbody>
                       {dailyEntries.map((entry, index) => (
                         <tr key={index} className="even:bg-gray-50">
-                          <td className="border border-gray-400 px-2 py-1 text-xs">
-                            <div className="flex items-center space-x-1">
-                              <span className="font-medium">{entry.date}</span>
-                              <span className="text-gray-500">({entry.dayName})</span>
-                            </div>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <Input
+                              type="text"
+                              value={entry.date}
+                              onChange={(e) => updateDailyEntry(index, 'date', e.target.value)}
+                              className="h-6 text-xs border-0 bg-transparent p-1"
+                              placeholder="MM/DD"
+                            />
                           </td>
                           <td className="border border-gray-400 px-1 py-1">
                             <Select onValueChange={(value) => updateDailyEntry(index, 'code', value)} value={entry.code}>
