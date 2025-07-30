@@ -39,7 +39,7 @@ const mainMenuItems = [
   { path: "/time-cards", icon: Clock, label: "Admin Timecard Approval", roles: ["admin", "hr", "employee"] },
   { path: "/monthly-timecard", icon: Calendar, label: "Monthly Timecard", roles: ["admin", "hr"] },
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards", roles: ["admin", "hr"] },
-  { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
+
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["admin", "hr"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["admin", "hr"] },
   { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr"] },
@@ -57,6 +57,7 @@ const mainMenuItems = [
 
 // Administrative settings dropdown items
 const adminDropdownItems = [
+  { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
   { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["admin", "hr"] },
   { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["admin", "hr"] },
   { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["admin", "hr"] },
