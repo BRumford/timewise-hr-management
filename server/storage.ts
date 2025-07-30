@@ -31,6 +31,8 @@ import {
   employeeAccounts,
   benefitsDocuments,
   benefitsPlans,
+  openEnrollmentCampaigns,
+  openEnrollmentEmails,
   type User,
   type UpsertUser,
   type EmployeeAccount,
@@ -108,6 +110,10 @@ import {
   type InsertBenefitsDocument,
   type BenefitsPlan,
   type InsertBenefitsPlan,
+  type OpenEnrollmentCampaign,
+  type InsertOpenEnrollmentCampaign,
+  type OpenEnrollmentEmail,
+  type InsertOpenEnrollmentEmail,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-orm";
@@ -364,6 +370,18 @@ export interface IStorage {
   getBenefitsPlansByClassification(classification: string): Promise<BenefitsPlan[]>;
   getBenefitsPlansByType(planType: string): Promise<BenefitsPlan[]>;
   getBenefitsPlansByPlanYear(planYear: string): Promise<BenefitsPlan[]>;
+  
+  // Open Enrollment Campaigns
+  getOpenEnrollmentCampaigns(): Promise<OpenEnrollmentCampaign[]>;
+  createOpenEnrollmentCampaign(campaign: InsertOpenEnrollmentCampaign): Promise<OpenEnrollmentCampaign>;
+  updateOpenEnrollmentCampaign(id: number, campaign: Partial<InsertOpenEnrollmentCampaign>): Promise<OpenEnrollmentCampaign>;
+  deleteOpenEnrollmentCampaign(id: number): Promise<void>;
+  
+  // Open Enrollment Emails
+  getOpenEnrollmentEmails(campaignId: number): Promise<OpenEnrollmentEmail[]>;
+  createOpenEnrollmentEmail(email: InsertOpenEnrollmentEmail): Promise<OpenEnrollmentEmail>;
+  updateOpenEnrollmentEmail(id: number, email: Partial<InsertOpenEnrollmentEmail>): Promise<OpenEnrollmentEmail>;
+  getEmployeesForOpenEnrollment(classifications?: string[]): Promise<Employee[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3066,6 +3084,58 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(benefitsPlans)
       .where(eq(benefitsPlans.planYear, planYear))
       .orderBy(desc(benefitsPlans.createdAt));
+  }
+
+  // Open Enrollment Campaign methods
+  async getOpenEnrollmentCampaigns(): Promise<OpenEnrollmentCampaign[]> {
+    return await db.select().from(openEnrollmentCampaigns).orderBy(desc(openEnrollmentCampaigns.createdAt));
+  }
+
+  async createOpenEnrollmentCampaign(campaign: InsertOpenEnrollmentCampaign): Promise<OpenEnrollmentCampaign> {
+    const [newCampaign] = await db.insert(openEnrollmentCampaigns).values(campaign).returning();
+    return newCampaign;
+  }
+
+  async updateOpenEnrollmentCampaign(id: number, campaign: Partial<InsertOpenEnrollmentCampaign>): Promise<OpenEnrollmentCampaign> {
+    const [updatedCampaign] = await db.update(openEnrollmentCampaigns)
+      .set({ ...campaign, updatedAt: new Date() })
+      .where(eq(openEnrollmentCampaigns.id, id))
+      .returning();
+    return updatedCampaign;
+  }
+
+  async deleteOpenEnrollmentCampaign(id: number): Promise<void> {
+    await db.delete(openEnrollmentCampaigns).where(eq(openEnrollmentCampaigns.id, id));
+  }
+
+  // Open Enrollment Email methods
+  async getOpenEnrollmentEmails(campaignId: number): Promise<OpenEnrollmentEmail[]> {
+    return await db.select().from(openEnrollmentEmails)
+      .where(eq(openEnrollmentEmails.campaignId, campaignId))
+      .orderBy(desc(openEnrollmentEmails.createdAt));
+  }
+
+  async createOpenEnrollmentEmail(email: InsertOpenEnrollmentEmail): Promise<OpenEnrollmentEmail> {
+    const [newEmail] = await db.insert(openEnrollmentEmails).values(email).returning();
+    return newEmail;
+  }
+
+  async updateOpenEnrollmentEmail(id: number, email: Partial<InsertOpenEnrollmentEmail>): Promise<OpenEnrollmentEmail> {
+    const [updatedEmail] = await db.update(openEnrollmentEmails)
+      .set(email)
+      .where(eq(openEnrollmentEmails.id, id))
+      .returning();
+    return updatedEmail;
+  }
+
+  async getEmployeesForOpenEnrollment(classifications?: string[]): Promise<Employee[]> {
+    let query = db.select().from(employees).where(eq(employees.isActive, true));
+    
+    if (classifications && classifications.length > 0) {
+      query = query.where(inArray(employees.employeeType, classifications));
+    }
+    
+    return query;
   }
 }
 

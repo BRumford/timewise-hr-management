@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FileText, Upload, Download, Search, Filter, Plus, Edit, Trash2, Calendar, DollarSign, Users, FileSpreadsheet } from "lucide-react";
+import { FileText, Upload, Download, Search, Filter, Plus, Edit, Trash2, Calendar, DollarSign, Users, FileSpreadsheet, Mail, Send, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -47,8 +47,20 @@ const planSchema = z.object({
   eligibilityRequirements: z.string().optional(),
 });
 
+const campaignSchema = z.object({
+  campaignName: z.string().min(1, "Campaign name is required"),
+  planYear: z.string().min(1, "Plan year is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+  emailSubject: z.string().optional(),
+  emailTemplate: z.string().optional(),
+  senderEmail: z.string().email("Valid email required").optional(),
+  senderName: z.string().optional(),
+});
+
 type DocumentForm = z.infer<typeof documentSchema>;
 type PlanForm = z.infer<typeof planSchema>;
+type CampaignForm = z.infer<typeof campaignSchema>;
 
 function Benefits() {
   const [selectedClassification, setSelectedClassification] = useState<string>("all");
@@ -358,7 +370,7 @@ function Benefits() {
       </Card>
 
       <Tabs defaultValue="documents" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Documents & Cost Sheets
@@ -366,6 +378,10 @@ function Benefits() {
           <TabsTrigger value="plans" className="flex items-center gap-2">
             <FileSpreadsheet className="h-4 w-4" />
             Benefits Plans
+          </TabsTrigger>
+          <TabsTrigger value="enrollment" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Open Enrollment
           </TabsTrigger>
         </TabsList>
 
@@ -1102,8 +1118,423 @@ function Benefits() {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="enrollment" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Open Enrollment Campaigns</h3>
+              <p className="text-sm text-muted-foreground">
+                Create and manage open enrollment email campaigns for benefits communication
+              </p>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Campaign
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create Open Enrollment Campaign</DialogTitle>
+                  <DialogDescription>
+                    Set up a new campaign to send benefits information to employees
+                  </DialogDescription>
+                </DialogHeader>
+                <OpenEnrollmentCampaignForm />
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <OpenEnrollmentCampaigns />
+        </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Open Enrollment Campaign Form Component
+function OpenEnrollmentCampaignForm() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const form = useForm<CampaignForm>({
+    resolver: zodResolver(campaignSchema),
+    defaultValues: {
+      campaignName: "",
+      planYear: new Date().getFullYear().toString(),
+      startDate: "",
+      endDate: "",
+      emailSubject: "Important: Open Enrollment Information for {planYear}",
+      emailTemplate: "Dear {employeeName},\n\nOpen enrollment for {planYear} is now available. Please review the attached benefits information for your classification ({classification}).\n\nEnrollment Period: {startDate} - {endDate}\n\nPlease contact HR if you have any questions.\n\nBest regards,\nHR Department",
+      senderEmail: "hr@district.edu",
+      senderName: "HR Department",
+    },
+  });
+
+  const createCampaignMutation = useMutation({
+    mutationFn: (data: CampaignForm) => apiRequest('/api/open-enrollment/campaigns', 'POST', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/open-enrollment/campaigns'] });
+      toast({
+        title: "Success",
+        description: "Campaign created successfully",
+      });
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create campaign",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: CampaignForm) => {
+    createCampaignMutation.mutate(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="campaignName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Campaign Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="2025 Open Enrollment" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="planYear"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Plan Year</FormLabel>
+                <FormControl>
+                  <Input placeholder="2025" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Start Date</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="endDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>End Date</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="senderEmail"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sender Email</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="hr@district.edu" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="senderName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sender Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="HR Department" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="emailSubject"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email Subject</FormLabel>
+              <FormControl>
+                <Input placeholder="Open Enrollment Information" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="emailTemplate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email Template</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Email message template..."
+                  className="min-h-[120px]"
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button type="submit" disabled={createCampaignMutation.isPending}>
+            {createCampaignMutation.isPending ? "Creating..." : "Create Campaign"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+// Open Enrollment Campaigns List Component
+function OpenEnrollmentCampaigns() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [showSendDialog, setShowSendDialog] = useState(false);
+  const [selectedClassifications, setSelectedClassifications] = useState<string[]>([]);
+
+  const { data: campaigns = [], isLoading } = useQuery({
+    queryKey: ['/api/open-enrollment/campaigns'],
+  });
+
+  const deleteCampaignMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/open-enrollment/campaigns/${id}`, 'DELETE'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/open-enrollment/campaigns'] });
+      toast({
+        title: "Success",
+        description: "Campaign deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete campaign",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendEmailsMutation = useMutation({
+    mutationFn: ({ campaignId, classifications }: { campaignId: number; classifications: string[] }) =>
+      apiRequest(`/api/open-enrollment/campaigns/${campaignId}/send`, 'POST', { classifications }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/open-enrollment/campaigns'] });
+      toast({
+        title: "Success",
+        description: `Emails sent successfully! ${data.emailsSent} sent, ${data.emailsFailed} failed`,
+      });
+      setShowSendDialog(false);
+      setSelectedCampaign(null);
+      setSelectedClassifications([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send emails",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSendEmails = () => {
+    if (selectedCampaign && selectedClassifications.length > 0) {
+      sendEmailsMutation.mutate({
+        campaignId: selectedCampaign.id,
+        classifications: selectedClassifications,
+      });
+    }
+  };
+
+  const handleDeleteCampaign = (id: number) => {
+    if (confirm("Are you sure you want to delete this campaign?")) {
+      deleteCampaignMutation.mutate(id);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 bg-muted rounded w-1/3"></div>
+                <div className="h-3 bg-muted rounded w-2/3"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        {campaigns.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No Campaigns Yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Create your first open enrollment campaign to start sending benefits information to employees.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          campaigns.map((campaign: any) => (
+            <Card key={campaign.id}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold">{campaign.campaignName}</h3>
+                      <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+                        {campaign.status}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {campaign.planYear}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {new Date(campaign.startDate).toLocaleDateString()} - {new Date(campaign.endDate).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        {campaign.totalEmployees || 0} employees
+                      </div>
+                    </div>
+                    {campaign.emailsSent > 0 && (
+                      <div className="text-sm">
+                        <span className="text-green-600">{campaign.emailsSent} sent</span>
+                        {campaign.emailsFailed > 0 && (
+                          <span className="text-red-600 ml-2">{campaign.emailsFailed} failed</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCampaign(campaign);
+                        setShowSendDialog(true);
+                      }}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Emails
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteCampaign(campaign.id)}
+                      disabled={deleteCampaignMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Send Emails Dialog */}
+      <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Campaign Emails</DialogTitle>
+            <DialogDescription>
+              Select employee classifications to send benefits information to
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Employee Classifications</Label>
+              <div className="space-y-2 mt-2">
+                {['Certificated', 'Classified', 'Management'].map((classification) => (
+                  <div key={classification} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={classification}
+                      checked={selectedClassifications.includes(classification)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedClassifications([...selectedClassifications, classification]);
+                        } else {
+                          setSelectedClassifications(selectedClassifications.filter(c => c !== classification));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={classification}>{classification}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowSendDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendEmails}
+                disabled={selectedClassifications.length === 0 || sendEmailsMutation.isPending}
+              >
+                {sendEmailsMutation.isPending ? "Sending..." : `Send to ${selectedClassifications.length} Classification(s)`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

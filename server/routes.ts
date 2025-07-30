@@ -5257,6 +5257,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Open Enrollment Campaign routes
+  app.get('/api/open-enrollment/campaigns', requireRole(['hr', 'admin']), async (req, res) => {
+    try {
+      const campaigns = await storage.getOpenEnrollmentCampaigns();
+      res.json(campaigns);
+    } catch (error) {
+      console.error('Get open enrollment campaigns error:', error);
+      res.status(500).json({ error: 'Failed to fetch campaigns' });
+    }
+  });
+
+  app.post('/api/open-enrollment/campaigns', requireRole(['hr', 'admin']), async (req, res) => {
+    try {
+      const userId = req.session.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const campaignData = {
+        ...req.body,
+        createdBy: userId
+      };
+      
+      const campaign = await storage.createOpenEnrollmentCampaign(campaignData);
+      res.status(201).json(campaign);
+    } catch (error) {
+      console.error('Create open enrollment campaign error:', error);
+      res.status(500).json({ error: 'Failed to create campaign' });
+    }
+  });
+
+  app.put('/api/open-enrollment/campaigns/:id', requireRole(['hr', 'admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const campaign = await storage.updateOpenEnrollmentCampaign(id, req.body);
+      res.json(campaign);
+    } catch (error) {
+      console.error('Update open enrollment campaign error:', error);
+      res.status(500).json({ error: 'Failed to update campaign' });
+    }
+  });
+
+  app.delete('/api/open-enrollment/campaigns/:id', requireRole(['hr', 'admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteOpenEnrollmentCampaign(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Delete open enrollment campaign error:', error);
+      res.status(500).json({ error: 'Failed to delete campaign' });
+    }
+  });
+
+  // Send open enrollment emails
+  app.post('/api/open-enrollment/campaigns/:id/send', requireRole(['hr', 'admin']), async (req, res) => {
+    try {
+      const campaignId = parseInt(req.params.id);
+      const { classifications } = req.body;
+      
+      // Get campaign details
+      const campaigns = await storage.getOpenEnrollmentCampaigns();
+      const campaign = campaigns.find(c => c.id === campaignId);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
+
+      // Get employees based on classifications
+      const employees = await storage.getEmployeesForOpenEnrollment(classifications);
+      
+      // Get documents for each classification
+      const documents = await storage.getBenefitsDocuments();
+      
+      let emailsSent = 0;
+      let emailsFailed = 0;
+      
+      for (const employee of employees) {
+        if (!employee.email) {
+          emailsFailed++;
+          continue;
+        }
+        
+        // Filter documents for this employee's classification
+        const employeeDocuments = documents.filter(doc => 
+          doc.classification === employee.employeeType && 
+          doc.planYear === campaign.planYear
+        );
+        
+        // Create email record
+        const emailRecord = await storage.createOpenEnrollmentEmail({
+          campaignId,
+          employeeId: employee.id,
+          classification: employee.employeeType || '',
+          emailAddress: employee.email,
+          documentIds: JSON.stringify(employeeDocuments.map(d => d.id)),
+          status: 'pending'
+        });
+        
+        // Send email using SendGrid
+        const emailParams = {
+          employeeEmail: employee.email,
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          classification: employee.employeeType || '',
+          campaignName: campaign.campaignName,
+          planYear: campaign.planYear,
+          documents: employeeDocuments.map(doc => ({
+            id: doc.id,
+            title: doc.title,
+            fileName: doc.fileName,
+            fileUrl: doc.fileUrl,
+            fileSize: doc.fileSize || 0
+          })),
+          customMessage: campaign.emailTemplate || undefined,
+          senderEmail: campaign.senderEmail || 'hr@district.edu',
+          senderName: campaign.senderName || 'HR Department'
+        };
+        
+        const { sendOpenEnrollmentEmail } = await import('./sendgrid');
+        const success = await sendOpenEnrollmentEmail(emailParams);
+        
+        if (success) {
+          await storage.updateOpenEnrollmentEmail(emailRecord.id, {
+            status: 'sent',
+            sentAt: new Date()
+          });
+          emailsSent++;
+        } else {
+          await storage.updateOpenEnrollmentEmail(emailRecord.id, {
+            status: 'failed',
+            failureReason: 'Email delivery failed'
+          });
+          emailsFailed++;
+        }
+      }
+      
+      // Update campaign statistics
+      await storage.updateOpenEnrollmentCampaign(campaignId, {
+        emailsSent: emailsSent,
+        emailsFailed: emailsFailed,
+        totalEmployees: employees.length,
+        status: 'active'
+      });
+      
+      res.json({
+        success: true,
+        emailsSent,
+        emailsFailed,
+        totalEmployees: employees.length
+      });
+      
+    } catch (error) {
+      console.error('Send open enrollment emails error:', error);
+      res.status(500).json({ error: 'Failed to send emails' });
+    }
+  });
+
+  // Get open enrollment email logs
+  app.get('/api/open-enrollment/campaigns/:id/emails', requireRole(['hr', 'admin']), async (req, res) => {
+    try {
+      const campaignId = parseInt(req.params.id);
+      const emails = await storage.getOpenEnrollmentEmails(campaignId);
+      res.json(emails);
+    } catch (error) {
+      console.error('Get open enrollment emails error:', error);
+      res.status(500).json({ error: 'Failed to fetch email logs' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

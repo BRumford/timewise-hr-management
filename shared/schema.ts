@@ -932,6 +932,50 @@ export const insertCustomFieldLabelSchema = createInsertSchema(customFieldLabels
 export const insertBenefitsDocumentSchema = createInsertSchema(benefitsDocuments).omit({ id: true, createdAt: true, updatedAt: true, downloadCount: true, lastDownloaded: true });
 export const insertBenefitsPlanSchema = createInsertSchema(benefitsPlans).omit({ id: true, createdAt: true, updatedAt: true });
 
+// Open Enrollment Campaigns
+export const openEnrollmentCampaigns = pgTable("open_enrollment_campaigns", {
+  id: serial("id").primaryKey(),
+  campaignName: varchar("campaign_name", { length: 255 }).notNull(),
+  planYear: varchar("plan_year", { length: 20 }).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  status: varchar("status", { length: 50 }).default("draft"), // draft, active, completed
+  emailSubject: varchar("email_subject", { length: 500 }),
+  emailTemplate: text("email_template"),
+  senderEmail: varchar("sender_email", { length: 255 }),
+  senderName: varchar("sender_name", { length: 255 }),
+  totalEmployees: integer("total_employees"),
+  emailsSent: integer("emails_sent").default(0),
+  emailsFailed: integer("emails_failed").default(0),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Open Enrollment Email Log
+export const openEnrollmentEmails = pgTable("open_enrollment_emails", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => openEnrollmentCampaigns.id),
+  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  classification: varchar("classification", { length: 50 }).notNull(),
+  emailAddress: varchar("email_address", { length: 255 }).notNull(),
+  documentIds: text("document_ids"), // JSON array of document IDs sent
+  status: varchar("status", { length: 50 }).default("pending"), // pending, sent, failed, bounced
+  sentAt: timestamp("sent_at"),
+  failureReason: text("failure_reason"),
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOpenEnrollmentCampaignSchema = createInsertSchema(openEnrollmentCampaigns).omit({ id: true, createdAt: true, updatedAt: true, emailsSent: true, emailsFailed: true });
+export const insertOpenEnrollmentEmailSchema = createInsertSchema(openEnrollmentEmails).omit({ id: true, createdAt: true });
+
+export type OpenEnrollmentCampaign = typeof openEnrollmentCampaigns.$inferSelect;
+export type InsertOpenEnrollmentCampaign = z.infer<typeof insertOpenEnrollmentCampaignSchema>;
+export type OpenEnrollmentEmail = typeof openEnrollmentEmails.$inferSelect;
+export type InsertOpenEnrollmentEmail = z.infer<typeof insertOpenEnrollmentEmailSchema>;
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
