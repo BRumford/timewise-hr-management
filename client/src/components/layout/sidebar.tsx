@@ -162,7 +162,7 @@ export default function Sidebar() {
               onClick={() => setManualDropdownOpen(!manualDropdownOpen)}
             >
               <Settings className="text-sm" size={16} />
-              <span className="flex-1">Administration</span>
+              <span className="flex-1">Settings</span>
               {adminDropdownOpen ? (
                 <ChevronDown className="text-sm" size={16} />
               ) : (
