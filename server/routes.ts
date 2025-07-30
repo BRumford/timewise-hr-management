@@ -5270,14 +5270,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/open-enrollment/campaigns', requireRole(['hr', 'admin']), async (req, res) => {
     try {
-      const userId = req.session.user?.id;
-      if (!userId) {
+      const user = (req as any).user;
+      if (!user) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
       const campaignData = {
         ...req.body,
-        createdBy: userId
+        createdBy: user.id
       };
       
       const campaign = await storage.createOpenEnrollmentCampaign(campaignData);
@@ -5352,7 +5352,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           classification: employee.employeeType || '',
           emailAddress: employee.email,
           documentIds: JSON.stringify(employeeDocuments.map(d => d.id)),
-          status: 'pending'
+          status: 'pending',
+          sentBy: (req as any).user?.id || 'system'
         });
         
         // Send email using SendGrid
