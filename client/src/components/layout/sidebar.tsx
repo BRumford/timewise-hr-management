@@ -32,7 +32,7 @@ import { useRolePermissions } from "@/hooks/useRolePermissions";
 import RoleSwitcher from "@/components/auth/role-switcher";
 import { useState } from "react";
 
-// Main navigation items
+// Main navigation items - Benefits moved under Leave Management
 const mainMenuItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
