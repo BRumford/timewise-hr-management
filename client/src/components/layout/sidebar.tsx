@@ -42,7 +42,7 @@ const mainMenuItems = [
 
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["admin", "hr"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["admin", "hr"] },
-  { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr"] },
+
   { path: "/letters", icon: Mail, label: "Letters", roles: ["admin", "hr"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["admin", "hr"] },
@@ -58,6 +58,7 @@ const mainMenuItems = [
 // Administrative settings dropdown items
 const adminDropdownItems = [
   { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["admin", "hr"] },
+  { path: "/documents", icon: FileText, label: "Documents", roles: ["admin", "hr"] },
   { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["admin", "hr"] },
   { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["admin", "hr"] },
   { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["admin", "hr"] },

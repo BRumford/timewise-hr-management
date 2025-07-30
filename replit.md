@@ -122,12 +122,13 @@ The application uses a comprehensive schema with the following main entities:
 The system is designed to be scalable, maintainable, and specifically tailored for the complex needs of school district HR departments, with AI automation reducing manual workload while ensuring compliance and efficiency.
 
 ## Recent Changes
-- Organized Navigation by Moving Timecard Templates to Settings Dropdown (July 30, 2025)
-  - Moved Timecard Templates from main navigation menu to Settings dropdown for better organization
-  - Positioned Timecard Templates as first item in Settings dropdown for easy access
-  - Reduced main navigation clutter by grouping administrative configuration features together
+- Organized Navigation by Moving Administrative Features to Settings Dropdown (July 30, 2025)
+  - Moved Timecard Templates and Documents from main navigation menu to Settings dropdown for better organization
+  - Positioned administrative features (Timecard Templates, Documents) at top of Settings dropdown for easy access
+  - Reduced main navigation clutter by grouping administrative configuration and document management features together
   - Maintained consistent navigation structure with other administrative tools and settings
-  - Improved user experience by logically organizing template management with other system configuration options
+  - Improved user experience by logically organizing template management and document handling with other system configuration options
+  - Settings dropdown now contains 9 organized administrative features for streamlined navigation
 
 - Enhanced Both Monthly and Substitute Timecards with Editable Month/Day Fields (July 30, 2025)
   - Modified Month/Day column in both monthly timecard and substitute timecard tables to be fillable input fields
