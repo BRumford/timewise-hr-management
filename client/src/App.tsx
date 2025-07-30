@@ -35,6 +35,7 @@ import DataDeletionRequests from "@/pages/data-deletion-requests";
 import PerformanceDashboard from "@/pages/performance-dashboard";
 import ComplianceDashboard from "@/pages/compliance-dashboard";
 import EmployeeAccessManagement from "@/pages/employee-access-management";
+import Benefits from "@/pages/benefits";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -57,6 +58,7 @@ function Router() {
               <Switch>
                 <Route path="/" component={Dashboard} />
                 <Route path="/employees" component={Employees} />
+                <Route path="/benefits" component={Benefits} />
                 <Route path="/leave-management" component={LeaveManagement} />
                 <Route path="/time-cards" component={TimeCards} />
                 <Route path="/monthly-timecard" component={MonthlyTimecard} />

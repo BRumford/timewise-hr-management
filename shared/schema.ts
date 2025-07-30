@@ -430,6 +430,52 @@ export const userSessions = pgTable("user_sessions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Benefits documents table for uploading cost sheets and plan documentation
+export const benefitsDocuments = pgTable("benefits_documents", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  documentType: varchar("document_type", { length: 100 }).notNull(), // cost_sheet, plan_documentation, enrollment_form, etc.
+  classification: varchar("classification", { length: 50 }).notNull(), // certificated, management, classified
+  planYear: varchar("plan_year", { length: 10 }).notNull(), // 2024-2025, 2025-2026, etc.
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileUrl: varchar("file_url", { length: 500 }).notNull(),
+  fileSize: integer("file_size"), // File size in bytes
+  mimeType: varchar("mime_type", { length: 100 }),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  isActive: boolean("is_active").default(true),
+  effectiveDate: date("effective_date"),
+  expirationDate: date("expiration_date"),
+  category: varchar("category", { length: 100 }), // health, dental, vision, retirement, life_insurance, etc.
+  tags: text("tags").array().default([]), // Searchable tags
+  downloadCount: integer("downloadcount").default(0),
+  lastDownloaded: timestamp("lastdownloaded"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Benefits plans table for detailed plan information
+export const benefitsPlans = pgTable("benefits_plans", {
+  id: serial("id").primaryKey(),
+  planName: varchar("plan_name", { length: 255 }).notNull(),
+  planType: varchar("plan_type", { length: 100 }).notNull(), // health, dental, vision, retirement, life_insurance
+  classification: varchar("classification", { length: 50 }).notNull(), // certificated, management, classified
+  planYear: varchar("plan_year", { length: 10 }).notNull(),
+  provider: varchar("provider", { length: 255 }),
+  monthlyCost: decimal("monthly_cost", { precision: 10, scale: 2 }),
+  employeeContribution: decimal("employee_contribution", { precision: 10, scale: 2 }),
+  employerContribution: decimal("employer_contribution", { precision: 10, scale: 2 }),
+  deductible: decimal("deductible", { precision: 10, scale: 2 }),
+  outOfPocketMax: decimal("out_of_pocket_max", { precision: 10, scale: 2 }),
+  planDetails: text("plan_details"),
+  coverageLevel: varchar("coverage_level", { length: 50 }), // individual, family, employee_spouse, etc.
+  isActive: boolean("is_active").default(true),
+  enrollmentPeriod: varchar("enrollment_period", { length: 100 }),
+  eligibilityRequirements: text("eligibility_requirements"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Security events table for monitoring
 export const securityEvents = pgTable("security_events", {
   id: serial("id").primaryKey(),
@@ -883,6 +929,8 @@ export const insertTimecardTemplateFieldSchema = createInsertSchema(timecardTemp
 export const insertDistrictSettingsSchema = createInsertSchema(districtSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPayPeriodSchema = createInsertSchema(payPeriods).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCustomFieldLabelSchema = createInsertSchema(customFieldLabels).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBenefitsDocumentSchema = createInsertSchema(benefitsDocuments).omit({ id: true, createdAt: true, updatedAt: true, downloadCount: true, lastDownloaded: true });
+export const insertBenefitsPlanSchema = createInsertSchema(benefitsPlans).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -938,6 +986,10 @@ export type InsertPayPeriod = z.infer<typeof insertPayPeriodSchema>;
 export type PayPeriod = typeof payPeriods.$inferSelect;
 export type InsertCustomFieldLabel = z.infer<typeof insertCustomFieldLabelSchema>;
 export type CustomFieldLabel = typeof customFieldLabels.$inferSelect;
+export type InsertBenefitsDocument = z.infer<typeof insertBenefitsDocumentSchema>;
+export type BenefitsDocument = typeof benefitsDocuments.$inferSelect;
+export type InsertBenefitsPlan = z.infer<typeof insertBenefitsPlanSchema>;
+export type BenefitsPlan = typeof benefitsPlans.$inferSelect;
 
 // Password reset types
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true, createdAt: true });

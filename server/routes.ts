@@ -5073,6 +5073,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Benefits documents routes
+  app.get('/api/benefits/documents', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { classification, type, planYear, search } = req.query;
+      
+      let documents;
+      if (search) {
+        documents = await storage.searchBenefitsDocuments(search as string);
+      } else if (classification) {
+        documents = await storage.getBenefitsDocumentsByClassification(classification as string);
+      } else if (type) {
+        documents = await storage.getBenefitsDocumentsByType(type as string);
+      } else if (planYear) {
+        documents = await storage.getBenefitsDocumentsByPlanYear(planYear as string);
+      } else {
+        documents = await storage.getBenefitsDocuments();
+      }
+      
+      res.json(documents);
+    } catch (error) {
+      console.error('Error fetching benefits documents:', error);
+      res.status(500).json({ message: 'Failed to fetch benefits documents' });
+    }
+  });
+
+  app.get('/api/benefits/documents/:id', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const document = await storage.getBenefitsDocument(id);
+      
+      if (!document) {
+        return res.status(404).json({ message: 'Benefits document not found' });
+      }
+      
+      res.json(document);
+    } catch (error) {
+      console.error('Error fetching benefits document:', error);
+      res.status(500).json({ message: 'Failed to fetch benefits document' });
+    }
+  });
+
+  app.post('/api/benefits/documents', requireRole(['admin', 'hr']), upload.single('file'), async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      const documentData = {
+        title: req.body.title,
+        description: req.body.description,
+        documentType: req.body.documentType,
+        classification: req.body.classification,
+        planYear: req.body.planYear,
+        fileName: file.filename,
+        fileUrl: `/uploads/${file.filename}`,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        uploadedBy: user.id,
+        category: req.body.category,
+        tags: req.body.tags ? JSON.parse(req.body.tags) : [],
+        effectiveDate: req.body.effectiveDate ? new Date(req.body.effectiveDate) : null,
+        expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : null,
+      };
+
+      const document = await storage.createBenefitsDocument(documentData);
+      res.json(document);
+    } catch (error) {
+      console.error('Error creating benefits document:', error);
+      res.status(500).json({ message: 'Failed to create benefits document' });
+    }
+  });
+
+  app.put('/api/benefits/documents/:id', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = { ...req.body };
+      
+      if (updateData.tags && typeof updateData.tags === 'string') {
+        updateData.tags = JSON.parse(updateData.tags);
+      }
+      
+      if (updateData.effectiveDate) {
+        updateData.effectiveDate = new Date(updateData.effectiveDate);
+      }
+      
+      if (updateData.expirationDate) {
+        updateData.expirationDate = new Date(updateData.expirationDate);
+      }
+
+      const document = await storage.updateBenefitsDocument(id, updateData);
+      res.json(document);
+    } catch (error) {
+      console.error('Error updating benefits document:', error);
+      res.status(500).json({ message: 'Failed to update benefits document' });
+    }
+  });
+
+  app.delete('/api/benefits/documents/:id', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteBenefitsDocument(id);
+      res.json({ message: 'Benefits document deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting benefits document:', error);
+      res.status(500).json({ message: 'Failed to delete benefits document' });
+    }
+  });
+
+  // Benefits plans routes
+  app.get('/api/benefits/plans', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { classification, type, planYear } = req.query;
+      
+      let plans;
+      if (classification) {
+        plans = await storage.getBenefitsPlansByClassification(classification as string);
+      } else if (type) {
+        plans = await storage.getBenefitsPlansByType(type as string);
+      } else if (planYear) {
+        plans = await storage.getBenefitsPlansByPlanYear(planYear as string);
+      } else {
+        plans = await storage.getBenefitsPlans();
+      }
+      
+      res.json(plans);
+    } catch (error) {
+      console.error('Error fetching benefits plans:', error);
+      res.status(500).json({ message: 'Failed to fetch benefits plans' });
+    }
+  });
+
+  app.post('/api/benefits/plans', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const planData = { ...req.body };
+      
+      // Convert decimal strings to proper decimal values
+      ['monthlyCost', 'employeeContribution', 'employerContribution', 'deductible', 'outOfPocketMax'].forEach(field => {
+        if (planData[field]) {
+          planData[field] = parseFloat(planData[field]);
+        }
+      });
+
+      const plan = await storage.createBenefitsPlan(planData);
+      res.json(plan);
+    } catch (error) {
+      console.error('Error creating benefits plan:', error);
+      res.status(500).json({ message: 'Failed to create benefits plan' });
+    }
+  });
+
+  app.put('/api/benefits/plans/:id', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = { ...req.body };
+      
+      // Convert decimal strings to proper decimal values
+      ['monthlyCost', 'employeeContribution', 'employerContribution', 'deductible', 'outOfPocketMax'].forEach(field => {
+        if (updateData[field]) {
+          updateData[field] = parseFloat(updateData[field]);
+        }
+      });
+
+      const plan = await storage.updateBenefitsPlan(id, updateData);
+      res.json(plan);
+    } catch (error) {
+      console.error('Error updating benefits plan:', error);
+      res.status(500).json({ message: 'Failed to update benefits plan' });
+    }
+  });
+
+  app.delete('/api/benefits/plans/:id', requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteBenefitsPlan(id);
+      res.json({ message: 'Benefits plan deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting benefits plan:', error);
+      res.status(500).json({ message: 'Failed to delete benefits plan' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

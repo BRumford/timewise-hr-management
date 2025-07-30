@@ -29,6 +29,8 @@ import {
   dataEncryptionKeys,
   rolePermissions,
   employeeAccounts,
+  benefitsDocuments,
+  benefitsPlans,
   type User,
   type UpsertUser,
   type EmployeeAccount,
@@ -102,6 +104,10 @@ import {
   dropdownOptions,
   type DropdownOption,
   type InsertDropdownOption,
+  type BenefitsDocument,
+  type InsertBenefitsDocument,
+  type BenefitsPlan,
+  type InsertBenefitsPlan,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-orm";
@@ -337,6 +343,27 @@ export interface IStorage {
   deleteSignatureTemplate(id: number): Promise<void>;
   getSignatureTemplatesByDocumentType(documentType: string): Promise<SignatureTemplate[]>;
   getActiveSignatureTemplates(): Promise<SignatureTemplate[]>;
+  
+  // Benefits documents
+  getBenefitsDocuments(): Promise<BenefitsDocument[]>;
+  getBenefitsDocument(id: number): Promise<BenefitsDocument | undefined>;
+  createBenefitsDocument(document: InsertBenefitsDocument): Promise<BenefitsDocument>;
+  updateBenefitsDocument(id: number, document: Partial<InsertBenefitsDocument>): Promise<BenefitsDocument>;
+  deleteBenefitsDocument(id: number): Promise<void>;
+  getBenefitsDocumentsByClassification(classification: string): Promise<BenefitsDocument[]>;
+  getBenefitsDocumentsByType(documentType: string): Promise<BenefitsDocument[]>;
+  getBenefitsDocumentsByPlanYear(planYear: string): Promise<BenefitsDocument[]>;
+  searchBenefitsDocuments(query: string): Promise<BenefitsDocument[]>;
+  
+  // Benefits plans
+  getBenefitsPlans(): Promise<BenefitsPlan[]>;
+  getBenefitsPlan(id: number): Promise<BenefitsPlan | undefined>;
+  createBenefitsPlan(plan: InsertBenefitsPlan): Promise<BenefitsPlan>;
+  updateBenefitsPlan(id: number, plan: Partial<InsertBenefitsPlan>): Promise<BenefitsPlan>;
+  deleteBenefitsPlan(id: number): Promise<void>;
+  getBenefitsPlansByClassification(classification: string): Promise<BenefitsPlan[]>;
+  getBenefitsPlansByType(planType: string): Promise<BenefitsPlan[]>;
+  getBenefitsPlansByPlanYear(planYear: string): Promise<BenefitsPlan[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2939,6 +2966,106 @@ export class DatabaseStorage implements IStorage {
       .where(eq(employeeAccounts.id, accountId))
       .returning();
     return account;
+  }
+
+  // Benefits documents implementation
+  async getBenefitsDocuments(): Promise<BenefitsDocument[]> {
+    return await db.select().from(benefitsDocuments).orderBy(desc(benefitsDocuments.createdAt));
+  }
+
+  async getBenefitsDocument(id: number): Promise<BenefitsDocument | undefined> {
+    const [document] = await db.select().from(benefitsDocuments).where(eq(benefitsDocuments.id, id));
+    return document;
+  }
+
+  async createBenefitsDocument(document: InsertBenefitsDocument): Promise<BenefitsDocument> {
+    const [created] = await db.insert(benefitsDocuments).values(document).returning();
+    return created;
+  }
+
+  async updateBenefitsDocument(id: number, document: Partial<InsertBenefitsDocument>): Promise<BenefitsDocument> {
+    const [updated] = await db.update(benefitsDocuments)
+      .set({ ...document, updatedAt: new Date() })
+      .where(eq(benefitsDocuments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBenefitsDocument(id: number): Promise<void> {
+    await db.delete(benefitsDocuments).where(eq(benefitsDocuments.id, id));
+  }
+
+  async getBenefitsDocumentsByClassification(classification: string): Promise<BenefitsDocument[]> {
+    return await db.select().from(benefitsDocuments)
+      .where(eq(benefitsDocuments.classification, classification))
+      .orderBy(desc(benefitsDocuments.createdAt));
+  }
+
+  async getBenefitsDocumentsByType(documentType: string): Promise<BenefitsDocument[]> {
+    return await db.select().from(benefitsDocuments)
+      .where(eq(benefitsDocuments.documentType, documentType))
+      .orderBy(desc(benefitsDocuments.createdAt));
+  }
+
+  async getBenefitsDocumentsByPlanYear(planYear: string): Promise<BenefitsDocument[]> {
+    return await db.select().from(benefitsDocuments)
+      .where(eq(benefitsDocuments.planYear, planYear))
+      .orderBy(desc(benefitsDocuments.createdAt));
+  }
+
+  async searchBenefitsDocuments(query: string): Promise<BenefitsDocument[]> {
+    return await db.select().from(benefitsDocuments)
+      .where(or(
+        sql`${benefitsDocuments.title} ILIKE ${`%${query}%`}`,
+        sql`${benefitsDocuments.description} ILIKE ${`%${query}%`}`,
+        sql`${benefitsDocuments.category} ILIKE ${`%${query}%`}`
+      ))
+      .orderBy(desc(benefitsDocuments.createdAt));
+  }
+
+  // Benefits plans implementation
+  async getBenefitsPlans(): Promise<BenefitsPlan[]> {
+    return await db.select().from(benefitsPlans).orderBy(desc(benefitsPlans.createdAt));
+  }
+
+  async getBenefitsPlan(id: number): Promise<BenefitsPlan | undefined> {
+    const [plan] = await db.select().from(benefitsPlans).where(eq(benefitsPlans.id, id));
+    return plan;
+  }
+
+  async createBenefitsPlan(plan: InsertBenefitsPlan): Promise<BenefitsPlan> {
+    const [created] = await db.insert(benefitsPlans).values(plan).returning();
+    return created;
+  }
+
+  async updateBenefitsPlan(id: number, plan: Partial<InsertBenefitsPlan>): Promise<BenefitsPlan> {
+    const [updated] = await db.update(benefitsPlans)
+      .set({ ...plan, updatedAt: new Date() })
+      .where(eq(benefitsPlans.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBenefitsPlan(id: number): Promise<void> {
+    await db.delete(benefitsPlans).where(eq(benefitsPlans.id, id));
+  }
+
+  async getBenefitsPlansByClassification(classification: string): Promise<BenefitsPlan[]> {
+    return await db.select().from(benefitsPlans)
+      .where(eq(benefitsPlans.classification, classification))
+      .orderBy(desc(benefitsPlans.createdAt));
+  }
+
+  async getBenefitsPlansByType(planType: string): Promise<BenefitsPlan[]> {
+    return await db.select().from(benefitsPlans)
+      .where(eq(benefitsPlans.planType, planType))
+      .orderBy(desc(benefitsPlans.createdAt));
+  }
+
+  async getBenefitsPlansByPlanYear(planYear: string): Promise<BenefitsPlan[]> {
+    return await db.select().from(benefitsPlans)
+      .where(eq(benefitsPlans.planYear, planYear))
+      .orderBy(desc(benefitsPlans.createdAt));
   }
 }
 

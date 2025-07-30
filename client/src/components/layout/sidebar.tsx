@@ -24,7 +24,8 @@ import {
   Activity,
   ShieldAlert,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  FileSpreadsheet
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
@@ -36,6 +37,7 @@ const mainMenuItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["admin", "hr"] },
+  { path: "/benefits", icon: FileSpreadsheet, label: "Benefits", roles: ["admin", "hr"] },
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["admin", "hr", "employee"] },
   { path: "/time-cards", icon: Clock, label: "Admin Timecard Approval", roles: ["admin", "hr", "employee"] },
   { path: "/monthly-timecard", icon: Calendar, label: "Monthly Timecard", roles: ["admin", "hr"] },
