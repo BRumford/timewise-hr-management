@@ -122,6 +122,13 @@ The application uses a comprehensive schema with the following main entities:
 The system is designed to be scalable, maintainable, and specifically tailored for the complex needs of school district HR departments, with AI automation reducing manual workload while ensuring compliance and efficiency.
 
 ## Recent Changes
+- Prioritized Onboarding by Moving to Top of Navigation Menu (July 30, 2025)
+  - Moved Onboarding page from middle of navigation to second position (after Dashboard) for better accessibility
+  - Recognizes onboarding as critical first step in employee lifecycle management process
+  - Improved workflow for HR staff who frequently need to process new employee onboarding
+  - Enhanced user experience by positioning high-priority function at top of navigation hierarchy
+  - Navigation now flows logically: Dashboard → Onboarding → Employee Management → operational functions
+
 - Organized Navigation by Moving Administrative Features to Settings Dropdown (July 30, 2025)
   - Moved Timecard Templates and Documents from main navigation menu to Settings dropdown for better organization
   - Positioned administrative features (Timecard Templates, Documents) at top of Settings dropdown for easy access

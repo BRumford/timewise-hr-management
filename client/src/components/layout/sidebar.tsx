@@ -34,6 +34,7 @@ import { useState } from "react";
 // Main navigation items
 const mainMenuItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr"] },
+  { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["admin", "hr"] },
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["admin", "hr", "employee"] },
   { path: "/time-cards", icon: Clock, label: "Admin Timecard Approval", roles: ["admin", "hr", "employee"] },
@@ -44,7 +45,6 @@ const mainMenuItems = [
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["admin", "hr"] },
 
   { path: "/letters", icon: Mail, label: "Letters", roles: ["admin", "hr"] },
-  { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["admin", "hr"] },
   { path: "/retirees", icon: Heart, label: "Retirees", roles: ["admin", "hr"] },
   { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["admin", "hr"] },
