@@ -1849,6 +1849,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get onboarding workflows by employee ID
+  app.get("/api/onboarding/workflows", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { employeeId } = req.query;
+      if (employeeId) {
+        const workflows = await storage.getOnboardingWorkflowsByEmployee(parseInt(employeeId as string));
+        res.json(workflows);
+      } else {
+        const workflows = await storage.getOnboardingWorkflows();
+        res.json(workflows);
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch onboarding workflows", error: (error as Error).message });
+    }
+  });
+
+  // Get form submissions by employee ID  
+  app.get("/api/onboarding/form-submissions", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { employeeId } = req.query;
+      if (employeeId) {
+        const submissions = await storage.getOnboardingFormSubmissionsByEmployee(parseInt(employeeId as string));
+        res.json(submissions);
+      } else {
+        const submissions = await storage.getOnboardingFormSubmissions();
+        res.json(submissions);
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch form submissions", error: (error as Error).message });
+    }
+  });
+
   app.post("/api/onboarding", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       // Convert string dates to Date objects for validation

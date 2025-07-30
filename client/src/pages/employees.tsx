@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { DropdownEdit } from "@/components/ui/dropdown-edit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Filter, Download, Upload, FileText, AlertCircle, CheckCircle, Edit, Eye, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Download, Upload, FileText, AlertCircle, CheckCircle, Edit, Eye, Trash2, Calendar, User } from "lucide-react";
 import { useState, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -40,6 +40,148 @@ const editEmployeeSchema = z.object({
 });
 
 type EditEmployeeFormData = z.infer<typeof editEmployeeSchema>;
+
+// Onboarding Paperwork History Component
+function OnboardingPaperworkHistory({ employeeId }: { employeeId: number }) {
+  const { data: onboardingWorkflows, isLoading: isLoadingWorkflows } = useQuery({
+    queryKey: ["/api/onboarding/workflows", employeeId],
+    queryFn: async () => {
+      const response = await apiRequest(`/api/onboarding/workflows?employeeId=${employeeId}`, "GET");
+      return response;
+    },
+  });
+
+  const { data: formSubmissions, isLoading: isLoadingSubmissions } = useQuery({
+    queryKey: ["/api/onboarding/form-submissions", employeeId],
+    queryFn: async () => {
+      const response = await apiRequest(`/api/onboarding/form-submissions?employeeId=${employeeId}`, "GET");
+      return response;
+    },
+  });
+
+  if (isLoadingWorkflows || isLoadingSubmissions) {
+    return <div className="text-sm text-gray-500">Loading onboarding history...</div>;
+  }
+
+  const workflows = Array.isArray(onboardingWorkflows) ? onboardingWorkflows : [];
+  const submissions = Array.isArray(formSubmissions) ? formSubmissions : [];
+
+  return (
+    <div className="space-y-4">
+      {/* Onboarding Workflows */}
+      {workflows.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Onboarding Workflows ({workflows.length})
+          </h4>
+          <div className="space-y-2">
+            {workflows.map((workflow: any) => (
+              <div key={workflow.id} className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {workflow.workflowType?.replace('_', ' ')?.replace(/\b\w/g, (l: string) => l.toUpperCase())} Workflow
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Status: <Badge className={workflow.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                               workflow.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
+                               'bg-yellow-100 text-yellow-800'}>{workflow.status.replace('_', ' ')}</Badge>
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Started: {new Date(workflow.startDate).toLocaleDateString()}
+                    </p>
+                    {workflow.completedAt && (
+                      <p className="text-xs text-gray-600">
+                        Completed: {new Date(workflow.completedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Current Step:</p>
+                    <p className="text-xs font-medium">{workflow.currentStep || 'Not specified'}</p>
+                  </div>
+                </div>
+                {workflow.requiredDocuments && workflow.requiredDocuments.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-600">Required Documents:</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {workflow.requiredDocuments.map((doc: string, index: number) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {doc}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Form Submissions */}
+      {submissions.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Completed Forms ({submissions.length})
+          </h4>
+          <div className="space-y-2">
+            {submissions.map((submission: any) => (
+              <div key={submission.id} className="bg-blue-50 p-3 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium">{submission.formTitle || `Form #${submission.formId}`}</p>
+                    <p className="text-xs text-gray-600">
+                      Status: <Badge className={submission.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                               submission.status === 'submitted' ? 'bg-blue-100 text-blue-800' : 
+                               submission.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                               'bg-yellow-100 text-yellow-800'}>{submission.status}</Badge>
+                    </p>
+                    {submission.submittedAt && (
+                      <p className="text-xs text-gray-600">
+                        Submitted: {new Date(submission.submittedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                    {submission.reviewedAt && (
+                      <p className="text-xs text-gray-600">
+                        Reviewed: {new Date(submission.reviewedAt).toLocaleDateString()}
+                        {submission.reviewedBy && ` by ${submission.reviewedBy}`}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    {submission.fileUrls && submission.fileUrls.length > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        {submission.fileUrls.length} file{submission.fileUrls.length > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {submission.reviewNotes && (
+                  <div className="mt-2 p-2 bg-white rounded border">
+                    <p className="text-xs text-gray-600">Review Notes:</p>
+                    <p className="text-xs">{submission.reviewNotes}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {workflows.length === 0 && submissions.length === 0 && (
+        <div className="text-center py-6 text-gray-500">
+          <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+          <p className="text-sm">No onboarding paperwork history found</p>
+          <p className="text-xs">Completed forms and workflows will appear here</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Employees() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -810,6 +952,15 @@ export default function Employees() {
                   <p className="text-sm text-gray-600">{selectedEmployee.address}</p>
                 </div>
               )}
+              
+              {/* Onboarding Paperwork Section */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  <Label className="text-lg font-semibold">Onboarding Paperwork History</Label>
+                </div>
+                <OnboardingPaperworkHistory employeeId={selectedEmployee.id} />
+              </div>
             </div>
           )}
         </DialogContent>

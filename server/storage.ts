@@ -1117,6 +1117,10 @@ export class DatabaseStorage implements IStorage {
     return workflow;
   }
 
+  async getOnboardingWorkflowsByEmployee(employeeId: number): Promise<OnboardingWorkflow[]> {
+    return await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.employeeId, employeeId)).orderBy(desc(onboardingWorkflows.createdAt));
+  }
+
   // Onboarding forms methods
   async getOnboardingForms(): Promise<OnboardingForm[]> {
     return await db.select().from(onboardingForms).orderBy(onboardingForms.createdAt);
@@ -1166,6 +1170,10 @@ export class DatabaseStorage implements IStorage {
   // Onboarding form submissions methods
   async getOnboardingFormSubmissions(): Promise<OnboardingFormSubmission[]> {
     return await db.select().from(onboardingFormSubmissions).orderBy(onboardingFormSubmissions.createdAt);
+  }
+
+  async getOnboardingFormSubmissionsByEmployee(employeeId: number): Promise<OnboardingFormSubmission[]> {
+    return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.employeeId, employeeId)).orderBy(desc(onboardingFormSubmissions.createdAt));
   }
 
   async getOnboardingFormSubmission(id: number): Promise<OnboardingFormSubmission | undefined> {
