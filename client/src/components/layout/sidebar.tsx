@@ -129,7 +129,7 @@ export default function Sidebar() {
           <div>
             <h1 className="text-xl font-bold text-gray-900">Timewise K-12</h1>
             <p className="text-sm text-gray-500">
-              {user?.employee ? `${user.employee.firstName} ${user.employee.lastName}` : "Lincoln School District"}
+              {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : "Lincoln School District"}
             </p>
             <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
           </div>
