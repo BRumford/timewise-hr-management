@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 
 export interface User {
   id: string;
-  role: 'admin' | 'hr' | 'employee';
+  role: 'admin' | 'hr' | 'payroll' | 'employee';
   email?: string;
   firstName?: string;
   lastName?: string;
+  permissions?: string[];
   employee?: {
     id: number;
     firstName: string;
@@ -28,7 +29,10 @@ export function useAuth() {
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isHR: user?.role === 'hr',
+    isPayroll: user?.role === 'payroll',
     isEmployee: user?.role === 'employee',
     canViewAllRecords: user?.role === 'admin' || user?.role === 'hr',
+    canManagePayroll: user?.role === 'admin' || user?.role === 'payroll',
+    canManageEmployees: user?.role === 'admin' || user?.role === 'hr',
   };
 }

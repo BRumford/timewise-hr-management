@@ -80,7 +80,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("employee"), // hr, admin, employee, secretary
+  role: varchar("role").notNull().default("employee"), // admin, hr, payroll, employee, secretary
   passwordHash: varchar("password_hash"), // For password authentication
   mfaEnabled: boolean("mfa_enabled").default(false),
   mfaSecret: varchar("mfa_secret"),
@@ -99,7 +99,7 @@ export const users = pgTable("users", {
 // Role permissions table for configurable access control
 export const rolePermissions = pgTable("role_permissions", {
   id: serial("id").primaryKey(),
-  role: varchar("role", { length: 50 }).notNull(), // admin, hr, employee, secretary
+  role: varchar("role", { length: 50 }).notNull(), // admin, hr, payroll, employee, secretary
   pagePath: varchar("page_path", { length: 100 }).notNull(), // /employees, /leave-management, etc.
   canAccess: boolean("can_access").default(true),
   createdAt: timestamp("created_at").defaultNow(),

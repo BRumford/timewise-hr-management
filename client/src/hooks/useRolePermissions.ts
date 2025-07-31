@@ -19,7 +19,26 @@ export function useRolePermissions() {
       return pagePath === '/';
     }
     
-    // For all other roles (admin, hr, secretary), check database permissions
+    // Payroll role has specific access to payroll-related pages
+    if (role === 'payroll') {
+      const payrollPages = [
+        '/', '/payroll', '/time-cards', '/monthly-timecard', 
+        '/substitute-time-cards', '/extra-pay-activities', '/reports'
+      ];
+      return payrollPages.includes(pagePath);
+    }
+    
+    // HR role has access to HR-related pages but not all admin functions
+    if (role === 'hr') {
+      const hrPages = [
+        '/', '/employees', '/leave-management', '/benefits', '/onboarding',
+        '/reports', '/documents', '/archived-employees', '/retirees',
+        '/privacy-policies', '/data-deletion-requests', '/employee-access-management'
+      ];
+      return hrPages.includes(pagePath);
+    }
+    
+    // For admin and other roles, check database permissions
     const permission = permissions.find((p: RolePermission) => p.pagePath === pagePath);
     return permission ? permission.canAccess : false;
   };

@@ -452,6 +452,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // HR registration endpoint (for HR staff self-registration)
+  app.post('/api/auth/register-hr', async (req, res) => {
+    try {
+      const { firstName, lastName, email, password, organizationName, role } = req.body;
+      
+      if (!firstName || !lastName || !email || !password || !organizationName) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Ensure role is hr
+      if (role !== 'hr') {
+        return res.status(400).json({ message: "Only HR accounts can be created through this endpoint" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
+      if (existingUser) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create user account with HR role
+      const user = await storage.upsertUser({
+        id: crypto.randomUUID(),
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        role: 'hr',
+        passwordHash
+      });
+
+      res.json({ 
+        message: "HR account created successfully. You now have access to employee management and HR functions.", 
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error('HR registration error:', error);
+      res.status(500).json({ message: "Registration failed", error: (error as Error).message });
+    }
+  });
+
+  // Payroll registration endpoint (for payroll staff self-registration)
+  app.post('/api/auth/register-payroll', async (req, res) => {
+    try {
+      const { firstName, lastName, email, password, organizationName, role } = req.body;
+      
+      if (!firstName || !lastName || !email || !password || !organizationName) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Ensure role is payroll
+      if (role !== 'payroll') {
+        return res.status(400).json({ message: "Only Payroll accounts can be created through this endpoint" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
+      if (existingUser) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create user account with payroll role
+      const user = await storage.upsertUser({
+        id: crypto.randomUUID(),
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        role: 'payroll',
+        passwordHash
+      });
+
+      res.json({ 
+        message: "Payroll account created successfully. You now have access to payroll and timecard management functions.", 
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error('Payroll registration error:', error);
+      res.status(500).json({ message: "Registration failed", error: (error as Error).message });
+    }
+  });
+
   // District registration endpoint (for creating new districts with admin accounts)
   app.post('/api/auth/register-district', async (req, res) => {
     try {

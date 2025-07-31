@@ -65,8 +65,9 @@ export default function RoleSwitcher() {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="employee">Employee</SelectItem>
-          <SelectItem value="admin">Admin</SelectItem>
           <SelectItem value="hr">HR</SelectItem>
+          <SelectItem value="payroll">Payroll</SelectItem>
+          <SelectItem value="admin">Admin</SelectItem>
         </SelectContent>
       </Select>
       <Button 

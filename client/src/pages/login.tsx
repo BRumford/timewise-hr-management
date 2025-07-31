@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, Building2, Users, Shield } from "lucide-react";
+import { GraduationCap, Building2, Users, Shield, Calculator, UserCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -31,6 +32,9 @@ export default function Login() {
     organizationType: "school_district",
     role: "employee" // Default to employee for new registrations
   });
+
+  // Registration type selection
+  const [registrationType, setRegistrationType] = useState<'employee' | 'hr' | 'payroll' | 'admin'>('employee');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,21 +82,40 @@ export default function Login() {
     }
     
     try {
-      // Create employee account only
-      const res = await apiRequest('/api/auth/register-employee', 'POST', {
+      // Determine the correct endpoint based on registration type
+      let endpoint = '/api/auth/register-employee';
+      let role = registrationType;
+      
+      if (registrationType === 'hr') {
+        endpoint = '/api/auth/register-hr';
+      } else if (registrationType === 'payroll') {
+        endpoint = '/api/auth/register-payroll';
+      } else if (registrationType === 'admin') {
+        endpoint = '/api/auth/register-district';
+      }
+
+      const res = await apiRequest(endpoint, 'POST', {
         firstName: registerForm.firstName,
         lastName: registerForm.lastName,
         email: registerForm.email,
         password: registerForm.password,
         organizationName: registerForm.organizationName,
-        role: 'employee'
+        role: role,
+        ...(registrationType === 'admin' && { districtName: registerForm.organizationName })
       });
       
       const response = await res.json();
       
+      const roleLabels = {
+        employee: 'Employee',
+        hr: 'HR',
+        payroll: 'Payroll',
+        admin: 'Administrator'
+      };
+      
       toast({
-        title: "Employee Account Created",
-        description: "Account created! Please sign in with your new credentials."
+        title: `${roleLabels[registrationType]} Account Created`,
+        description: response.message || "Account created! Please sign in with your new credentials."
       });
       
       // Clear the registration form and stay on this page
@@ -263,6 +286,28 @@ export default function Login() {
                         Enter the name of the school district where you work
                       </p>
                     </div>
+
+                    {/* Role Selection */}
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Account Type</Label>
+                      <Select value={registrationType} onValueChange={(value) => setRegistrationType(value as typeof registrationType)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="employee">Employee (Timecard & Leave Access)</SelectItem>
+                          <SelectItem value="hr">HR Staff (Employee Management)</SelectItem>
+                          <SelectItem value="payroll">Payroll Staff (Payroll & Timecards)</SelectItem>
+                          <SelectItem value="admin">Administrator (Full System Access)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-gray-500">
+                        {registrationType === 'employee' && 'Access to submit timecards and leave requests only'}
+                        {registrationType === 'hr' && 'Access to employee management, leave tracking, and HR functions'}
+                        {registrationType === 'payroll' && 'Access to payroll processing, timecard approval, and reports'}
+                        {registrationType === 'admin' && 'Full system access including district setup and all modules'}
+                      </div>
+                    </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="registerPassword">Password</Label>
@@ -293,12 +338,15 @@ export default function Login() {
                       className="w-full" 
                       disabled={loading}
                     >
-                      {loading ? "Creating Employee Account..." : "Create Employee Account"}
+                      {loading ? `Creating ${registrationType.charAt(0).toUpperCase() + registrationType.slice(1)} Account...` : `Create ${registrationType.charAt(0).toUpperCase() + registrationType.slice(1)} Account`}
                     </Button>
                   </form>
                   
                   <div className="text-center text-xs text-gray-500">
-                    Employee accounts are for district staff to access timecards and leave requests
+                    {registrationType === 'employee' && 'Employee accounts provide access to timecard and leave management'}
+                    {registrationType === 'hr' && 'HR accounts provide access to employee management and HR functions'}
+                    {registrationType === 'payroll' && 'Payroll accounts provide access to payroll processing and timecard approval'}
+                    {registrationType === 'admin' && 'Administrator accounts provide full system access and district management'}
                   </div>
                 </TabsContent>
               </Tabs>
