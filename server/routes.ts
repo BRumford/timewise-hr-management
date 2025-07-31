@@ -2444,6 +2444,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Employee-specific timecard endpoint by user ID
+  app.get("/api/time-cards/employee-user/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = (req as any).user;
+      
+      // Ensure employees can only access their own timecards
+      if (user.role === 'employee' && user.id !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const employee = await storage.getEmployeeByUserId(userId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      const timecards = await storage.getTimeCardsByEmployee(employee.id);
+      res.json(timecards);
+    } catch (error) {
+      console.error('Error fetching employee timecards:', error);
+      res.status(500).json({ message: "Failed to fetch employee timecards" });
+    }
+  });
+
   app.get("/api/time-cards/pending", isAuthenticated, async (req, res) => {
     try {
       const timeCards = await storage.getPendingTimeCards();
@@ -2492,10 +2516,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/time-cards/:id/approve-employee", async (req, res) => {
     try {
       const { employeeId, notes } = req.body;
+      const user = (req as any).user;
+      
+      // For employees, ensure they can only approve their own timecards
+      if (user.role === 'employee') {
+        const employee = await storage.getEmployeeByUserId(user.id);
+        if (!employee || employee.id !== employeeId) {
+          return res.status(403).json({ message: "Access denied - you can only approve your own timecards" });
+        }
+      }
+      
       const timeCard = await storage.approveTimeCardByEmployee(parseInt(req.params.id), employeeId, notes);
       res.json(timeCard);
     } catch (error) {
       res.status(500).json({ message: "Failed to approve time card by employee", error: (error as Error).message });
+    }
+  });
+
+  // Alternative approve endpoint for general employee approval
+  app.post("/api/time-cards/:id/approve", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { approvedBy, approverRole } = req.body;
+      const user = (req as any).user;
+      
+      // For employees, ensure they can only approve their own timecards
+      if (user.role === 'employee' && user.id !== approvedBy) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const employee = await storage.getEmployeeByUserId(approvedBy);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      const timeCard = await storage.approveTimeCardByEmployee(parseInt(id), employee.id, "Approved by employee");
+      res.json(timeCard);
+    } catch (error) {
+      console.error('Error approving timecard:', error);
+      res.status(500).json({ message: "Failed to approve timecard" });
     }
   });
 
