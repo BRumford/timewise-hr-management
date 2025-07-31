@@ -732,8 +732,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/switch-role', isAuthenticated, async (req, res) => {
     try {
       const { role } = req.body;
-      if (!['employee', 'admin', 'hr', 'secretary'].includes(role)) {
-        return res.status(400).json({ message: "Invalid role. Must be 'employee', 'admin', 'hr', or 'secretary'" });
+      if (!['employee', 'admin', 'hr', 'payroll'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be 'employee', 'admin', 'hr', or 'payroll'" });
       }
       
       const user = (req as any).user;
