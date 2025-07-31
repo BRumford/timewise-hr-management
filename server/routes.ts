@@ -593,6 +593,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         id: user.id,
         role: user.role,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         employee: employee || null
       });
     } catch (error) {
