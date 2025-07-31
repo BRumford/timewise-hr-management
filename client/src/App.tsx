@@ -90,6 +90,7 @@ function Router() {
                 <Route path="/compliance-dashboard" component={ComplianceDashboard} />
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route path="/district-management" component={DistrictManagement} />
+                <Route path="/data-isolation-demo" component={DataIsolationDemo} />
                 <Route component={NotFound} />
               </Switch>
             </main>

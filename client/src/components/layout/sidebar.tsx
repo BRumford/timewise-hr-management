@@ -37,6 +37,7 @@ import { useState } from "react";
 const mainMenuItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr"] },
   { path: "/district-management", icon: Building2, label: "District Management", roles: ["admin"] },
+  { path: "/data-isolation-demo", icon: Shield, label: "B2B SaaS Demo", roles: ["admin", "hr"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["admin", "hr"] },
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["admin", "hr", "employee"] },
