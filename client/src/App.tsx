@@ -36,6 +36,7 @@ import PerformanceDashboard from "@/pages/performance-dashboard";
 import ComplianceDashboard from "@/pages/compliance-dashboard";
 import EmployeeAccessManagement from "@/pages/employee-access-management";
 import Benefits from "@/pages/benefits";
+import DistrictManagement from "@/pages/district-management";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -84,6 +85,7 @@ function Router() {
                 <Route path="/performance-dashboard" component={PerformanceDashboard} />
                 <Route path="/compliance-dashboard" component={ComplianceDashboard} />
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
+                <Route path="/district-management" component={DistrictManagement} />
                 <Route component={NotFound} />
               </Switch>
             </main>

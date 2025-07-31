@@ -25,7 +25,8 @@ import {
   ShieldAlert,
   ChevronDown,
   ChevronRight,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Building2
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
@@ -35,6 +36,7 @@ import { useState } from "react";
 // Main navigation items - Benefits moved under Leave Management
 const mainMenuItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "hr"] },
+  { path: "/district-management", icon: Building2, label: "District Management", roles: ["admin"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["admin", "hr"] },
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["admin", "hr"] },
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["admin", "hr", "employee"] },
