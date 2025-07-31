@@ -80,10 +80,14 @@ export default function MultiTenantDemo() {
       
       // Now fetch district-specific data
       try {
-        const [employees, usageStats] = await Promise.all([
-          apiRequest("/api/district/employees", "GET"),
-          apiRequest("/api/district/usage-stats", "GET")
-        ]);
+        // Fetch district-specific data using the logged-in session
+        const employees = await fetch("/api/district/employees", {
+          credentials: 'include'
+        }).then(r => r.json());
+        
+        const usageStats = await fetch("/api/district/usage-stats", {
+          credentials: 'include'
+        }).then(r => r.json());
         
         setDistrictData({
           employees: employees || [],

@@ -1,7 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { tenantMiddleware, requireDistrict, withDistrictFilter } from './tenantMiddleware';
 import { getDistrictStorage } from './multiTenantStorage';
-import { getDistrictAuth } from './districtAuth';
+import { getDistrictAuth, DistrictAuth } from './districtAuth';
+import { db } from './db';
+import { districts } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Schema for district login

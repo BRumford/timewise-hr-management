@@ -39,6 +39,7 @@ import Benefits from "@/pages/benefits";
 import DistrictManagement from "@/pages/district-management";
 import DistrictLogin from "@/pages/district-login";
 import MultiTenantDemo from "@/pages/multi-tenant-demo";
+import DataIsolationDemo from "@/pages/data-isolation-demo";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
