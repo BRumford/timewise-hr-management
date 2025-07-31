@@ -100,10 +100,15 @@ export default function SimpleDemo() {
         <CardContent className="space-y-4">
           <div className="text-center">
             <Button 
-              onClick={runDataIsolationDemo} 
+              onClick={(e) => {
+                e.preventDefault();
+                console.log("Button clicked!");
+                runDataIsolationDemo();
+              }}
               disabled={loading}
               size="lg"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 cursor-pointer"
+              type="button"
             >
               {loading ? "Running Demo..." : "🚀 Show Multi-Tenant Architecture"}
             </Button>
@@ -126,9 +131,14 @@ export default function SimpleDemo() {
                       <div key={idx} className="p-3 border rounded-lg">
                         <h4 className="font-semibold">{district.name}</h4>
                         <p className="text-sm text-gray-600">Slug: {district.slug}</p>
-                        <Badge variant="secondary" className="mt-1">
-                          {district.subscriptionTier || 'Active'}
-                        </Badge>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="secondary">
+                            {district.subscriptionTier || 'Active'}
+                          </Badge>
+                          <Badge variant="outline">
+                            {district.monthlyBilling || 'Billing Active'}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>
