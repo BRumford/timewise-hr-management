@@ -44,6 +44,9 @@ import { eq, and, desc } from 'drizzle-orm';
 import { generateOnboardingChecklist } from './openai';
 import districtRoutes from './districtRoutes';
 import { tenantMiddleware, requireDistrict, withDistrictFilter } from './tenantMiddleware';
+import { getDistrictStorage } from './multiTenantStorage';
+import { getDistrictAuth } from './districtAuth';
+import { registerMultiTenantRoutes } from './multiTenantRoutes';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {

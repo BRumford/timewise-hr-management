@@ -37,6 +37,7 @@ import ComplianceDashboard from "@/pages/compliance-dashboard";
 import EmployeeAccessManagement from "@/pages/employee-access-management";
 import Benefits from "@/pages/benefits";
 import DistrictManagement from "@/pages/district-management";
+import DistrictLogin from "@/pages/district-login";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -46,6 +47,7 @@ function Router() {
       {/* Authentication routes (no sidebar/header) */}
       <Route path="/login" component={Login} />
       <Route path="/employee-login" component={EmployeeLogin} />
+      <Route path="/district-login" component={DistrictLogin} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       
