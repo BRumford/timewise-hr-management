@@ -181,7 +181,7 @@ export default function DistrictSetup() {
                 <GraduationCap className="text-white text-lg" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">EduHR Pro</h1>
+                <h1 className="text-xl font-bold text-gray-900">Timewise K-12</h1>
                 <p className="text-sm text-gray-500">District Setup</p>
               </div>
             </div>

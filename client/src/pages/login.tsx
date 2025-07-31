@@ -105,8 +105,8 @@ export default function Login() {
                 <GraduationCap className="text-white text-lg" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">EduHR Pro</h1>
-                <p className="text-sm text-gray-500">School District HR Management</p>
+                <h1 className="text-xl font-bold text-gray-900">Timewise K-12</h1>
+                <p className="text-sm text-gray-500">Complete All-In-System for HR and Payroll</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -127,9 +127,9 @@ export default function Login() {
               <Building2 className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">Welcome to EduHR Pro</h2>
+              <h2 className="text-3xl font-bold text-gray-900">Welcome to Timewise K-12</h2>
               <p className="text-gray-600 mt-2">
-                Complete HR management system for school districts
+                Complete All-In-System for HR and Payroll
               </p>
             </div>
           </div>
