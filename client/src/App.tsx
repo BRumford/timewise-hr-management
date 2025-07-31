@@ -32,8 +32,7 @@ import SecurityUpdates from "@/pages/security-updates";
 import DropdownSettings from "@/pages/dropdown-settings";
 import PrivacyPolicies from "@/pages/privacy-policies";
 import DataDeletionRequests from "@/pages/data-deletion-requests";
-import PerformanceDashboard from "@/pages/performance-dashboard";
-import ComplianceDashboard from "@/pages/compliance-dashboard";
+
 import EmployeeAccessManagement from "@/pages/employee-access-management";
 import Benefits from "@/pages/benefits";
 import DistrictManagement from "@/pages/district-management";
@@ -89,8 +88,7 @@ function Router() {
                 <Route path="/dropdown-settings" component={DropdownSettings} />
                 <Route path="/privacy-policies" component={PrivacyPolicies} />
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
-                <Route path="/performance-dashboard" component={PerformanceDashboard} />
-                <Route path="/compliance-dashboard" component={ComplianceDashboard} />
+
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route path="/district-management" component={DistrictManagement} />
                 <Route path="/data-isolation-demo" component={DataIsolationDemo} />

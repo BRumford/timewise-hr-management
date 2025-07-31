@@ -73,8 +73,6 @@ const adminDropdownItems = [
   { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["payroll"] },
   { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["hr", "payroll"] },
   { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["hr", "payroll"] },
-  { path: "/performance-dashboard", icon: Activity, label: "Performance Dashboard", roles: ["hr", "payroll"] },
-  { path: "/compliance-dashboard", icon: ShieldAlert, label: "Compliance Dashboard", roles: ["hr", "payroll"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["hr", "payroll"] },
 ];
 
