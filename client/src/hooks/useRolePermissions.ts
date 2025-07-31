@@ -7,16 +7,16 @@ export function useRolePermissions() {
   const { user } = useAuth();
   const role = user?.role;
   
-  const { data: permissions = [], isLoading } = useQuery({
+  const { data: permissions = [], isLoading } = useQuery<RolePermission[]>({
     queryKey: ['/api/role-permissions', role],
     enabled: !!role,
     retry: false,
   });
 
   const hasAccess = (pagePath: string): boolean => {
-    // Employee role has limited access
+    // Employee role has extremely limited access - only dashboard
     if (role === 'employee') {
-      return ['/', '/leave-management', '/time-cards'].includes(pagePath);
+      return pagePath === '/';
     }
     
     // For all other roles (admin, hr, secretary), check database permissions
