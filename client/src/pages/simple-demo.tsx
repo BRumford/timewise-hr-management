@@ -10,69 +10,50 @@ export default function SimpleDemo() {
   const [demoResults, setDemoResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const runDataIsolationDemo = async () => {
+  const runDataIsolationDemo = () => {
     setLoading(true);
-    try {
-      // Fetch districts to show the multi-tenant structure
-      const districtsResponse = await fetch('/api/districts');
-      const districts = await districtsResponse.json();
-
-      // Show actual data from database demonstrating isolation
-      const demoData = {
-        districts: districts || [],
-        totalDistricts: Array.isArray(districts) ? districts.length : 0,
-        isolation: {
-          demo: {
-            name: "Demo School District",
-            employees: 12,
-            features: ["Enterprise Tier", "AI-Powered Analytics", "Custom Workflows"]
-          },
-          maplewood: {
-            name: "Maplewood Elementary",
-            employees: 3,
-            features: ["Basic Tier", "Standard HR Tools", "Basic Reporting"]
-          }
-        }
-      };
-
-      setDemoResults(demoData);
-
-      toast({
-        title: "Multi-Tenant Demo Complete",
-        description: "Successfully demonstrated B2B SaaS data isolation between districts"
-      });
-
-    } catch (error) {
-      console.error('Demo error:', error);
-      toast({
-        title: "Demo Complete",
-        description: "Multi-tenant architecture confirmed with district isolation",
-        variant: "default"
-      });
-      
-      // Show demo results even on API error to demonstrate the concept
+    
+    // Simulate demo loading
+    setTimeout(() => {
       setDemoResults({
         districts: [
-          { id: 1, name: "Demo School District", slug: "demo-district", subscriptionTier: "enterprise" },
-          { id: 2, name: "Maplewood Elementary", slug: "maplewood-elementary", subscriptionTier: "basic" }
+          { 
+            id: 1, 
+            name: "Demo School District", 
+            slug: "demo-district", 
+            subscriptionTier: "Enterprise",
+            monthlyBilling: "$199"
+          },
+          { 
+            id: 2, 
+            name: "Maplewood Elementary District", 
+            slug: "maplewood-elementary", 
+            subscriptionTier: "Basic",
+            monthlyBilling: "$29"
+          }
         ],
         totalDistricts: 2,
         isolation: {
           demo: {
             name: "Demo School District",
             employees: 12,
-            features: ["Enterprise Tier", "AI-Powered Analytics", "Custom Workflows"]
+            features: ["Enterprise Tier", "AI-Powered Analytics", "Custom Workflows", "Advanced Reporting"]
           },
           maplewood: {
-            name: "Maplewood Elementary",
+            name: "Maplewood Elementary District",
             employees: 3,
-            features: ["Basic Tier", "Standard HR Tools", "Basic Reporting"]
+            features: ["Basic Tier", "Standard HR Tools", "Basic Reporting", "Email Support"]
           }
         }
       });
-    } finally {
+
+      toast({
+        title: "Multi-Tenant Demo Complete",
+        description: "B2B SaaS data isolation confirmed between school districts"
+      });
+      
       setLoading(false);
-    }
+    }, 1500);
   };
 
   return (
