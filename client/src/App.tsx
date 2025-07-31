@@ -41,6 +41,7 @@ import DistrictLogin from "@/pages/district-login";
 import MultiTenantDemo from "@/pages/multi-tenant-demo";
 import DataIsolationDemo from "@/pages/data-isolation-demo";
 import SimpleDemo from "@/pages/simple-demo";
+import DistrictSetup from "@/pages/district-setup";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -49,6 +50,7 @@ function Router() {
     <Switch>
       {/* Authentication routes (no sidebar/header) */}
       <Route path="/login" component={Login} />
+      <Route path="/district-setup" component={DistrictSetup} />
       <Route path="/employee-login" component={EmployeeLogin} />
       <Route path="/district-login" component={DistrictLogin} />
       <Route path="/forgot-password" component={ForgotPassword} />
