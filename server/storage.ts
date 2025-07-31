@@ -475,21 +475,20 @@ export class DatabaseStorage implements IStorage {
       Object.entries(cleanedEmployee).filter(([_, value]) => value !== undefined)
     ) as InsertEmployee;
     
-    const [newEmployee] = await db.insert(employees).values([finalEmployeeData]).returning();
+    const [newEmployee] = await db.insert(employees).values(finalEmployeeData).returning();
     
     // Automatically create a time card for the new employee
     const currentDate = new Date();
-    const timeCardData = {
-      employeeId: newEmployee.id,
-      date: currentDate,
-      totalHours: "0",
-      status: 'draft' as const,
-      notes: 'Automatically created for new employee',
-      currentApprovalStage: 'secretary' as const,
-    };
     
     try {
-      await db.insert(timeCards).values(timeCardData);
+      const timeCardInsertData = {
+        employeeId: newEmployee.id,
+        date: currentDate,
+        totalHours: "0",
+        status: 'draft' as const,
+        notes: 'Automatically created for new employee'
+      };
+      await db.insert(timeCards).values(timeCardInsertData);
       
       // Create activity log for the automatic time card creation
       await this.createActivityLog({
