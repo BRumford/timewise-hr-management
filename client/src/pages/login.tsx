@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { GraduationCap, Building2, Users, Shield } from "lucide-react";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Login() {
   const { toast } = useToast();
@@ -35,8 +36,13 @@ export default function Login() {
     setLoading(true);
     
     try {
-      // Simulate login API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: loginForm.email,
+          password: loginForm.password
+        })
+      });
       
       toast({
         title: "Login Successful",
@@ -44,12 +50,12 @@ export default function Login() {
       });
       
       // Redirect to dashboard
-      setLocation("/");
+      window.location.href = "/";
       
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Login Failed",
-        description: "Invalid email or password",
+        description: error.message || "Invalid email or password",
         variant: "destructive"
       });
     } finally {
@@ -72,21 +78,37 @@ export default function Login() {
     }
     
     try {
-      // Simulate registration API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Create user account and district
+      const response = await apiRequest('/api/auth/register-district', {
+        method: 'POST',
+        body: JSON.stringify({
+          firstName: registerForm.firstName,
+          lastName: registerForm.lastName,
+          email: registerForm.email,
+          password: registerForm.password,
+          districtName: registerForm.organizationName
+        })
+      });
       
       toast({
         title: "Registration Successful",
         description: "Account created! Setting up your organization..."
       });
       
+      // Store registration data for district setup
+      sessionStorage.setItem('registrationData', JSON.stringify({
+        ...registerForm,
+        userId: response.userId,
+        districtId: response.districtId
+      }));
+      
       // Redirect to district setup
       setLocation("/district-setup");
       
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Registration Failed",
-        description: "Unable to create account. Please try again.",
+        description: error.message || "Unable to create account. Please try again.",
         variant: "destructive"
       });
     } finally {

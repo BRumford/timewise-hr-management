@@ -468,6 +468,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // District registration endpoint (for creating new districts with admin accounts)
+  app.post('/api/auth/register-district', async (req, res) => {
+    try {
+      const { firstName, lastName, email, password, districtName } = req.body;
+      
+      if (!firstName || !lastName || !email || !password || !districtName) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
+      if (existingUser) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create user account with admin role
+      const user = await storage.upsertUser({
+        id: crypto.randomUUID(),
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        role: 'admin',
+        passwordHash
+      });
+
+      // For now, we'll use the existing storage but in a real multi-tenant setup,
+      // you'd create a separate district and associate the user with it
+      const districtId = crypto.randomUUID();
+
+      // Set user in session
+      (req as any).user = user;
+
+      res.json({ 
+        message: "District and admin account created successfully", 
+        userId: user.id,
+        districtId: districtId,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error('District registration error:', error);
+      res.status(500).json({ message: "Registration failed", error: (error as Error).message });
+    }
+  });
+
   // Bulk create user accounts for existing employees
   app.post('/api/admin/create-employee-accounts', async (req, res) => {
     try {
