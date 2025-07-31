@@ -49,9 +49,6 @@ const mainMenuItems = [
   { path: "/retirees", icon: Heart, label: "Retirees", roles: ["hr", "payroll"] },
   { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["hr", "payroll"] },
   
-  // Payroll manages employee access approval
-  { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["payroll"] },
-  
   // Payroll-specific features (HR and Payroll both have full access)
   { path: "/monthly-timecard", icon: Calendar, label: "Monthly Timecard", roles: ["hr", "payroll"] },
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards", roles: ["hr", "payroll"] },
@@ -73,6 +70,7 @@ const adminDropdownItems = [
   { path: "/security-updates", icon: ShieldCheck, label: "Security Updates", roles: ["hr", "payroll"] },
   { path: "/security-monitoring", icon: Shield, label: "Security Monitoring", roles: ["hr", "payroll"] },
   { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["hr", "payroll"] },
+  { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["payroll"] },
   { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["hr", "payroll"] },
   { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["hr", "payroll"] },
   { path: "/performance-dashboard", icon: Activity, label: "Performance Dashboard", roles: ["hr", "payroll"] },
