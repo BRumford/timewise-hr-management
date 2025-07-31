@@ -95,7 +95,7 @@ export default function Sidebar() {
               <GraduationCap className="text-white text-lg" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">EduHR Pro</h1>
+              <h1 className="text-xl font-bold text-gray-900">Timewise K-12</h1>
               <p className="text-sm text-gray-500">Loading...</p>
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function Sidebar() {
             <GraduationCap className="text-white text-lg" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">EduHR Pro</h1>
+            <h1 className="text-xl font-bold text-gray-900">Timewise K-12</h1>
             <p className="text-sm text-gray-500">
               {user?.employee ? `${user.employee.firstName} ${user.employee.lastName}` : "Lincoln School District"}
             </p>
