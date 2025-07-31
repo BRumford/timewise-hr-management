@@ -42,6 +42,8 @@ import {
 } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { generateOnboardingChecklist } from './openai';
+import districtRoutes from './districtRoutes';
+import { tenantMiddleware, requireDistrict, withDistrictFilter } from './tenantMiddleware';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {

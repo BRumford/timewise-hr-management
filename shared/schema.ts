@@ -16,6 +16,51 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// District management table for multi-tenant support
+export const districts = pgTable("districts", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(), // URL-friendly identifier
+  domain: varchar("domain", { length: 100 }), // Custom domain like district.timewise.com
+  contactEmail: varchar("contact_email").notNull(),
+  contactPhone: varchar("contact_phone"),
+  address: text("address"),
+  subscriptionTier: varchar("subscription_tier").notNull().default("basic"), // basic, professional, enterprise
+  subscriptionStatus: varchar("subscription_status").notNull().default("trial"), // trial, active, suspended, cancelled
+  billingEmail: varchar("billing_email"),
+  maxEmployees: integer("max_employees").default(100),
+  maxAdmins: integer("max_admins").default(5),
+  customBranding: boolean("custom_branding").default(false),
+  apiAccess: boolean("api_access").default(false),
+  supportLevel: varchar("support_level").default("standard"), // basic, standard, premium
+  trialEndsAt: timestamp("trial_ends_at"),
+  subscriptionStartedAt: timestamp("subscription_started_at"),
+  subscriptionEndsAt: timestamp("subscription_ends_at"),
+  settings: jsonb("settings"), // District-specific configuration
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// District billing and usage tracking
+export const districtBilling = pgTable("district_billing", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  billingMonth: date("billing_month").notNull(), // YYYY-MM-01 format
+  employeeCount: integer("employee_count").notNull(),
+  adminCount: integer("admin_count").notNull(),
+  storageUsedGB: decimal("storage_used_gb", { precision: 10, scale: 2 }).default("0"),
+  apiCallsCount: integer("api_calls_count").default(0),
+  emailsSent: integer("emails_sent").default(0),
+  basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
+  overageCharges: decimal("overage_charges", { precision: 10, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  paymentStatus: varchar("payment_status").default("pending"), // pending, paid, failed, refunded
+  paymentDate: timestamp("payment_date"),
+  invoiceUrl: varchar("invoice_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Session storage table - required for authentication
 export const sessions = pgTable(
   "sessions",
@@ -30,6 +75,7 @@ export const sessions = pgTable(
 // User storage table - required for authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
+  districtId: integer("district_id").references(() => districts.id), // Multi-tenant support
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -90,8 +136,9 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 // Employee information table
 export const employees = pgTable("employees", {
   id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id), // Multi-tenant support
   userId: varchar("user_id").notNull(),
-  employeeId: varchar("employee_id").notNull().unique(),
+  employeeId: varchar("employee_id").notNull(),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
   email: varchar("email").unique(),
@@ -109,7 +156,9 @@ export const employees = pgTable("employees", {
   supervisorId: integer("supervisor_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("unique_employee_id_per_district").on(table.districtId, table.employeeId)
+]);
 
 // Leave types table
 export const leaveTypes = pgTable("leave_types", {
@@ -975,6 +1024,15 @@ export type OpenEnrollmentCampaign = typeof openEnrollmentCampaigns.$inferSelect
 export type InsertOpenEnrollmentCampaign = z.infer<typeof insertOpenEnrollmentCampaignSchema>;
 export type OpenEnrollmentEmail = typeof openEnrollmentEmails.$inferSelect;
 export type InsertOpenEnrollmentEmail = z.infer<typeof insertOpenEnrollmentEmailSchema>;
+
+// District types
+export const insertDistrictSchema = createInsertSchema(districts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDistrictBillingSchema = createInsertSchema(districtBilling).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type District = typeof districts.$inferSelect;
+export type InsertDistrict = z.infer<typeof insertDistrictSchema>;
+export type DistrictBilling = typeof districtBilling.$inferSelect;
+export type InsertDistrictBilling = z.infer<typeof insertDistrictBillingSchema>;
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
