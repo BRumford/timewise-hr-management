@@ -36,13 +36,12 @@ export default function Login() {
     setLoading(true);
     
     try {
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: loginForm.email,
-          password: loginForm.password
-        })
+      const res = await apiRequest('/api/auth/login', 'POST', {
+        email: loginForm.email,
+        password: loginForm.password
       });
+      
+      const response = await res.json();
       
       toast({
         title: "Login Successful",
@@ -79,16 +78,15 @@ export default function Login() {
     
     try {
       // Create user account and district
-      const response = await apiRequest('/api/auth/register-district', {
-        method: 'POST',
-        body: JSON.stringify({
-          firstName: registerForm.firstName,
-          lastName: registerForm.lastName,
-          email: registerForm.email,
-          password: registerForm.password,
-          districtName: registerForm.organizationName
-        })
+      const res = await apiRequest('/api/auth/register-district', 'POST', {
+        firstName: registerForm.firstName,
+        lastName: registerForm.lastName,
+        email: registerForm.email,
+        password: registerForm.password,
+        districtName: registerForm.organizationName
       });
+      
+      const response = await res.json();
       
       toast({
         title: "Registration Successful",
