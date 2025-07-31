@@ -38,8 +38,7 @@ export default function DistrictSetup() {
     email: "",
     website: "",
     description: "",
-    estimatedEmployees: "",
-    subscriptionTier: "basic"
+    estimatedEmployees: ""
   });
 
   const [adminUser, setAdminUser] = useState({
@@ -51,33 +50,7 @@ export default function DistrictSetup() {
     department: "Human Resources"
   });
 
-  const subscriptionTiers = [
-    {
-      id: "basic",
-      name: "Basic",
-      price: "$29",
-      description: "Perfect for small districts",
-      features: ["Up to 100 employees", "3 admin users", "Basic HR features", "Email support"],
-      maxEmployees: 100
-    },
-    {
-      id: "professional", 
-      name: "Professional",
-      price: "$79",
-      description: "Ideal for growing districts",
-      features: ["Up to 500 employees", "5 admin users", "Advanced analytics", "Priority support"],
-      maxEmployees: 500,
-      popular: true
-    },
-    {
-      id: "enterprise",
-      name: "Enterprise", 
-      price: "$199",
-      description: "For large districts",
-      features: ["Unlimited employees", "10 admin users", "Custom integrations", "24/7 phone support"],
-      maxEmployees: -1
-    }
-  ];
+
 
   const handleDistrictInfoChange = (field: string, value: string) => {
     setDistrictInfo(prev => {
@@ -151,7 +124,7 @@ export default function DistrictSetup() {
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center space-x-4 mb-8">
-      {[1, 2, 3, 4].map((step) => (
+      {[1, 2, 3].map((step) => (
         <div key={step} className="flex items-center">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
             step <= currentStep 
@@ -160,7 +133,7 @@ export default function DistrictSetup() {
           }`}>
             {step < currentStep ? <CheckCircle2 className="w-4 h-4" /> : step}
           </div>
-          {step < 4 && (
+          {step < 3 && (
             <div className={`w-12 h-1 mx-2 ${
               step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
             }`} />
@@ -186,7 +159,7 @@ export default function DistrictSetup() {
               </div>
             </div>
             <div className="text-sm text-gray-600">
-              Step {currentStep} of 4
+              Step {currentStep} of 3
             </div>
           </div>
         </div>
@@ -199,7 +172,7 @@ export default function DistrictSetup() {
             Set Up Your School District
           </h2>
           <p className="text-gray-600">
-            Let's configure your HR management system in just a few steps
+            Let's configure your HR management system in just a few simple steps
           </p>
         </div>
 
@@ -294,6 +267,29 @@ export default function DistrictSetup() {
                   />
                 </div>
                 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode">ZIP Code</Label>
+                    <Input
+                      id="zipCode"
+                      placeholder="95648"
+                      value={districtInfo.zipCode}
+                      onChange={(e) => handleDistrictInfoChange('zipCode', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="estimatedEmployees">Estimated Number of Employees</Label>
+                    <Input
+                      id="estimatedEmployees"
+                      type="number"
+                      placeholder="150"
+                      value={districtInfo.estimatedEmployees}
+                      onChange={(e) => handleDistrictInfoChange('estimatedEmployees', e.target.value)}
+                    />
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -307,66 +303,8 @@ export default function DistrictSetup() {
               </div>
             )}
 
-            {/* Step 2: Subscription Plan */}
+            {/* Step 2: Admin User */}
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <CardHeader className="p-0">
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" />
-                    Choose Your Plan
-                  </CardTitle>
-                </CardHeader>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {subscriptionTiers.map((tier) => (
-                    <Card 
-                      key={tier.id}
-                      className={`cursor-pointer transition-all ${
-                        districtInfo.subscriptionTier === tier.id 
-                          ? 'ring-2 ring-blue-600 bg-blue-50' 
-                          : 'hover:shadow-md'
-                      } ${tier.popular ? 'border-blue-200' : ''}`}
-                      onClick={() => handleDistrictInfoChange('subscriptionTier', tier.id)}
-                    >
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{tier.name}</CardTitle>
-                          {tier.popular && (
-                            <Badge className="bg-blue-600">Most Popular</Badge>
-                          )}
-                        </div>
-                        <div className="text-2xl font-bold">{tier.price}<span className="text-sm font-normal text-gray-600">/month</span></div>
-                        <p className="text-sm text-gray-600">{tier.description}</p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {tier.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              <span className="text-sm">{feature}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="estimatedEmployees">Estimated Number of Employees</Label>
-                  <Input
-                    id="estimatedEmployees"
-                    type="number"
-                    placeholder="150"
-                    value={districtInfo.estimatedEmployees}
-                    onChange={(e) => handleDistrictInfoChange('estimatedEmployees', e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Admin User */}
-            {currentStep === 3 && (
               <div className="space-y-6">
                 <CardHeader className="p-0">
                   <CardTitle className="flex items-center gap-2">
@@ -443,8 +381,8 @@ export default function DistrictSetup() {
               </div>
             )}
 
-            {/* Step 4: Review & Complete */}
-            {currentStep === 4 && (
+            {/* Step 3: Review & Complete */}
+            {currentStep === 3 && (
               <div className="space-y-6">
                 <CardHeader className="p-0">
                   <CardTitle className="flex items-center gap-2">
@@ -460,8 +398,7 @@ export default function DistrictSetup() {
                       <div><strong>Name:</strong> {districtInfo.name}</div>
                       <div><strong>Email:</strong> {districtInfo.email}</div>
                       <div><strong>Location:</strong> {districtInfo.city}, {districtInfo.state}</div>
-                      <div><strong>Plan:</strong> {subscriptionTiers.find(t => t.id === districtInfo.subscriptionTier)?.name}</div>
-                      <div><strong>Monthly Cost:</strong> {subscriptionTiers.find(t => t.id === districtInfo.subscriptionTier)?.price}/month</div>
+                      <div><strong>Estimated Employees:</strong> {districtInfo.estimatedEmployees || 'Not specified'}</div>
                     </div>
                   </div>
                   
@@ -501,7 +438,7 @@ export default function DistrictSetup() {
                 Previous
               </Button>
               
-              {currentStep < 4 ? (
+              {currentStep < 3 ? (
                 <Button onClick={handleNextStep}>
                   Next <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
