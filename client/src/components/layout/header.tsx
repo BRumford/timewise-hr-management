@@ -2,14 +2,46 @@ import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Header() {
+  const { user } = useAuth();
+  
+  const getDisplayName = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return 'Administrator';
+  };
+
+  const getRoleDisplay = () => {
+    switch (user?.role) {
+      case 'admin':
+        return 'Administrator';
+      case 'hr':
+        return 'HR Administrator';
+      case 'employee':
+        return 'Employee';
+      case 'secretary':
+        return 'Secretary';
+      default:
+        return 'User';
+    }
+  };
+
+  const getInitials = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    return 'AD';
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-gray-600">Welcome back, Sarah Johnson (HR Administrator)</p>
+          <p className="text-gray-600">Welcome back, {getDisplayName()} ({getRoleDisplay()})</p>
         </div>
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="sm" className="relative">
@@ -20,12 +52,11 @@ export default function Header() {
           </Button>
           <div className="flex items-center space-x-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b9dc35cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=200&h=200" />
-              <AvatarFallback>SJ</AvatarFallback>
+              <AvatarFallback>{getInitials()}</AvatarFallback>
             </Avatar>
             <div className="text-sm">
-              <p className="font-medium text-gray-900">Sarah Johnson</p>
-              <p className="text-gray-600">HR Administrator</p>
+              <p className="font-medium text-gray-900">{getDisplayName()}</p>
+              <p className="text-gray-600">{getRoleDisplay()}</p>
             </div>
           </div>
         </div>
