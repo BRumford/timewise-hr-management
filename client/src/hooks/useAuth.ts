@@ -31,8 +31,9 @@ export function useAuth() {
     isHR: user?.role === 'hr',
     isPayroll: user?.role === 'payroll',
     isEmployee: user?.role === 'employee',
-    canViewAllRecords: user?.role === 'admin' || user?.role === 'hr',
-    canManagePayroll: user?.role === 'admin' || user?.role === 'payroll',
-    canManageEmployees: user?.role === 'admin' || user?.role === 'hr',
+    canViewAllRecords: user?.role === 'hr' || user?.role === 'payroll',
+    canManagePayroll: user?.role === 'hr' || user?.role === 'payroll',
+    canManageEmployees: user?.role === 'hr' || user?.role === 'payroll',
+    canApproveEmployeeAccess: user?.role === 'payroll',
   };
 }

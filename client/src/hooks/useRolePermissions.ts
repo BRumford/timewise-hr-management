@@ -19,28 +19,31 @@ export function useRolePermissions() {
       return pagePath === '/';
     }
     
-    // Payroll role has specific access to payroll-related pages
-    if (role === 'payroll') {
-      const payrollPages = [
-        '/', '/payroll', '/time-cards', '/monthly-timecard', 
-        '/substitute-time-cards', '/extra-pay-activities', '/reports'
+    // Admin role has very limited access - only timecard approval
+    if (role === 'admin') {
+      const adminPages = [
+        '/', '/time-cards'  // Only dashboard and Administrator Timecard Approval
       ];
-      return payrollPages.includes(pagePath);
+      return adminPages.includes(pagePath);
     }
     
-    // HR role has access to HR-related pages but not all admin functions
+    // HR role has full access to all HR and system functions
     if (role === 'hr') {
-      const hrPages = [
-        '/', '/employees', '/leave-management', '/benefits', '/onboarding',
-        '/reports', '/documents', '/archived-employees', '/retirees',
-        '/privacy-policies', '/data-deletion-requests', '/employee-access-management'
-      ];
-      return hrPages.includes(pagePath);
+      // HR gets access to everything except admin-only features
+      const restrictedPages: string[] = []; // No restrictions for HR
+      return !restrictedPages.includes(pagePath);
     }
     
-    // For admin and other roles, check database permissions
+    // Payroll role has full access including employee access management
+    if (role === 'payroll') {
+      // Payroll gets access to everything including employee access approval
+      const restrictedPages: string[] = []; // No restrictions for Payroll
+      return !restrictedPages.includes(pagePath);
+    }
+    
+    // For any other roles, check database permissions
     const permission = permissions.find((p: RolePermission) => p.pagePath === pagePath);
-    return permission ? permission.canAccess : false;
+    return permission ? Boolean(permission.canAccess) : false;
   };
 
   return {

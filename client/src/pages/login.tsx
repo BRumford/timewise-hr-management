@@ -302,10 +302,10 @@ export default function Login() {
                         </SelectContent>
                       </Select>
                       <div className="text-xs text-gray-500">
-                        {registrationType === 'employee' && 'Access to submit timecards and leave requests only'}
-                        {registrationType === 'hr' && 'Access to employee management, leave tracking, and HR functions'}
-                        {registrationType === 'payroll' && 'Access to payroll processing, timecard approval, and reports'}
-                        {registrationType === 'admin' && 'Full system access including district setup and all modules'}
+                        {registrationType === 'employee' && 'Access to dashboard with timecard and leave requests only'}
+                        {registrationType === 'hr' && 'Full system access including all HR, payroll, and district functions'}
+                        {registrationType === 'payroll' && 'Full system access including payroll, HR functions, and employee access approval'}
+                        {registrationType === 'admin' && 'Limited access to dashboard and administrator timecard approval only'}
                       </div>
                     </div>
                     
@@ -343,10 +343,10 @@ export default function Login() {
                   </form>
                   
                   <div className="text-center text-xs text-gray-500">
-                    {registrationType === 'employee' && 'Employee accounts provide access to timecard and leave management'}
-                    {registrationType === 'hr' && 'HR accounts provide access to employee management and HR functions'}
-                    {registrationType === 'payroll' && 'Payroll accounts provide access to payroll processing and timecard approval'}
-                    {registrationType === 'admin' && 'Administrator accounts provide full system access and district management'}
+                    {registrationType === 'employee' && 'Employee accounts provide dashboard access for timecard and leave management'}
+                    {registrationType === 'hr' && 'HR accounts provide full system access including all HR, payroll, and district functions'}
+                    {registrationType === 'payroll' && 'Payroll accounts provide full system access with employee access approval authority'}
+                    {registrationType === 'admin' && 'Administrator accounts provide limited access to timecard approval functions only'}
                   </div>
                 </TabsContent>
               </Tabs>

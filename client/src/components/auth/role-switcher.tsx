@@ -52,7 +52,7 @@ export default function RoleSwitcher() {
   };
 
   // Don't show the switcher if user can't switch roles
-  if (!canSwitchData?.canSwitch) {
+  if (!canSwitchData || !canSwitchData.canSwitch) {
     return null;
   }
 
