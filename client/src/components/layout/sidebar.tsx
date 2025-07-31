@@ -48,8 +48,6 @@ const mainMenuItems = [
   { path: "/benefits", icon: FileSpreadsheet, label: "Benefits", roles: ["hr", "payroll"] },
   { path: "/retirees", icon: Heart, label: "Retirees", roles: ["hr", "payroll"] },
   { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["hr", "payroll"] },
-  { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["hr", "payroll"] },
-  { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["hr", "payroll"] },
   
   // Payroll manages employee access approval
   { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["payroll"] },
@@ -63,8 +61,6 @@ const mainMenuItems = [
   // Shared features (HR and Payroll have full access)
   { path: "/letters", icon: Mail, label: "Letters", roles: ["hr", "payroll"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["hr", "payroll"] },
-  { path: "/performance-dashboard", icon: Activity, label: "Performance Dashboard", roles: ["hr", "payroll"] },
-  { path: "/compliance-dashboard", icon: ShieldAlert, label: "Compliance Dashboard", roles: ["hr", "payroll"] },
 ];
 
 // Administrative settings dropdown items
@@ -77,6 +73,10 @@ const adminDropdownItems = [
   { path: "/security-updates", icon: ShieldCheck, label: "Security Updates", roles: ["hr", "payroll"] },
   { path: "/security-monitoring", icon: Shield, label: "Security Monitoring", roles: ["hr", "payroll"] },
   { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["hr", "payroll"] },
+  { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["hr", "payroll"] },
+  { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["hr", "payroll"] },
+  { path: "/performance-dashboard", icon: Activity, label: "Performance Dashboard", roles: ["hr", "payroll"] },
+  { path: "/compliance-dashboard", icon: ShieldAlert, label: "Compliance Dashboard", roles: ["hr", "payroll"] },
   { path: "/settings", icon: Settings, label: "Settings", roles: ["hr", "payroll"] },
 ];
 
