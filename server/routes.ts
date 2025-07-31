@@ -30,6 +30,7 @@ import { cdn } from "./performance/cdn";
 import { cache } from "./performance/caching";
 import cors from "cors";
 import multer from 'multer';
+import session from 'express-session';
 import path from 'path';
 import fs from 'fs';
 import { sql } from 'drizzle-orm';
@@ -138,8 +139,8 @@ const personnelUpload = multer({
 // Authentication middleware - supports both session-based and demo mode
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Check if user is logged in via session (employee login)
-    let sessionUser = (req as any).user;
+    // Check if user is logged in via session
+    let sessionUser = (req as any).session?.user;
     
     // If no session user, fall back to demo mode for development
     if (!sessionUser) {
@@ -158,20 +159,14 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
         });
       }
       
-      sessionUser = {
-        id: user.id,
-        role: user.role,
-        claims: { sub: user.id }
-      };
+      sessionUser = user;
     }
     
     // Get the current user from the database to ensure fresh data
-    const user = await storage.getUser(sessionUser.id);
+    const user = await storage.getUser(sessionUser.id || sessionUser);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
-
-    // Account locking temporarily disabled for development
 
     // Update the request with the current user data
     (req as any).user = user;
@@ -316,6 +311,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize support and security tables
   await initSupportTables();
 
+  // Add session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'development-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    }
+  }));
+
   // Apply security middleware (temporarily disabled for development)
   app.use(cors(corsOptions));
   // app.use(rateLimiter);
@@ -356,39 +363,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
-        // Record security event
-        await SecurityMonitor.recordSecurityEvent(
-          SecurityEventType.FAILED_LOGIN,
-          SecuritySeverity.MEDIUM,
-          `Failed login attempt for user: ${email}`,
-          user.id,
-          req.ip || 'unknown',
-          { userAgent: req.headers['user-agent'] }
-        );
-        
-        // Increment failed login attempts
-        await storage.incrementFailedLoginAttempts(user.id);
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      // Reset failed login attempts on successful login
-      await storage.resetFailedLoginAttempts(user.id);
-      
-      // Update last login time
-      await storage.updateLastLogin(user.id);
-      
-      // Record successful login
-      await SecurityMonitor.recordSecurityEvent(
-        SecurityEventType.FAILED_LOGIN,
-        SecuritySeverity.LOW,
-        `Successful login for user: ${email}`,
-        user.id,
-        req.ip || 'unknown',
-        { userAgent: req.headers['user-agent'] }
-      );
-      
       // Set user in session
-      (req as any).user = user;
+      (req as any).session.user = user;
       
       res.json({ 
         message: "Login successful", 
@@ -501,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const districtId = crypto.randomUUID();
 
       // Set user in session
-      (req as any).user = user;
+      (req as any).session.user = user;
 
       res.json({ 
         message: "District and admin account created successfully", 
