@@ -205,7 +205,16 @@ export default function Sidebar() {
 
       {/* Role Switcher */}
       <div className="p-4 border-t border-gray-200">
+        <div className="text-xs text-gray-500 mb-2">
+          Logged in as {user?.role}
+        </div>
         <RoleSwitcher />
+        <button 
+          onClick={() => window.location.href = '/api/auth/logout'}
+          className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline w-full text-left"
+        >
+          Logout
+        </button>
       </div>
     </div>
   );

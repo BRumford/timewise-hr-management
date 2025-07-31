@@ -100,8 +100,8 @@ export default function Login() {
         districtId: response.districtId
       }));
       
-      // Redirect to district setup
-      setLocation("/district-setup");
+      // Redirect to dashboard (user is now logged in via session)
+      setLocation("/");
       
     } catch (error: any) {
       toast({
