@@ -110,9 +110,6 @@ export default function Login() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                B2B SaaS Platform
-              </div>
             </div>
           </div>
         </div>
