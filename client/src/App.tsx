@@ -38,6 +38,7 @@ import EmployeeAccessManagement from "@/pages/employee-access-management";
 import Benefits from "@/pages/benefits";
 import DistrictManagement from "@/pages/district-management";
 import DistrictLogin from "@/pages/district-login";
+import MultiTenantDemo from "@/pages/multi-tenant-demo";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
