@@ -92,11 +92,22 @@ export default function Login() {
       
       toast({
         title: "Employee Account Created",
-        description: "Your employee account has been created successfully!"
+        description: "Account created! Please sign in with your new credentials."
       });
       
-      // Redirect to login tab to sign in
-      setLocation("/");
+      // Clear the registration form and stay on this page
+      setRegisterForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        organizationName: "",
+        organizationType: "school_district",
+        role: "employee"
+      });
+      
+      // Don't redirect - let user manually switch to login tab
       
     } catch (error: any) {
       toast({
