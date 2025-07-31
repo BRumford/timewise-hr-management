@@ -386,13 +386,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Employee registration endpoint (for creating initial accounts)
+  // Employee registration endpoint (for staff self-registration)
   app.post('/api/auth/register-employee', async (req, res) => {
     try {
-      const { employeeId, email, firstName, lastName, password, department, position, hireDate } = req.body;
+      const { firstName, lastName, email, password, organizationName, role } = req.body;
       
-      if (!employeeId || !email || !firstName || !lastName || !password || !department || !position || !hireDate) {
+      if (!firstName || !lastName || !email || !password || !organizationName) {
         return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Ensure role is employee
+      if (role !== 'employee') {
+        return res.status(400).json({ message: "Only employee accounts can be created through self-registration" });
       }
 
       // Check if user already exists
@@ -404,7 +409,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 12);
 
-      // Create user account
+      // Generate unique employee ID
+      const employeeId = `EMP${Date.now()}`;
+
+      // Create user account with employee role
       const user = await storage.upsertUser({
         id: `emp_${employeeId}`,
         email: email.toLowerCase(),
@@ -414,36 +422,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordHash
       });
 
-      // Create employee record
+      // Create basic employee record
       const employee = await storage.createEmployee({
         userId: user.id,
         employeeId,
         firstName,
         lastName,
         email: email.toLowerCase(),
-        department,
-        position,
-        employeeType: 'teacher', // Default to teacher, can be updated later
-        hireDate: new Date(hireDate),
-        status: 'active'
+        department: 'Unassigned',
+        position: 'Staff',
+        employeeType: 'classified', // Default for self-registered employees
+        hireDate: new Date(),
+        status: 'pending_verification' // Requires admin approval
       });
 
       res.json({ 
-        message: "Employee registered successfully", 
+        message: "Employee account created successfully. Contact your administrator for verification.", 
         user: {
           id: user.id,
           email: user.email,
-          role: user.role
-        },
-        employee: {
-          id: employee.id,
-          employeeId: employee.employeeId,
-          firstName: employee.firstName,
-          lastName: employee.lastName
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName
         }
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Employee registration error:', error);
       res.status(500).json({ message: "Registration failed", error: (error as Error).message });
     }
   });

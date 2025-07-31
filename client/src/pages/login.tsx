@@ -28,7 +28,8 @@ export default function Login() {
     password: "",
     confirmPassword: "",
     organizationName: "",
-    organizationType: "school_district"
+    organizationType: "school_district",
+    role: "employee" // Default to employee for new registrations
   });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -77,30 +78,24 @@ export default function Login() {
     }
     
     try {
-      // Create user account and district
-      const res = await apiRequest('/api/auth/register-district', 'POST', {
+      // Create employee account only
+      const res = await apiRequest('/api/auth/register-employee', 'POST', {
         firstName: registerForm.firstName,
         lastName: registerForm.lastName,
         email: registerForm.email,
         password: registerForm.password,
-        districtName: registerForm.organizationName
+        organizationName: registerForm.organizationName,
+        role: 'employee'
       });
       
       const response = await res.json();
       
       toast({
-        title: "Registration Successful",
-        description: "Account created! Setting up your organization..."
+        title: "Employee Account Created",
+        description: "Your employee account has been created successfully!"
       });
       
-      // Store registration data for district setup
-      sessionStorage.setItem('registrationData', JSON.stringify({
-        ...registerForm,
-        userId: response.userId,
-        districtId: response.districtId
-      }));
-      
-      // Redirect to dashboard (user is now logged in via session)
+      // Redirect to login tab to sign in
       setLocation("/");
       
     } catch (error: any) {
@@ -230,19 +225,22 @@ export default function Login() {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="registerEmail">Email Address</Label>
+                      <Label htmlFor="registerEmail">Work Email Address</Label>
                       <Input
                         id="registerEmail"
                         type="email"
-                        placeholder="admin@schooldistrict.edu"
+                        placeholder="your.name@schooldistrict.edu"
                         value={registerForm.email}
                         onChange={(e) => setRegisterForm(prev => ({ ...prev, email: e.target.value }))}
                         required
                       />
+                      <p className="text-xs text-gray-500">
+                        Use your school district provided email address
+                      </p>
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="organizationName">School District Name</Label>
+                      <Label htmlFor="organizationName">Your School District</Label>
                       <Input
                         id="organizationName"
                         placeholder="Lincoln Unified School District"
@@ -250,6 +248,9 @@ export default function Login() {
                         onChange={(e) => setRegisterForm(prev => ({ ...prev, organizationName: e.target.value }))}
                         required
                       />
+                      <p className="text-xs text-gray-500">
+                        Enter the name of the school district where you work
+                      </p>
                     </div>
                     
                     <div className="space-y-2">
@@ -281,12 +282,12 @@ export default function Login() {
                       className="w-full" 
                       disabled={loading}
                     >
-                      {loading ? "Creating Account..." : "Create Account & Setup District"}
+                      {loading ? "Creating Employee Account..." : "Create Employee Account"}
                     </Button>
                   </form>
                   
                   <div className="text-center text-xs text-gray-500">
-                    By creating an account, you agree to our Terms of Service and Privacy Policy
+                    Employee accounts are for district staff to access timecards and leave requests
                   </div>
                 </TabsContent>
               </Tabs>
