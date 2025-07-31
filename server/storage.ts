@@ -465,12 +465,17 @@ export class DatabaseStorage implements IStorage {
       cleanedEmployee.hireDate = new Date(cleanedEmployee.hireDate);
     }
     
+    // Add default districtId if missing
+    if (!cleanedEmployee.districtId) {
+      cleanedEmployee.districtId = 1; // Default district
+    }
+    
     // Remove undefined values completely and ensure proper typing
     const finalEmployeeData = Object.fromEntries(
       Object.entries(cleanedEmployee).filter(([_, value]) => value !== undefined)
     ) as InsertEmployee;
     
-    const [newEmployee] = await db.insert(employees).values(finalEmployeeData).returning();
+    const [newEmployee] = await db.insert(employees).values([finalEmployeeData]).returning();
     
     // Automatically create a time card for the new employee
     const currentDate = new Date();
@@ -505,9 +510,15 @@ export class DatabaseStorage implements IStorage {
 
 
   async updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee> {
+    // Clean employee data and add districtId if missing
+    const cleanedEmployee = { ...employee };
+    if (!cleanedEmployee.districtId) {
+      cleanedEmployee.districtId = 1; // Default district
+    }
+    
     const [updatedEmployee] = await db
       .update(employees)
-      .set({ ...employee, updatedAt: new Date() })
+      .set({ ...cleanedEmployee, updatedAt: new Date() })
       .where(eq(employees.id, id))
       .returning();
     return updatedEmployee;

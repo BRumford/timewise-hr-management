@@ -163,7 +163,8 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
     }
     
     // Get the current user from the database to ensure fresh data
-    const user = await storage.getUser(sessionUser.id || sessionUser);
+    const userId = typeof sessionUser === 'string' ? sessionUser : sessionUser.id;
+    const user = await storage.getUser(userId);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
