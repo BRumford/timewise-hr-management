@@ -67,8 +67,7 @@ const adminDropdownItems = [
   { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["hr", "payroll"] },
   { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["hr", "payroll"] },
   { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["hr", "payroll"] },
-  { path: "/security-updates", icon: ShieldCheck, label: "Security Updates", roles: ["hr", "payroll"] },
-  { path: "/security-monitoring", icon: Shield, label: "Security Monitoring", roles: ["hr", "payroll"] },
+
   { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["hr", "payroll"] },
   { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["payroll"] },
   { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["hr", "payroll"] },

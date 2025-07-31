@@ -16,7 +16,6 @@ import Documents from "@/pages/documents";
 import Onboarding from "@/pages/onboarding";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
-import SecurityMonitoring from "@/pages/security-monitoring";
 import ExtraPayActivities from "@/pages/extra-pay-activities";
 import Letters from "@/pages/letters";
 import TimecardTemplates from "@/pages/timecard-templates";
@@ -28,7 +27,6 @@ import ResetPassword from "@/pages/reset-password";
 import Retirees from "@/pages/retirees";
 import ArchivedEmployees from "@/pages/archived-employees";
 import SupportDocumentation from "@/pages/support-documentation";
-import SecurityUpdates from "@/pages/security-updates";
 import DropdownSettings from "@/pages/dropdown-settings";
 import PrivacyPolicies from "@/pages/privacy-policies";
 import DataDeletionRequests from "@/pages/data-deletion-requests";
@@ -79,12 +77,10 @@ function Router() {
                 <Route path="/letters" component={Letters} />
                 <Route path="/reports" component={Reports} />
                 <Route path="/settings" component={Settings} />
-                <Route path="/security-monitoring" component={SecurityMonitoring} />
                 <Route path="/field-labels" component={FieldLabels} />
                 <Route path="/retirees" component={Retirees} />
                 <Route path="/archived-employees" component={ArchivedEmployees} />
                 <Route path="/support-documentation" component={SupportDocumentation} />
-                <Route path="/security-updates" component={SecurityUpdates} />
                 <Route path="/dropdown-settings" component={DropdownSettings} />
                 <Route path="/privacy-policies" component={PrivacyPolicies} />
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
