@@ -501,6 +501,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Logout endpoint
+  app.get('/api/auth/logout', (req, res) => {
+    try {
+      (req as any).session.destroy((err: any) => {
+        if (err) {
+          console.error('Session destroy error:', err);
+          return res.status(500).json({ message: "Logout failed" });
+        }
+        res.clearCookie('connect.sid'); // Clear session cookie
+        res.redirect('/login'); // Redirect to login page
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
   // Bulk create user accounts for existing employees
   app.post('/api/admin/create-employee-accounts', async (req, res) => {
     try {
