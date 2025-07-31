@@ -69,6 +69,28 @@ export function registerMultiTenantRoutes(app: Express) {
     }
   });
 
+  // Usage stats endpoint
+  app.get('/api/district/usage-stats', tenantMiddleware, requireDistrict, async (req: Request, res: Response) => {
+    try {
+      const districtStorage = getDistrictStorage(req);
+      const [employees, leaveRequests, timeCards] = await Promise.all([
+        districtStorage.getEmployees(),
+        districtStorage.getLeaveRequests(),
+        districtStorage.getTimeCards()
+      ]);
+      
+      res.json({
+        employeeCount: employees.length,
+        leaveRequestCount: leaveRequests.length,
+        timeCardCount: timeCards.length,
+        documentCount: 0 // placeholder
+      });
+    } catch (error) {
+      console.error("Error fetching usage stats:", error);
+      res.status(500).json({ message: "Failed to fetch usage stats" });
+    }
+  });
+
   // Multi-tenant employee endpoints
   app.get('/api/district/employees', tenantMiddleware, requireDistrict, async (req: Request, res: Response) => {
     try {

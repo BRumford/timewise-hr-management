@@ -40,6 +40,7 @@ import DistrictManagement from "@/pages/district-management";
 import DistrictLogin from "@/pages/district-login";
 import MultiTenantDemo from "@/pages/multi-tenant-demo";
 import DataIsolationDemo from "@/pages/data-isolation-demo";
+import SimpleDemo from "@/pages/simple-demo";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -91,6 +92,7 @@ function Router() {
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route path="/district-management" component={DistrictManagement} />
                 <Route path="/data-isolation-demo" component={DataIsolationDemo} />
+                <Route path="/simple-demo" component={SimpleDemo} />
                 <Route component={NotFound} />
               </Switch>
             </main>

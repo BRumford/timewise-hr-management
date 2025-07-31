@@ -24,11 +24,21 @@ export default function DataIsolationDemo() {
           districtSlug: 'demo-district'
         })
       });
+      
+      if (!demoLoginResponse.ok) {
+        throw new Error(`Demo login failed: ${demoLoginResponse.status}`);
+      }
+      
       const demoLogin = await demoLoginResponse.json();
 
       const demoEmployeesResponse = await fetch('/api/district/employees', {
         credentials: 'include'
       });
+      
+      if (!demoEmployeesResponse.ok) {
+        throw new Error(`Failed to fetch demo employees: ${demoEmployeesResponse.status}`);
+      }
+      
       const demoEmployees = await demoEmployeesResponse.json();
 
       // Test 2: Try to login to Maplewood Elementary (different district)
@@ -48,7 +58,9 @@ export default function DataIsolationDemo() {
         const maplewoodEmployeesResponse = await fetch('/api/district/employees', {
           credentials: 'include'
         });
-        maplewoodEmployees = await maplewoodEmployeesResponse.json();
+        if (maplewoodEmployeesResponse.ok) {
+          maplewoodEmployees = await maplewoodEmployeesResponse.json();
+        }
       }
 
       setDemoResults({
