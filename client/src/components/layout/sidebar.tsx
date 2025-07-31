@@ -42,7 +42,6 @@ const mainMenuItems = [
   
   // HR has full access to all HR and system functions
   { path: "/district-management", icon: Building2, label: "District Management", roles: ["hr"] },
-  { path: "/simple-demo", icon: Shield, label: "B2B SaaS Demo", roles: ["hr"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["hr", "payroll"] },
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["hr", "payroll"] },
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["hr", "payroll"] },
