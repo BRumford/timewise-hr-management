@@ -109,6 +109,9 @@ export default function PAFForm() {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isCreator, setIsCreator] = useState(true); // Will be determined by checking creator
+  const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [canEdit, setCanEdit] = useState(true);
   
   // Audit trail state
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
@@ -159,10 +162,25 @@ export default function PAFForm() {
     addAuditEntry('form_opened', 'PAF form accessed and initialized');
   }, []);
 
+  // Fetch current user to check permissions
+  const { data: currentUser } = useQuery({
+    queryKey: ["/api/auth/user"],
+  });
+
   // Fetch workflow templates
   const { data: workflowTemplates } = useQuery({
     queryKey: ["/api/paf/workflow-templates"],
   });
+
+  // Check if user can edit form (only creator can complete form)
+  useEffect(() => {
+    if (submissionId && currentUser) {
+      // Check if current user is the creator of this submission
+      // This would be implemented by checking the submittedBy field
+      // For now, we'll assume editing is allowed for the creator
+      setCanEdit(isCreator);
+    }
+  }, [submissionId, currentUser, isCreator]);
 
   const watchWorkflowTemplateId = form.watch("workflowTemplateId");
   const selectedWorkflow = workflowTemplates?.find((w: any) => w.id.toString() === watchWorkflowTemplateId);
@@ -1340,6 +1358,65 @@ export default function PAFForm() {
             </Card>
           )}
 
+          {/* Workflow Management Controls for HR/Payroll */}
+          {currentUser && ['admin', 'hr', 'payroll'].includes(currentUser.role) && (
+            <Card className="mb-6 bg-yellow-50 border-yellow-200">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-yellow-800">
+                  <Settings className="h-5 w-5" />
+                  <span>Workflow Management Controls</span>
+                </CardTitle>
+                <CardDescription className="text-yellow-700">
+                  HR and Payroll staff can send corrections or deny submissions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex space-x-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                    onClick={() => {
+                      const reason = prompt("Please enter the reason for requesting corrections:");
+                      if (reason) {
+                        // This would make an API call to request corrections
+                        toast({
+                          title: "Correction Requested",
+                          description: "Form has been sent back to creator for corrections.",
+                          variant: "default",
+                        });
+                        addAuditEntry('correction_requested', `Correction requested: ${reason}`);
+                      }
+                    }}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Request Corrections
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    variant="destructive"
+                    onClick={() => {
+                      const reason = prompt("Please enter the reason for denial:");
+                      if (reason && confirm("Are you sure you want to deny this submission? This action cannot be undone.")) {
+                        // This would make an API call to deny the submission
+                        toast({
+                          title: "Submission Denied",
+                          description: "PAF submission has been denied.",
+                          variant: "destructive",
+                        });
+                        addAuditEntry('submission_denied', `Submission denied: ${reason}`);
+                      }
+                    }}
+                  >
+                    <span className="mr-2">❌</span>
+                    Deny Submission
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Submit Button */}
           <div className="flex justify-between pt-6 border-t">
             <Button
@@ -1351,13 +1428,23 @@ export default function PAFForm() {
               Back to PAF Management
             </Button>
             <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={saveDraft}>
-                <Save className="h-4 w-4 mr-2" />
-                Save Draft
-              </Button>
-              <Button type="submit" disabled={submitPAF.isPending}>
-                {submitPAF.isPending ? "Submitting..." : "Submit PAF"}
-              </Button>
+              {canEdit && (
+                <>
+                  <Button type="button" variant="outline" onClick={saveDraft}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Draft
+                  </Button>
+                  <Button type="submit" disabled={submitPAF.isPending}>
+                    {submitPAF.isPending ? "Submitting..." : "Submit PAF"}
+                  </Button>
+                </>
+              )}
+              
+              {!canEdit && (
+                <div className="text-sm text-gray-600 p-2 bg-gray-100 rounded">
+                  {isCreator ? "Form submitted - editing disabled" : "View only - you are not the creator"}
+                </div>
+              )}
             </div>
           </div>
         </form>

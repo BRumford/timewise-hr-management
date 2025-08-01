@@ -489,7 +489,7 @@ export function registerPafRoutes(app: Express) {
     }
   });
 
-  // Get specific PAF submission
+  // Get specific PAF submission with access control
   app.get("/api/paf/submissions/:id", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -499,15 +499,113 @@ export function registerPafRoutes(app: Express) {
         return res.status(404).json({ error: "Submission not found" });
       }
 
-      // Check access permissions
-      if (req.user.role === "employee" && submission.submittedBy !== req.user.id) {
-        return res.status(403).json({ error: "Access denied" });
+      // Check access permissions - creators and workflow managers can view
+      const isCreator = submission.submittedBy === req.user.id;
+      const hasWorkflowPermissions = ['admin', 'hr', 'payroll'].includes(req.user.role);
+      
+      if (!isCreator && !hasWorkflowPermissions && req.user.role === "employee") {
+        return res.status(403).json({ error: "Access denied: Only form creator or workflow managers can view this submission" });
       }
 
-      res.json(submission);
+      res.json({ 
+        ...submission, 
+        isCreator, 
+        canEdit: isCreator && ['draft', 'needs_correction'].includes(submission.status) 
+      });
     } catch (error) {
       console.error("Error fetching PAF submission:", error);
       res.status(500).json({ error: "Failed to fetch PAF submission" });
+    }
+  });
+
+  // Request correction (send back to creator or specific step)
+  app.post("/api/paf/submissions/:id/request-correction", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, sendBackToStep, sendBackToUserId, comments } = req.body;
+      
+      if (!reason) {
+        return res.status(400).json({ error: "Correction reason is required" });
+      }
+
+      const submission = await storage.getPafSubmission(parseInt(id));
+      if (!submission) {
+        return res.status(404).json({ error: "PAF submission not found" });
+      }
+
+      // Update current workflow step
+      const currentSteps = await storage.getPafApprovalSteps(parseInt(id));
+      const currentStep = currentSteps.find(step => step.status === 'pending');
+      
+      if (currentStep) {
+        await storage.updatePafApprovalStep(currentStep.id, {
+          status: 'needs_correction',
+          correctionRequested: true,
+          correctionReason: reason,
+          correctionRequestedBy: req.user.id,
+          correctionRequestedAt: new Date(),
+          sendBackToStep: sendBackToStep || 0,
+          sendBackToUserId: sendBackToUserId || submission.submittedBy,
+          comments: comments
+        });
+      }
+
+      // Update submission status
+      await storage.updatePafSubmission(parseInt(id), {
+        status: 'needs_correction',
+        currentStep: sendBackToStep || 0
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Correction request sent successfully",
+        sentBackTo: sendBackToUserId || submission.submittedBy 
+      });
+    } catch (error) {
+      console.error("Error requesting correction:", error);
+      res.status(500).json({ error: "Failed to request correction" });
+    }
+  });
+
+  // Deny PAF submission
+  app.post("/api/paf/submissions/:id/deny", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, comments } = req.body;
+      
+      if (!reason) {
+        return res.status(400).json({ error: "Denial reason is required" });
+      }
+
+      const submission = await storage.getPafSubmission(parseInt(id));
+      if (!submission) {
+        return res.status(404).json({ error: "PAF submission not found" });
+      }
+
+      // Update current workflow step
+      const currentSteps = await storage.getPafApprovalSteps(parseInt(id));
+      const currentStep = currentSteps.find(step => step.status === 'pending');
+      
+      if (currentStep) {
+        await storage.updatePafApprovalStep(currentStep.id, {
+          status: 'denied',
+          signedAt: new Date(),
+          comments: `DENIED: ${reason}${comments ? ` - ${comments}` : ''}`
+        });
+      }
+
+      // Update submission status
+      await storage.updatePafSubmission(parseInt(id), {
+        status: 'denied'
+      });
+
+      res.json({ 
+        success: true, 
+        message: "PAF submission denied successfully" 
+      });
+    } catch (error) {
+      console.error("Error denying PAF:", error);
+      res.status(500).json({ error: "Failed to deny PAF submission" });
     }
   });
 

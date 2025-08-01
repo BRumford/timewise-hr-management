@@ -2190,10 +2190,19 @@ export const pafApprovalWorkflow = pgTable("paf_approval_workflow", {
   step: integer("step").notNull(), // 1, 2, 3 for each approval level
   approverRole: varchar("approver_role").notNull(), // hr, finance, supervisor, admin, etc.
   approverUserId: varchar("approver_user_id").references(() => users.id),
-  status: varchar("status").notNull().default("pending"), // pending, approved, rejected
+  status: varchar("status").notNull().default("pending"), // pending, approved, rejected, needs_correction
   signedAt: timestamp("signed_at"),
   signature: text("signature"), // Base64 signature data
   comments: text("comments"),
+  
+  // Correction and denial controls
+  correctionRequested: boolean("correction_requested").default(false),
+  correctionReason: text("correction_reason"),
+  correctionRequestedBy: varchar("correction_requested_by").references(() => users.id),
+  correctionRequestedAt: timestamp("correction_requested_at"),
+  sendBackToStep: integer("send_back_to_step"), // Which step to send back to
+  sendBackToUserId: varchar("send_back_to_user_id").references(() => users.id),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
