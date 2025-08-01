@@ -14,7 +14,8 @@ import {
   Shield,
   Settings,
   BarChart3,
-  Clock
+  Clock,
+  ClipboardList
 } from "lucide-react";
 
 interface District {
@@ -366,6 +367,14 @@ export default function SystemOwnerDashboard() {
                           >
                             <Settings className="h-3 w-3 mr-1" />
                             Manage
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLocation('/system-owner/paf-overview')}
+                          >
+                            <ClipboardList className="h-3 w-3 mr-1" />
+                            PAF Overview
                           </Button>
                         </div>
                       </td>

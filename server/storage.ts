@@ -118,6 +118,15 @@ import {
   districtWorkflows,
   workflowExecutions,
   systemOwnerAccessLog,
+  pafTemplates,
+  pafSubmissions,
+  pafApprovalWorkflow,
+  type PafTemplate,
+  type PafSubmission,
+  type PafApprovalWorkflow,
+  type InsertPafTemplate,
+  type InsertPafSubmission,
+  type InsertPafApprovalWorkflow,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-orm";
@@ -399,6 +408,20 @@ export interface IStorage {
   deleteDistrictWorkflow(id: number): Promise<boolean>;
   getWorkflowExecutions(districtId?: number): Promise<any[]>;
   createWorkflowExecution(execution: any): Promise<any>;
+
+  // PAF operations
+  getPafTemplates(districtId: number): Promise<any[]>;
+  createPafTemplate(template: any): Promise<any>;
+  updatePafTemplate(id: number, template: any): Promise<any>;
+  deletePafTemplate(id: number): Promise<boolean>;
+  getPafSubmissions(districtId: number, userId?: string): Promise<any[]>;
+  getPafSubmission(id: number): Promise<any>;
+  createPafSubmission(submission: any): Promise<any>;
+  updatePafSubmission(id: number, submission: any): Promise<any>;
+  deletePafSubmission(id: number): Promise<boolean>;
+  createPafApprovalStep(step: any): Promise<any>;
+  updatePafApprovalStep(id: number, step: any): Promise<any>;
+  getPafApprovalSteps(submissionId: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3218,6 +3241,84 @@ export class DatabaseStorage implements IStorage {
   async createWorkflowExecution(execution: any): Promise<any> {
     const [created] = await db.insert(workflowExecutions).values(execution).returning();
     return created;
+  }
+
+  // PAF operations
+  async getPafTemplates(districtId: number): Promise<any[]> {
+    return await db.select().from(pafTemplates)
+      .where(eq(pafTemplates.districtId, districtId))
+      .orderBy(desc(pafTemplates.createdAt));
+  }
+
+  async createPafTemplate(template: any): Promise<any> {
+    const [created] = await db.insert(pafTemplates).values(template).returning();
+    return created;
+  }
+
+  async updatePafTemplate(id: number, template: any): Promise<any> {
+    const [updated] = await db.update(pafTemplates)
+      .set({ ...template, updatedAt: new Date() })
+      .where(eq(pafTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePafTemplate(id: number): Promise<boolean> {
+    const result = await db.delete(pafTemplates).where(eq(pafTemplates.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getPafSubmissions(districtId: number, userId?: string): Promise<any[]> {
+    let query = db.select().from(pafSubmissions)
+      .where(eq(pafSubmissions.districtId, districtId));
+    
+    if (userId) {
+      query = query.where(eq(pafSubmissions.submittedBy, userId));
+    }
+    
+    return await query.orderBy(desc(pafSubmissions.createdAt));
+  }
+
+  async getPafSubmission(id: number): Promise<any> {
+    const [submission] = await db.select().from(pafSubmissions).where(eq(pafSubmissions.id, id));
+    return submission;
+  }
+
+  async createPafSubmission(submission: any): Promise<any> {
+    const [created] = await db.insert(pafSubmissions).values(submission).returning();
+    return created;
+  }
+
+  async updatePafSubmission(id: number, submission: any): Promise<any> {
+    const [updated] = await db.update(pafSubmissions)
+      .set({ ...submission, updatedAt: new Date() })
+      .where(eq(pafSubmissions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePafSubmission(id: number): Promise<boolean> {
+    const result = await db.delete(pafSubmissions).where(eq(pafSubmissions.id, id));
+    return result.rowCount > 0;
+  }
+
+  async createPafApprovalStep(step: any): Promise<any> {
+    const [created] = await db.insert(pafApprovalWorkflow).values(step).returning();
+    return created;
+  }
+
+  async updatePafApprovalStep(id: number, step: any): Promise<any> {
+    const [updated] = await db.update(pafApprovalWorkflow)
+      .set({ ...step, updatedAt: new Date() })
+      .where(eq(pafApprovalWorkflow.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getPafApprovalSteps(submissionId: number): Promise<any[]> {
+    return await db.select().from(pafApprovalWorkflow)
+      .where(eq(pafApprovalWorkflow.submissionId, submissionId))
+      .orderBy(pafApprovalWorkflow.step);
   }
 }
 

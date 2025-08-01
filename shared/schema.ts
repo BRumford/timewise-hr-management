@@ -2091,4 +2091,152 @@ export type SignatureTemplate = typeof signatureTemplates.$inferSelect;
 export type InsertSignatureRequest = z.infer<typeof insertSignatureRequestSchema>;
 export type InsertSignatureTemplate = z.infer<typeof insertSignatureTemplateSchema>;
 
+// Personnel Action Form (PAF) management
+export const pafTemplates = pgTable("paf_templates", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  fileUrl: varchar("file_url").notNull(), // Uploaded PDF template
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false),
+  formFields: jsonb("form_fields").notNull(), // Field definitions for fillable form
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pafSubmissions = pgTable("paf_submissions", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  templateId: integer("template_id").notNull().references(() => pafTemplates.id),
+  submittedBy: varchar("submitted_by").notNull().references(() => users.id),
+  employeeId: integer("employee_id").references(() => employees.id), // If related to specific employee
+  status: varchar("status").notNull().default("draft"), // draft, submitted, under_review, approved, denied
+  formData: jsonb("form_data").notNull(), // All form field values
+  
+  // PAF Type and Position Information
+  pafType: varchar("paf_type"), // new_position, vacant_position, change_existing
+  positionType: varchar("position_type"), // certificated, classified, management, administrator, coach
+  positionCategory: varchar("position_category"), // prob_perm, temporary, short_term, categorical, summer
+  positionTitle: varchar("position_title"),
+  workSite: varchar("work_site"),
+  fte: varchar("fte"),
+  gradeLevel: varchar("grade_level"),
+  subjectArea: varchar("subject_area"),
+  extraDutyType: varchar("extra_duty_type"),
+  
+  // Employee Information
+  employeeName: varchar("employee_name"),
+  effectiveDate: date("effective_date"),
+  reason: varchar("reason"), // resignation, retirement, leave, transfer, etc.
+  
+  // Budget Information
+  budgetCode: varchar("budget_code"),
+  budgetPercentage: varchar("budget_percentage"),
+  
+  // Approval workflow
+  requestingAdminSignature: jsonb("requesting_admin_signature"), // {signedBy, signedAt, signature}
+  businessOfficialSignature: jsonb("business_official_signature"),
+  superintendentSignature: jsonb("superintendent_signature"),
+  
+  // HR Processing
+  boardActionItem: varchar("board_action_item"),
+  boardActionDate: date("board_action_date"),
+  boardActionStatus: varchar("board_action_status"), // approved, denied
+  novNumber: varchar("nov_number"),
+  newEmployeeName: varchar("new_employee_name"),
+  empNumber: varchar("emp_number"),
+  pcNumber: varchar("pc_number"),
+  effectiveStartDate: date("effective_start_date"),
+  assignmentEndDate: date("assignment_end_date"),
+  associatedSalarySchedule: varchar("associated_salary_schedule"),
+  classStep: varchar("class_step"),
+  rate: varchar("rate"),
+  coachingStipend: varchar("coaching_stipend"),
+  associatedCalendar: varchar("associated_calendar"),
+  
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  comments: text("comments"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pafApprovalWorkflow = pgTable("paf_approval_workflow", {
+  id: serial("id").primaryKey(),
+  submissionId: integer("submission_id").notNull().references(() => pafSubmissions.id),
+  step: integer("step").notNull(), // 1, 2, 3 for each approval level
+  approverRole: varchar("approver_role").notNull(), // requesting_admin, business_official, superintendent
+  approverUserId: varchar("approver_user_id").references(() => users.id),
+  status: varchar("status").notNull().default("pending"), // pending, approved, rejected
+  signedAt: timestamp("signed_at"),
+  signature: text("signature"), // Base64 signature data
+  comments: text("comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// PAF Relations
+export const pafTemplatesRelations = relations(pafTemplates, ({ one, many }) => ({
+  district: one(districts, {
+    fields: [pafTemplates.districtId],
+    references: [districts.id],
+  }),
+  creator: one(users, {
+    fields: [pafTemplates.createdBy],
+    references: [users.id],
+  }),
+  submissions: many(pafSubmissions),
+}));
+
+export const pafSubmissionsRelations = relations(pafSubmissions, ({ one, many }) => ({
+  district: one(districts, {
+    fields: [pafSubmissions.districtId],
+    references: [districts.id],
+  }),
+  template: one(pafTemplates, {
+    fields: [pafSubmissions.templateId],
+    references: [pafTemplates.id],
+  }),
+  submitter: one(users, {
+    fields: [pafSubmissions.submittedBy],
+    references: [users.id],
+  }),
+  employee: one(employees, {
+    fields: [pafSubmissions.employeeId],
+    references: [employees.id],
+  }),
+  approvalSteps: many(pafApprovalWorkflow),
+}));
+
+export const pafApprovalWorkflowRelations = relations(pafApprovalWorkflow, ({ one }) => ({
+  submission: one(pafSubmissions, {
+    fields: [pafApprovalWorkflow.submissionId],
+    references: [pafSubmissions.id],
+  }),
+  approver: one(users, {
+    fields: [pafApprovalWorkflow.approverUserId],
+    references: [users.id],
+  }),
+}));
+
+// PAF Insert schemas
+export const insertPafTemplateSchema = createInsertSchema(pafTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPafSubmissionSchema = createInsertSchema(pafSubmissions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPafApprovalWorkflowSchema = createInsertSchema(pafApprovalWorkflow).omit({ id: true, createdAt: true, updatedAt: true });
+
+// PAF Select types
+export type PafTemplate = typeof pafTemplates.$inferSelect;
+export type PafSubmission = typeof pafSubmissions.$inferSelect;
+export type PafApprovalWorkflow = typeof pafApprovalWorkflow.$inferSelect;
+export type InsertPafTemplate = z.infer<typeof insertPafTemplateSchema>;
+export type InsertPafSubmission = z.infer<typeof insertPafSubmissionSchema>;
+export type InsertPafApprovalWorkflow = z.infer<typeof insertPafApprovalWorkflowSchema>;
+
 

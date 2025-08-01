@@ -40,6 +40,8 @@ import DataIsolationDemo from "@/pages/data-isolation-demo";
 import SystemOwnerLogin from "@/pages/system-owner-login";
 import SystemOwnerDashboard from "@/pages/system-owner-dashboard";
 import WorkflowManagement from "@/pages/workflow-management";
+import PafManagement from "@/pages/paf-management";
+import SystemOwnerPafOverview from "@/pages/system-owner-paf-overview";
 
 import DistrictSetup from "@/pages/district-setup";
 import Sidebar from "@/components/layout/sidebar";
@@ -56,6 +58,7 @@ function Router() {
       <Route path="/system-owner-login" component={SystemOwnerLogin} />
       <Route path="/system-owner/dashboard" component={SystemOwnerDashboard} />
       <Route path="/system-owner/workflows" component={WorkflowManagement} />
+      <Route path="/system-owner/paf-overview" component={SystemOwnerPafOverview} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       
@@ -91,6 +94,7 @@ function Router() {
                 <Route path="/privacy-policies" component={PrivacyPolicies} />
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
                 <Route path="/workflow-management" component={WorkflowManagement} />
+                <Route path="/paf-management" component={PafManagement} />
 
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route path="/district-management" component={DistrictManagement} />

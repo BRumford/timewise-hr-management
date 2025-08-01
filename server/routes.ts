@@ -44,6 +44,7 @@ import { getDistrictStorage } from './multiTenantStorage';
 import { getDistrictAuth } from './districtAuth';
 import { registerMultiTenantRoutes } from './multiTenantRoutes';
 import { registerSystemOwnerRoutes } from './systemOwnerRoutes';
+import { registerPafRoutes } from './pafRoutes';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {
@@ -5642,6 +5643,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register system owner routes
   registerSystemOwnerRoutes(app);
+  
+  // Register PAF routes
+  registerPafRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

@@ -212,6 +212,104 @@ export function registerSystemOwnerRoutes(app: Express) {
     }
   });
 
+  // PAF System Overview
+  app.get('/api/system-owner/paf/overview', requireSystemOwner, async (req, res) => {
+    try {
+      // Mock data for PAF overview - in production this would come from actual data
+      const pafOverviewData = {
+        districts: [
+          {
+            id: 1,
+            name: "Springfield School District",
+            slug: "springfield-sd",
+            totalTemplates: 8,
+            activeTemplates: 6,
+            totalSubmissions: 142,
+            pendingSubmissions: 12,
+            approvedSubmissions: 98,
+            lastActivity: "2025-01-31T10:30:00Z"
+          },
+          {
+            id: 2,
+            name: "Riverside Unified",
+            slug: "riverside-unified",
+            totalTemplates: 12,
+            activeTemplates: 10,
+            totalSubmissions: 218,
+            pendingSubmissions: 18,
+            approvedSubmissions: 164,
+            lastActivity: "2025-01-31T14:15:00Z"
+          },
+          {
+            id: 3,
+            name: "Mountain View Elementary",
+            slug: "mountain-view-elem",
+            totalTemplates: 5,
+            activeTemplates: 4,
+            totalSubmissions: 67,
+            pendingSubmissions: 6,
+            approvedSubmissions: 45,
+            lastActivity: "2025-01-30T16:45:00Z"
+          }
+        ],
+        systemStats: {
+          totalDistricts: 3,
+          totalTemplates: 25,
+          totalSubmissions: 427,
+          pendingApprovals: 36,
+          avgProcessingTime: 3.2
+        },
+        recentActivity: [
+          {
+            id: 1,
+            districtName: "Springfield School District",
+            action: "Template Created",
+            description: "New Position Change PAF template uploaded",
+            timestamp: "2025-01-31T14:30:00Z",
+            status: "active"
+          },
+          {
+            id: 2,
+            districtName: "Riverside Unified",
+            action: "Submission Approved",
+            description: "New hire PAF for John Smith approved",
+            timestamp: "2025-01-31T13:15:00Z",
+            status: "approved"
+          },
+          {
+            id: 3,
+            districtName: "Mountain View Elementary",
+            action: "Submission Submitted",
+            description: "Salary adjustment PAF submitted for review",
+            timestamp: "2025-01-31T12:00:00Z",
+            status: "under_review"
+          },
+          {
+            id: 4,
+            districtName: "Springfield School District",
+            action: "Template Updated",
+            description: "Termination PAF template modified",
+            timestamp: "2025-01-31T10:30:00Z",
+            status: "active"
+          },
+          {
+            id: 5,
+            districtName: "Riverside Unified",
+            action: "Submission Denied",
+            description: "Leave of absence PAF denied - incomplete information",
+            timestamp: "2025-01-31T09:45:00Z",
+            status: "denied"
+          }
+        ]
+      };
+
+      res.json(pafOverviewData);
+    } catch (error) {
+      console.error('Error fetching PAF overview:', error);
+      res.status(500).json({ message: 'Failed to fetch PAF overview' });
+    }
+  });
+
   // Workflow management routes
   app.get('/api/system-owner/workflows', requireSystemOwner, async (req: Request, res: Response) => {
     try {
