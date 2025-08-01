@@ -693,11 +693,165 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function CompletedPafUpload({ onClose }: { onClose: () => void }) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [templateId, setTemplateId] = useState<number | null>(null);
+  const [employeeName, setEmployeeName] = useState("");
+  const [positionTitle, setPositionTitle] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState("");
+  const [reason, setReason] = useState("");
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: templates } = useQuery({
+    queryKey: ["/api/paf/templates"],
+  });
+
+  const uploadSubmission = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch('/api/paf/submissions/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
+      toast({
+        title: "Success", 
+        description: "PAF uploaded successfully"
+      });
+      onClose();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedFile || !templateId || !employeeName || !effectiveDate) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields and select a PDF file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('pdfFile', selectedFile);
+    formData.append('templateId', templateId.toString());
+    formData.append('employeeName', employeeName);
+    formData.append('positionTitle', positionTitle);
+    formData.append('effectiveDate', effectiveDate);
+    formData.append('reason', reason);
+
+    uploadSubmission.mutate(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="template">Related Template</Label>
+        <Select value={templateId?.toString() || ""} onValueChange={(value) => setTemplateId(parseInt(value))}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select the template this PAF is based on" />
+          </SelectTrigger>
+          <SelectContent>
+            {(templates as PafTemplate[] || []).map((template) => (
+              <SelectItem key={template.id} value={template.id.toString()}>
+                {template.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="employeeName">Employee Name *</Label>
+        <Input
+          id="employeeName"
+          value={employeeName}
+          onChange={(e) => setEmployeeName(e.target.value)}
+          placeholder="Enter employee name"
+          required
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="positionTitle">Position</Label>
+        <Input
+          id="positionTitle"
+          value={positionTitle}
+          onChange={(e) => setPositionTitle(e.target.value)}
+          placeholder="Enter position title"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="effectiveDate">Effective Date *</Label>
+        <Input
+          id="effectiveDate"
+          type="date"
+          value={effectiveDate}
+          onChange={(e) => setEffectiveDate(e.target.value)}
+          required
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="reason">Reason</Label>
+        <Input
+          id="reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Enter reason for action"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="pdfFile">Upload Completed PDF *</Label>
+        <Input
+          id="pdfFile"
+          type="file"
+          accept=".pdf"
+          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+          required
+        />
+        {selectedFile && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Selected: {selectedFile.name}
+          </p>
+        )}
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-4 border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={uploadSubmission.isPending}>
+          Upload PAF
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export default function PafManagement() {
   const [selectedTemplate, setSelectedTemplate] = useState<PafTemplate | null>(null);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
-  const [selectedTemplateForSubmission, setSelectedTemplateForSubmission] = useState<number | null>(null);
+  // Upload dialog for completed PDFs
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<PafSubmission | null>(null);
   const [isViewSubmissionDialogOpen, setIsViewSubmissionDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -857,12 +1011,13 @@ export default function PafManagement() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          setSelectedTemplateForSubmission(template.id);
-                          setIsSubmissionDialogOpen(true);
+                          // Open fillable PDF directly
+                          const fillableUrl = `/api/paf/templates/${template.id}/fillable-pdf`;
+                          window.open(fillableUrl, '_blank');
                         }}
                       >
                         <FileText className="h-4 w-4 mr-1" />
-                        Fill Out Form
+                        Fill Out PDF
                       </Button>
                       <Button
                         size="sm"
@@ -913,6 +1068,13 @@ export default function PafManagement() {
         <TabsContent value="submissions" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">PAF Submissions</h2>
+            <Button
+              onClick={() => setIsUploadDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Upload Completed PAF
+            </Button>
           </div>
 
           <Card>
@@ -994,18 +1156,16 @@ export default function PafManagement() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={isSubmissionDialogOpen} onOpenChange={setIsSubmissionDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      {/* Upload Completed PDF Dialog */}
+      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New PAF Submission</DialogTitle>
+            <DialogTitle>Upload Completed PAF</DialogTitle>
             <DialogDescription>
-              Fill out the personnel action form details
+              Upload your filled Personnel Action Form PDF
             </DialogDescription>
           </DialogHeader>
-          <PafSubmissionForm 
-            templateId={selectedTemplateForSubmission!} 
-            onClose={() => setIsSubmissionDialogOpen(false)} 
-          />
+          <CompletedPafUpload onClose={() => setIsUploadDialogOpen(false)} />
         </DialogContent>
       </Dialog>
 

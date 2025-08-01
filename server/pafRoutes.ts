@@ -218,6 +218,55 @@ export function registerPafRoutes(app: Express) {
     }
   });
 
+  // Upload completed PAF
+  app.post("/api/paf/submissions/upload", checkAuth, checkRole(['admin', 'hr', 'payroll']), upload.single('pdfFile'), async (req: any, res) => {
+    try {
+      const { templateId, employeeName, positionTitle, effectiveDate, reason } = req.body;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ error: "PDF file is required" });
+      }
+
+      if (!templateId || !employeeName || !effectiveDate) {
+        return res.status(400).json({ error: "Template ID, employee name, and effective date are required" });
+      }
+
+      // Save the uploaded file to a permanent location
+      const submissionId = Date.now(); // Simple ID for now
+      const fileName = `paf_submission_${submissionId}.pdf`;
+      const permanentPath = path.join(process.cwd(), 'uploads', 'pafs', fileName);
+      
+      // Ensure directory exists
+      fs.mkdirSync(path.dirname(permanentPath), { recursive: true });
+      
+      // Move file to permanent location
+      fs.copyFileSync(file.path, permanentPath);
+      fs.unlinkSync(file.path); // Clean up temp file
+
+      // Create submission record
+      const submission = await storage.createPafSubmission({
+        templateId: parseInt(templateId),
+        employeeName,
+        positionTitle: positionTitle || "",
+        effectiveDate,
+        reason: reason || "",
+        status: 'submitted',
+        submittedBy: req.user.id,
+        formData: {
+          uploadedFile: `/uploads/pafs/${fileName}`,
+          isUploadedPdf: true
+        }
+      });
+
+      res.json({ success: true, submissionId: submission.id });
+
+    } catch (error) {
+      console.error("Error uploading PAF:", error);
+      res.status(500).json({ error: "Failed to upload PAF" });
+    }
+  });
+
   // Get all PAF submissions
   app.get("/api/paf/submissions", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
@@ -315,6 +364,31 @@ export function registerPafRoutes(app: Express) {
     } catch (error) {
       console.error("Error creating PAF submission:", error);
       res.status(500).json({ error: "Failed to create PAF submission" });
+    }
+  });
+
+  // Get fillable PDF template (opens template directly for filling)
+  app.get("/api/paf/templates/:id/fillable-pdf", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getPafTemplate(parseInt(id));
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      // Serve the original PDF template (fillable)
+      const templatePath = path.join(process.cwd(), template.fileUrl);
+      const templateBuffer = fs.readFileSync(templatePath);
+
+      // Set response headers for PDF
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="PAF_Template_${template.name}.pdf"`);
+      res.send(templateBuffer);
+
+    } catch (error) {
+      console.error("Error serving fillable PDF:", error);
+      res.status(500).json({ error: "Failed to serve fillable PDF" });
     }
   });
 
