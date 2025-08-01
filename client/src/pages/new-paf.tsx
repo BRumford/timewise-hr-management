@@ -71,6 +71,9 @@ export default function NewPaf() {
       return apiRequest("/api/paf/submissions/create-and-fill", "POST", data);
     },
     onSuccess: (result) => {
+      console.log("PAF Creation Response:", result);
+      console.log("fillablePdfUrl:", result.fillablePdfUrl);
+      
       toast({
         title: "PAF Created Successfully",
         description: `Your PAF has been created and sent to the approval workflow. Download the fillable PDF to add signatures.`,
@@ -78,7 +81,10 @@ export default function NewPaf() {
       
       // Open the fillable PDF in a new tab
       if (result.fillablePdfUrl) {
+        console.log("Opening PDF URL:", result.fillablePdfUrl);
         window.open(result.fillablePdfUrl, '_blank');
+      } else {
+        console.log("No fillablePdfUrl in response");
       }
       
       // Reset form
