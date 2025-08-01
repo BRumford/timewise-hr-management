@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 
 interface SystemOwnerUser {
   id: string;
@@ -11,7 +12,7 @@ interface SystemOwnerUser {
 }
 
 interface SystemOwnerRequest extends Request {
-  systemOwner: SystemOwnerUser;
+  systemOwner?: SystemOwnerUser;
 }
 
 export function registerSystemOwnerRoutes(app: Express) {
@@ -31,8 +32,7 @@ export function registerSystemOwnerRoutes(app: Express) {
       }
 
       // Verify password
-      const bcrypt = require('bcryptjs');
-      const isValid = await bcrypt.compare(password, user.passwordHash);
+      const isValid = await bcrypt.compare(password, user.passwordHash || '');
       if (!isValid) {
         await storage.incrementFailedLoginAttempts(user.id);
         return res.status(401).json({ message: "Invalid credentials" });
@@ -227,8 +227,20 @@ export function registerSystemOwnerRoutes(app: Express) {
   app.post('/api/system-owner/workflows', requireSystemOwner, async (req: Request, res: Response) => {
     const systemOwnerReq = req as SystemOwnerRequest;
     try {
+      const { name, description, workflowType, districtId, configuration } = req.body;
       const workflowData = {
-        ...req.body,
+        districtId,
+        name,
+        description,
+        category: workflowType,
+        isActive: true,
+        isTemplate: false,
+        workflowSteps: configuration?.steps || [],
+        triggers: configuration?.triggers || {},
+        conditions: configuration?.conditions || {},
+        settings: configuration?.settings || {},
+        assignedRoles: configuration?.assignedRoles || [],
+        approvalRequired: configuration?.approvalRequired || false,
         createdBy: systemOwnerReq.systemOwner.id,
         lastModifiedBy: systemOwnerReq.systemOwner.id
       };
@@ -327,8 +339,15 @@ export function registerSystemOwnerRoutes(app: Express) {
     const systemOwnerReq = req as SystemOwnerRequest;
     try {
       const executionData = {
-        ...req.body,
-        executedBy: systemOwnerReq.systemOwner.id
+        workflowId: req.body.workflowId,
+        districtId: req.body.districtId,
+        executedBy: systemOwnerReq.systemOwner.id,
+        triggerType: 'manual',
+        status: req.body.status || 'running',
+        inputData: req.body.inputData || {},
+        outputData: {},
+        stepResults: [],
+        startedAt: new Date()
       };
 
       const execution = await storage.createWorkflowExecution(executionData);

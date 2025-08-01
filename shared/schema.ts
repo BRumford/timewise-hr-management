@@ -847,7 +847,7 @@ export const workflowExecutions = pgTable("workflow_executions", {
 export const systemOwnerAccessLog = pgTable("system_owner_access_log", {
   id: serial("id").primaryKey(),
   systemOwnerId: varchar("system_owner_id").notNull().references(() => users.id),
-  districtId: integer("district_id").notNull().references(() => districts.id),
+  districtId: integer("district_id").references(() => districts.id),
   action: varchar("action").notNull(), // login, workflow_create, workflow_modify, etc.
   details: jsonb("details").default({}),
   ipAddress: varchar("ip_address"),
