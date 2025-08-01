@@ -3,7 +3,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { PDFDocument, PDFForm, PDFTextField, PDFCheckBox, PDFDropdown, rgb } from "pdf-lib";
+import { PDFDocument, PDFForm, PDFTextField, PDFCheckBox, PDFDropdown, rgb, StandardFonts } from "pdf-lib";
 
 // Authentication updated to use simple local middleware
 
@@ -678,6 +678,9 @@ export function registerPafRoutes(app: Express) {
       const firstPage = pages[0];
       const { width, height } = firstPage.getSize();
       
+      // Embed a standard font for text drawing
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      
       // Add form fields programmatically with better positioning
       // Calculate positions based on PDF dimensions
       const leftMargin = 100;
@@ -729,6 +732,7 @@ export function registerPafRoutes(app: Express) {
                 x: config.x - 80,
                 y: config.y + 4,
                 size: 10,
+                font: font,
                 color: rgb(0, 0, 0),
               });
             }
