@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertCircle, CheckCircle, Clock, FileText, User, Search, Send, Eye, Plus, Building, Calendar } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, FileText, User, Search, Send, Eye, Plus, Building, Calendar, Settings, ArrowRight, XCircle, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -95,6 +95,9 @@ const pafFormSchema = z.object({
   
   // Section 6 - Reason/Justification
   justification: z.string().optional(),
+  
+  // Workflow Selection
+  workflowTemplateId: z.string().optional(),
 });
 
 type PafFormData = z.infer<typeof pafFormSchema>;
@@ -199,12 +202,18 @@ export default function PafManagement() {
   const [selectedSubmission, setSelectedSubmission] = useState<PafSubmission | null>(null);
   const [isViewSubmissionDialogOpen, setIsViewSubmissionDialogOpen] = useState(false);
   const [isCreatePafDialogOpen, setIsCreatePafDialogOpen] = useState(false);
+  const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedWorkflowSubmission, setSelectedWorkflowSubmission] = useState<PafSubmission | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: submissions, isLoading: submissionsLoading } = useQuery({
     queryKey: ["/api/paf/submissions"],
+  });
+
+  const { data: workflowTemplates, isLoading: workflowTemplatesLoading } = useQuery({
+    queryKey: ["/api/paf/workflow-templates"],
   });
 
   const filteredSubmissions = (submissions as PafSubmission[] || []).filter((submission: PafSubmission) => 
@@ -217,6 +226,61 @@ export default function PafManagement() {
     setSelectedSubmission(submission);
     setIsViewSubmissionDialogOpen(true);
   };
+
+  const handleViewWorkflow = (submission: PafSubmission) => {
+    setSelectedWorkflowSubmission(submission);
+    setIsWorkflowDialogOpen(true);
+  };
+
+  const { data: workflowSteps } = useQuery({
+    queryKey: ["/api/paf/submissions", selectedWorkflowSubmission?.id, "approvals"],
+    enabled: !!selectedWorkflowSubmission?.id,
+  });
+
+  const submitForApprovalMutation = useMutation({
+    mutationFn: async (submissionId: number) => {
+      return apiRequest(`/api/paf/submissions/${submissionId}/submit`, "POST", {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "PAF submitted for approval",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit PAF",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const approveStepMutation = useMutation({
+    mutationFn: async ({ submissionId, step, action, comments }: { submissionId: number; step: number; action: string; comments?: string }) => {
+      return apiRequest(`/api/paf/submissions/${submissionId}/approve`, "POST", {
+        step,
+        action,
+        comments,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Workflow step updated",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions", selectedWorkflowSubmission?.id, "approvals"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update workflow step",
+        variant: "destructive",
+      });
+    },
+  });
 
   const form = useForm<PafFormData>({
     resolver: zodResolver(pafFormSchema),
@@ -286,6 +350,7 @@ export default function PafManagement() {
       budgetCode6: "",
       budgetPercentage6: "",
       justification: "",
+      workflowTemplateId: "",
     },
   });
 
@@ -989,6 +1054,60 @@ export default function PafManagement() {
                     </div>
                   </div>
 
+                  {/* Workflow Selection */}
+                  <div className="border border-gray-300 rounded-md">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                      <h3 className="font-semibold text-gray-900">WORKFLOW SELECTION</h3>
+                    </div>
+                    <div className="p-4">
+                      <FormField
+                        control={form.control}
+                        name="workflowTemplateId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Select Approval Workflow:</FormLabel>
+                            <FormControl>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger className="border-gray-300">
+                                  <SelectValue placeholder="Choose workflow template" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {!workflowTemplatesLoading && workflowTemplates?.map((template: any) => (
+                                    <SelectItem key={template.id} value={template.id.toString()}>
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{template.name}</span>
+                                        <span className="text-xs text-gray-500">{template.description}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                            {field.value && workflowTemplates && (
+                              <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                                <h4 className="text-sm font-medium mb-2">Workflow Steps:</h4>
+                                <div className="space-y-1">
+                                  {workflowTemplates
+                                    .find((t: any) => t.id.toString() === field.value)
+                                    ?.steps?.map((step: any, index: number) => (
+                                    <div key={index} className="flex items-center text-sm">
+                                      <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs mr-2">
+                                        {step.order}
+                                      </span>
+                                      <span>{step.title}</span>
+                                      <span className="ml-2 text-gray-500">({step.role})</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
                   {/* Submit Section */}
                   <div className="border-t border-gray-200 pt-6">
                     <div className="flex justify-end space-x-4">
@@ -1058,6 +1177,7 @@ export default function PafManagement() {
                     <TableHead>Employee</TableHead>
                     <TableHead>Position</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Workflow</TableHead>
                     <TableHead>Effective Date</TableHead>
                     <TableHead>Submitted</TableHead>
                     <TableHead>Actions</TableHead>
@@ -1077,18 +1197,48 @@ export default function PafManagement() {
                         <StatusBadge status={submission.status} />
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1">
+                            <Settings className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-500">{submission.currentStep || 0}/3</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         {submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : 'Not set'}
                       </TableCell>
                       <TableCell>{new Date(submission.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewSubmission(submission)}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewSubmission(submission)}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                          {submission.status !== "draft" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewWorkflow(submission)}
+                            >
+                              <ArrowRight className="h-3 w-3 mr-1" />
+                              Workflow
+                            </Button>
+                          )}
+                          {submission.status === "draft" && (
+                            <Button
+                              size="sm"
+                              onClick={() => submitForApprovalMutation.mutate(submission.id)}
+                              disabled={submitForApprovalMutation.isPending}
+                            >
+                              <Send className="h-3 w-3 mr-1" />
+                              Submit
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1113,6 +1263,111 @@ export default function PafManagement() {
               submission={selectedSubmission}
               onClose={() => setIsViewSubmissionDialogOpen(false)}
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Workflow Management Dialog */}
+      <Dialog open={isWorkflowDialogOpen} onOpenChange={setIsWorkflowDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Workflow Management</DialogTitle>
+            <DialogDescription>
+              Manage approval workflow for {selectedWorkflowSubmission?.employeeName} - {selectedWorkflowSubmission?.positionTitle}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedWorkflowSubmission && workflowSteps && (
+            <div className="space-y-4">
+              {workflowSteps.map((step: any, index: number) => (
+                <div key={step.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                        step.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        step.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        step.status === 'needs_correction' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {step.step}
+                      </div>
+                      <div>
+                        <h4 className="font-medium">{step.approverRole}</h4>
+                        <p className="text-sm text-gray-500">
+                          {step.status === 'pending' ? 'Awaiting approval' : 
+                           step.status === 'approved' ? `Approved on ${new Date(step.signedAt).toLocaleDateString()}` :
+                           step.status === 'rejected' ? `Rejected on ${new Date(step.signedAt).toLocaleDateString()}` :
+                           step.status === 'needs_correction' ? 'Corrections requested' :
+                           step.status}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {step.status === 'approved' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                      {step.status === 'rejected' && <XCircle className="h-5 w-5 text-red-500" />}
+                      {step.status === 'needs_correction' && <RotateCcw className="h-5 w-5 text-yellow-500" />}
+                      {step.status === 'pending' && <Clock className="h-5 w-5 text-gray-400" />}
+                    </div>
+                  </div>
+                  
+                  {step.comments && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                      <strong>Comments:</strong> {step.comments}
+                    </div>
+                  )}
+                  
+                  {step.correctionReason && (
+                    <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
+                      <strong>Correction Requested:</strong> {step.correctionReason}
+                    </div>
+                  )}
+                  
+                  {step.status === 'pending' && (
+                    <div className="mt-3 flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={() => approveStepMutation.mutate({
+                          submissionId: selectedWorkflowSubmission.id,
+                          step: step.step,
+                          action: 'approve'
+                        })}
+                        disabled={approveStepMutation.isPending}
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => approveStepMutation.mutate({
+                          submissionId: selectedWorkflowSubmission.id,
+                          step: step.step,
+                          action: 'request_correction',
+                          comments: 'Please review and correct the form'
+                        })}
+                        disabled={approveStepMutation.isPending}
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        Request Corrections
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => approveStepMutation.mutate({
+                          submissionId: selectedWorkflowSubmission.id,
+                          step: step.step,
+                          action: 'reject',
+                          comments: 'Form rejected'
+                        })}
+                        disabled={approveStepMutation.isPending}
+                      >
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Deny
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </DialogContent>
       </Dialog>

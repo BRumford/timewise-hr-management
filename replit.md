@@ -79,8 +79,16 @@ Preferred communication style: Simple, everyday language.
     - **Complete PDF Form Replication (August 1, 2025)**: Rebuilt PAF form to mirror actual PDF structure exactly
       - Recreated all 6 sections matching original PDF layout: PAF Type header, Position Information, Employee Information/Status, Work Shift Information, Budget Code Information, and Reason/Justification
       - Added FTE field to Section 4 Work Shift Information as requested by user
+      - Expanded Section 5 Budget Code Information from 1 to 6 budget code lines for multiple funding sources
       - Implemented professional paper-like form design with complete weekly schedule grid
       - Maintained integration with existing workflow system and approval processes
+    - **Workflow Management System Integration (August 1, 2025)**: Restored comprehensive workflow management functionality
+      - Re-integrated workflow template selection in PAF form creation with dropdown showing available approval workflows
+      - Added workflow status column to submissions table showing current step progress (e.g., "1/3", "2/3")
+      - Implemented workflow management dialog with visual step tracking and status indicators
+      - Added Submit, View Workflow, Approve, Request Corrections, and Deny buttons with proper role-based access
+      - Enhanced workflow step visualization with color-coded status badges and progress tracking
+      - Integrated existing backend workflow APIs for seamless approval process management
 
 ### Technical Implementations & Feature Specifications
 - **Database Schema**: Comprehensive schema including Users (role-based access), Employees, Leave Management, Payroll, Documents, Onboarding, Substitute Assignments, and Activity Logs.
