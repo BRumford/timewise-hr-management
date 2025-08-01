@@ -58,10 +58,14 @@ function PafTemplateForm({ template, onClose }: { template?: PafTemplate; onClos
 
   const createTemplate = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest('/api/paf/templates', {
+      const response = await fetch('/api/paf/templates', {
         method: 'POST',
         body: data,
       });
+      if (!response.ok) {
+        throw new Error('Failed to create template');
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
@@ -82,11 +86,7 @@ function PafTemplateForm({ template, onClose }: { template?: PafTemplate; onClos
 
   const updateTemplate = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/paf/templates/${template!.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return await apiRequest(`/api/paf/templates/${template!.id}`, 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
@@ -234,11 +234,7 @@ function PafSubmissionForm({ templateId, onClose }: { templateId: number; onClos
 
   const createSubmission = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/paf/submissions', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return await apiRequest('/api/paf/submissions', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
@@ -539,9 +535,7 @@ export default function PafManagement() {
 
   const deleteTemplate = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/paf/templates/${id}`, {
-        method: 'DELETE',
-      });
+      return await apiRequest(`/api/paf/templates/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
@@ -561,9 +555,7 @@ export default function PafManagement() {
 
   const loadStandardTemplate = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/paf/templates/load-prebuilt', {
-        method: 'POST',
-      });
+      return await apiRequest('/api/paf/templates/load-prebuilt', 'POST');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
@@ -583,9 +575,7 @@ export default function PafManagement() {
 
   const submitForApproval = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/paf/submissions/${id}/submit`, {
-        method: 'POST',
-      });
+      return await apiRequest(`/api/paf/submissions/${id}/submit`, 'POST');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
@@ -662,7 +652,7 @@ export default function PafManagement() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {templates?.map((template: PafTemplate) => (
+            {(templates as PafTemplate[] || []).map((template: PafTemplate) => (
               <Card key={template.id} className="relative">
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -765,7 +755,7 @@ export default function PafManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {submissions?.map((submission: PafSubmission) => (
+                  {(submissions as PafSubmission[] || []).map((submission: PafSubmission) => (
                     <TableRow key={submission.id}>
                       <TableCell className="font-medium">
                         {submission.employeeName}
