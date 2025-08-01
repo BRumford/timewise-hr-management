@@ -627,24 +627,42 @@ export function registerPafRoutes(app: Express) {
       const { districtId, userId } = req.user;
       const formData = req.body;
       
+      console.log("[PAF] Creating submission with data:", {
+        districtId,
+        userId,
+        templateId: formData.templateId,
+        employeeName: formData.employeeName
+      });
+      
+      // Validate required fields
+      if (!formData.templateId || !formData.employeeName) {
+        return res.status(400).json({ error: "Template ID and employee name are required" });
+      }
+      
       // Get the template
       const template = await storage.getPafTemplate(parseInt(formData.templateId));
       if (!template) {
+        console.log("[PAF] Template not found:", formData.templateId);
         return res.status(404).json({ error: "Template not found" });
       }
       
+      console.log("[PAF] Found template:", template.name);
+      
       // Create the submission
-      const submission = await storage.createPafSubmission({
+      const submissionData = {
         districtId,
         templateId: parseInt(formData.templateId),
-        workflowTemplateId: null, // Use null for now since we don't have workflow templates in DB yet
+        workflowTemplateId: null,
         submittedBy: userId,
         status: "draft",
         formData: formData,
         employeeName: formData.employeeName,
         positionTitle: formData.newPosition || formData.currentPosition,
         effectiveDate: formData.effectiveDate ? new Date(formData.effectiveDate) : null,
-      });
+      };
+      
+      console.log("[PAF] Creating submission with:", submissionData);
+      const submission = await storage.createPafSubmission(submissionData);
       
       // Create a fillable PDF with the form data pre-filled
       const templatePath = path.join(process.cwd(), template.fileUrl);
@@ -696,7 +714,15 @@ export function registerPafRoutes(app: Express) {
       
     } catch (error) {
       console.error("[PAF] Error creating PAF submission:", error);
-      res.status(500).json({ error: "Failed to create PAF submission" });
+      console.error("[PAF] Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      res.status(500).json({ 
+        error: "Failed to create PAF submission", 
+        details: error.message 
+      });
     }
   });
 

@@ -112,7 +112,7 @@ export default function NewPaf() {
     },
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.templateId || !formData.workflowTemplateId || !formData.employeeName) {
       toast({
         title: "Missing Information",
@@ -122,7 +122,16 @@ export default function NewPaf() {
       return;
     }
 
-    createPafMutation.mutate(formData);
+    try {
+      await createPafMutation.mutateAsync(formData);
+    } catch (error) {
+      console.error("[PAF] Frontend error:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to create PAF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const selectedWorkflow = workflowTemplates.find(wt => wt.id.toString() === formData.workflowTemplateId);
