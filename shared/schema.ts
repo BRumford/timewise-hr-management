@@ -2111,9 +2111,11 @@ export const pafSubmissions = pgTable("paf_submissions", {
   id: serial("id").primaryKey(),
   districtId: integer("district_id").notNull().references(() => districts.id),
   templateId: integer("template_id").notNull().references(() => pafTemplates.id),
+  workflowTemplateId: integer("workflow_template_id").references(() => pafWorkflowTemplates.id),
   submittedBy: varchar("submitted_by").notNull().references(() => users.id),
   employeeId: integer("employee_id").references(() => employees.id), // If related to specific employee
   status: varchar("status").notNull().default("draft"), // draft, submitted, under_review, approved, denied
+  currentStep: integer("current_step").default(0), // Current workflow step (0-based)
   formData: jsonb("form_data").notNull(), // All form field values
   
   // PAF Type and Position Information
@@ -2168,11 +2170,25 @@ export const pafSubmissions = pgTable("paf_submissions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Configurable workflow templates
+export const pafWorkflowTemplates = pgTable("paf_workflow_templates", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  steps: jsonb("steps").notNull(), // Array of {role, title, required, order}
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const pafApprovalWorkflow = pgTable("paf_approval_workflow", {
   id: serial("id").primaryKey(),
   submissionId: integer("submission_id").notNull().references(() => pafSubmissions.id),
   step: integer("step").notNull(), // 1, 2, 3 for each approval level
-  approverRole: varchar("approver_role").notNull(), // requesting_admin, business_official, superintendent
+  approverRole: varchar("approver_role").notNull(), // hr, finance, supervisor, admin, etc.
   approverUserId: varchar("approver_user_id").references(() => users.id),
   status: varchar("status").notNull().default("pending"), // pending, approved, rejected
   signedAt: timestamp("signed_at"),
@@ -2228,6 +2244,7 @@ export const pafApprovalWorkflowRelations = relations(pafApprovalWorkflow, ({ on
 
 // PAF Insert schemas
 export const insertPafTemplateSchema = createInsertSchema(pafTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPafWorkflowTemplateSchema = createInsertSchema(pafWorkflowTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPafSubmissionSchema = createInsertSchema(pafSubmissions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPafApprovalWorkflowSchema = createInsertSchema(pafApprovalWorkflow).omit({ id: true, createdAt: true, updatedAt: true });
 

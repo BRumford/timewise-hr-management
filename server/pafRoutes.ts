@@ -572,6 +572,133 @@ export function registerPafRoutes(app: Express) {
     }
   });
 
+  // Get workflow templates for district
+  app.get("/api/paf/workflow-templates", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const { districtId } = req.user;
+      
+      // Return default workflow templates for now
+      const defaultWorkflows = [
+        {
+          id: 1,
+          name: "Standard Approval",
+          description: "Standard 3-step approval process",
+          steps: [
+            { role: "hr", title: "HR Review", required: true, order: 1 },
+            { role: "finance", title: "Budget Approval", required: true, order: 2 },
+            { role: "admin", title: "Administrator Approval", required: true, order: 3 }
+          ],
+          isDefault: true
+        },
+        {
+          id: 2,
+          name: "Fast Track",
+          description: "Expedited 2-step approval for urgent requests",
+          steps: [
+            { role: "hr", title: "HR Review", required: true, order: 1 },
+            { role: "admin", title: "Administrator Approval", required: true, order: 2 }
+          ],
+          isDefault: false
+        },
+        {
+          id: 3,
+          name: "Full Review",
+          description: "Comprehensive 4-step approval process",
+          steps: [
+            { role: "hr", title: "HR Review", required: true, order: 1 },
+            { role: "supervisor", title: "Supervisor Approval", required: true, order: 2 },
+            { role: "finance", title: "Budget Approval", required: true, order: 3 },
+            { role: "admin", title: "Administrator Final Approval", required: true, order: 4 }
+          ],
+          isDefault: false
+        }
+      ];
+      
+      res.json(defaultWorkflows);
+    } catch (error) {
+      console.error("[PAF] Error fetching workflow templates:", error);
+      res.status(500).json({ error: "Failed to fetch workflow templates" });
+    }
+  });
+
+  // Create PAF submission with fillable PDF
+  app.post("/api/paf/submissions/create-and-fill", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const { districtId, userId } = req.user;
+      const formData = req.body;
+      
+      // Get the template
+      const template = await storage.getPafTemplate(parseInt(formData.templateId));
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Create the submission
+      const submission = await storage.createPafSubmission({
+        districtId,
+        templateId: parseInt(formData.templateId),
+        submittedBy: userId,
+        status: "draft",
+        formData: formData,
+        employeeName: formData.employeeName,
+        positionTitle: formData.newPosition || formData.currentPosition,
+        effectiveDate: formData.effectiveDate ? new Date(formData.effectiveDate) : null,
+      });
+      
+      // Create a fillable PDF with the form data pre-filled
+      const templatePath = path.join(process.cwd(), template.fileUrl);
+      const pdfBytes = fs.readFileSync(templatePath);
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const form = pdfDoc.getForm();
+      
+      // Pre-fill the form with submitted data
+      try {
+        if (formData.employeeName) form.getTextField('Employee_Name').setText(formData.employeeName);
+        if (formData.employeeId) form.getTextField('Employee_ID').setText(formData.employeeId);
+        if (formData.department) form.getTextField('Department').setText(formData.department);
+        if (formData.currentPosition) form.getTextField('Current_Position').setText(formData.currentPosition);
+        if (formData.newPosition) form.getTextField('New_Position').setText(formData.newPosition);
+        if (formData.effectiveDate) form.getTextField('Effective_Date').setText(formData.effectiveDate);
+        if (formData.actionType) form.getTextField('Action_Type').setText(formData.actionType);
+        if (formData.reason) form.getTextField('Reason').setText(formData.reason);
+        if (formData.currentSalary) form.getTextField('Current_Salary').setText(formData.currentSalary);
+        if (formData.newSalary) form.getTextField('New_Salary').setText(formData.newSalary);
+        if (formData.justification) form.getTextField('Justification').setText(formData.justification);
+      } catch (error) {
+        console.log("[PAF] Some form fields not found - this is normal for pre-filled forms");
+      }
+      
+      // Save the filled PDF
+      const filledPdfBytes = await pdfDoc.save();
+      const submissionDir = path.join(process.cwd(), 'uploads', 'paf-submissions');
+      
+      // Ensure directory exists
+      if (!fs.existsSync(submissionDir)) {
+        fs.mkdirSync(submissionDir, { recursive: true });
+      }
+      
+      const filename = `paf-${submission.id}-${Date.now()}.pdf`;
+      const filePath = path.join(submissionDir, filename);
+      fs.writeFileSync(filePath, filledPdfBytes);
+      
+      // Update submission with file path
+      const fileUrl = `/uploads/paf-submissions/${filename}`;
+      await storage.updatePafSubmission(submission.id, { fileUrl, status: "submitted" });
+      
+      console.log(`[PAF] Created submission ${submission.id} with pre-filled PDF`);
+      
+      res.json({
+        submission: { ...submission, fileUrl },
+        fillablePdfUrl: fileUrl,
+        message: "PAF created successfully with fillable PDF"
+      });
+      
+    } catch (error) {
+      console.error("[PAF] Error creating PAF submission:", error);
+      res.status(500).json({ error: "Failed to create PAF submission" });
+    }
+  });
+
   // Get fillable PDF template (opens template directly for filling)
   app.get("/api/paf/templates/:id/fillable-pdf", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
