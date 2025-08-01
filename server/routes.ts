@@ -337,11 +337,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // app.use(cdn.preloadCriticalResources());
   // app.use(cdn.securityHeaders());
   
-  // Serve uploaded files
-  app.use('/uploads', (req, res, next) => {
-    const express = require('express');
-    express.static(uploadDir)(req, res, next);
-  });
+  // Serve uploaded files (before authentication middleware)
+  app.use('/uploads', express.static(uploadDir, {
+    setHeaders: (res, filePath) => {
+      if (path.extname(filePath) === '.pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+      }
+    }
+  }));
 
   // Public login endpoint - should be before authentication middleware
   app.post('/api/auth/login', async (req, res) => {
@@ -5654,15 +5658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
-  // Serve uploads directory for generated PAF PDFs and other uploads
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
-    setHeaders: (res, filePath) => {
-      if (path.extname(filePath) === '.pdf') {
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline');
-      }
-    }
-  }));
+
 
   // Register PAF routes
   registerPafRoutes(app);
