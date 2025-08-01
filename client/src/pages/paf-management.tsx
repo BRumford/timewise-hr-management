@@ -1,35 +1,13 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, CheckCircle, Clock, FileText, Plus, Upload, Download, Edit, Trash2, Send, User, DollarSign, Info, Eye } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-
-interface PafTemplate {
-  id: number;
-  name: string;
-  description: string;
-  fileUrl: string;
-  isActive: boolean;
-  isDefault: boolean;
-  formFields: Array<{
-    name: string;
-    type: string;
-    required: boolean;
-    options?: string[];
-  }>;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertCircle, CheckCircle, Clock, FileText, Plus, User, Search, ArrowRight, Calendar, Building, Send, Eye } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface PafSubmission {
   id: number;
@@ -42,628 +20,6 @@ interface PafSubmission {
   submittedBy: string;
   createdAt: string;
   updatedAt: string;
-}
-
-function PafTemplateForm({ template, onClose }: { template?: PafTemplate; onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    name: template?.name || "",
-    description: template?.description || "",
-    isActive: template?.isActive ?? true,
-    isDefault: template?.isDefault ?? false,
-    formFields: template?.formFields || [],
-  });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const createTemplate = useMutation({
-    mutationFn: async (data: FormData) => {
-      const response = await fetch('/api/paf/templates', {
-        method: 'POST',
-        body: data,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create template');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
-      toast({
-        title: "Success",
-        description: "PAF template created successfully",
-      });
-      onClose();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateTemplate = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest(`/api/paf/templates/${template!.id}`, 'PUT', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
-      toast({
-        title: "Success",
-        description: "PAF template updated successfully",
-      });
-      onClose();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (template) {
-      // Update existing template
-      updateTemplate.mutate(formData);
-    } else {
-      // Create new template
-      if (!selectedFile) {
-        toast({
-          title: "Error",
-          description: "Please select a PDF file",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const formDataToSend = new FormData();
-      formDataToSend.append('pdfFile', selectedFile);
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('formFields', JSON.stringify(formData.formFields));
-      
-      createTemplate.mutate(formDataToSend);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Template Name</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-        />
-      </div>
-
-      {!template && (
-        <div>
-          <Label htmlFor="pdfFile">PDF Template File</Label>
-          <Input
-            id="pdfFile"
-            type="file"
-            accept=".pdf"
-            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-            required
-          />
-        </div>
-      )}
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="isActive"
-          checked={formData.isActive}
-          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-        />
-        <Label htmlFor="isActive">Active Template</Label>
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="isDefault"
-          checked={formData.isDefault}
-          onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-        />
-        <Label htmlFor="isDefault">Default Template</Label>
-      </div>
-
-      <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={createTemplate.isPending || updateTemplate.isPending}>
-          {template ? "Update" : "Create"} Template
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function PafSubmissionForm({ templateId, onClose }: { templateId: number; onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    templateId,
-    // Employee Information
-    employeeName: "",
-    employeeId: "",
-    department: "",
-    currentPosition: "",
-    newPosition: "",
-    payGrade: "",
-    workLocation: "",
-    
-    // Action Details
-    actionType: "",
-    effectiveDate: "",
-    reason: "",
-    description: "",
-    
-    // Salary Information
-    currentSalary: "",
-    newSalary: "",
-    budgetAccount: "",
-    fundingSource: "",
-    
-    // Additional Information
-    supervisorName: "",
-    hrNotes: "",
-    attachments: "",
-    
-    formData: {},
-  });
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const createSubmission = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('/api/paf/submissions', 'POST', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
-      toast({
-        title: "Success",
-        description: "Personnel Action Form submitted successfully",
-      });
-      onClose();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Clean up form data before submission
-    const cleanedFormData = {
-      ...formData,
-      // Store all the form fields in the formData JSON field for the database
-      formData: {
-        employeeId: formData.employeeId || null,
-        department: formData.department,
-        currentPosition: formData.currentPosition,
-        newPosition: formData.newPosition,
-        payGrade: formData.payGrade,
-        workLocation: formData.workLocation,
-        actionType: formData.actionType,
-        description: formData.description,
-        currentSalary: formData.currentSalary,
-        newSalary: formData.newSalary,
-        budgetAccount: formData.budgetAccount,
-        fundingSource: formData.fundingSource,
-        supervisorName: formData.supervisorName,
-        hrNotes: formData.hrNotes,
-        attachments: formData.attachments,
-      }
-    };
-    
-    createSubmission.mutate(cleanedFormData);
-  };
-
-  const updateFormData = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
-  };
-
-  return (
-    <div className="max-h-[80vh] overflow-y-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Employee Information Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold border-b pb-2">Employee Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="employeeName">Employee Name *</Label>
-              <Input
-                id="employeeName"
-                value={formData.employeeName}
-                onChange={(e) => updateFormData('employeeName', e.target.value)}
-                placeholder="First Last"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="employeeId">Employee ID</Label>
-              <Input
-                id="employeeId"
-                value={formData.employeeId}
-                onChange={(e) => updateFormData('employeeId', e.target.value)}
-                placeholder="EMP-12345"
-              />
-            </div>
-            <div>
-              <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
-                value={formData.department}
-                onChange={(e) => updateFormData('department', e.target.value)}
-                placeholder="Human Resources"
-              />
-            </div>
-            <div>
-              <Label htmlFor="workLocation">Work Location</Label>
-              <Input
-                id="workLocation"
-                value={formData.workLocation}
-                onChange={(e) => updateFormData('workLocation', e.target.value)}
-                placeholder="Main Campus"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Position Information Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold border-b pb-2">Position Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="currentPosition">Current Position</Label>
-              <Input
-                id="currentPosition"
-                value={formData.currentPosition}
-                onChange={(e) => updateFormData('currentPosition', e.target.value)}
-                placeholder="Teacher"
-              />
-            </div>
-            <div>
-              <Label htmlFor="newPosition">New Position</Label>
-              <Input
-                id="newPosition"
-                value={formData.newPosition}
-                onChange={(e) => updateFormData('newPosition', e.target.value)}
-                placeholder="Department Head"
-              />
-            </div>
-            <div>
-              <Label htmlFor="payGrade">Pay Grade</Label>
-              <Input
-                id="payGrade"
-                value={formData.payGrade}
-                onChange={(e) => updateFormData('payGrade', e.target.value)}
-                placeholder="Grade 5"
-              />
-            </div>
-            <div>
-              <Label htmlFor="supervisorName">Supervisor Name</Label>
-              <Input
-                id="supervisorName"
-                value={formData.supervisorName}
-                onChange={(e) => updateFormData('supervisorName', e.target.value)}
-                placeholder="Jane Smith"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Action Details Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold border-b pb-2">Action Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="actionType">Action Type *</Label>
-              <select
-                id="actionType"
-                value={formData.actionType}
-                onChange={(e) => updateFormData('actionType', e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                required
-              >
-                <option value="">Select Action Type</option>
-                <option value="hire">New Hire</option>
-                <option value="promotion">Promotion</option>
-                <option value="transfer">Transfer</option>
-                <option value="salary_change">Salary Change</option>
-                <option value="title_change">Title Change</option>
-                <option value="termination">Termination</option>
-                <option value="leave">Leave of Absence</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="effectiveDate">Effective Date *</Label>
-              <Input
-                id="effectiveDate"
-                type="date"
-                value={formData.effectiveDate}
-                onChange={(e) => updateFormData('effectiveDate', e.target.value)}
-                required
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="reason">Reason for Action *</Label>
-            <Textarea
-              id="reason"
-              value={formData.reason}
-              onChange={(e) => updateFormData('reason', e.target.value)}
-              placeholder="Provide detailed reason for this personnel action..."
-              rows={3}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Additional Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => updateFormData('description', e.target.value)}
-              placeholder="Any additional details or special circumstances..."
-              rows={2}
-            />
-          </div>
-        </div>
-
-        {/* Salary Information Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold border-b pb-2">Salary Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="currentSalary">Current Salary</Label>
-              <Input
-                id="currentSalary"
-                value={formData.currentSalary}
-                onChange={(e) => updateFormData('currentSalary', e.target.value)}
-                placeholder="$50,000"
-              />
-            </div>
-            <div>
-              <Label htmlFor="newSalary">New Salary</Label>
-              <Input
-                id="newSalary"
-                value={formData.newSalary}
-                onChange={(e) => updateFormData('newSalary', e.target.value)}
-                placeholder="$55,000"
-              />
-            </div>
-            <div>
-              <Label htmlFor="budgetAccount">Budget Account</Label>
-              <Input
-                id="budgetAccount"
-                value={formData.budgetAccount}
-                onChange={(e) => updateFormData('budgetAccount', e.target.value)}
-                placeholder="ACC-2024-001"
-              />
-            </div>
-            <div>
-              <Label htmlFor="fundingSource">Funding Source</Label>
-              <Input
-                id="fundingSource"
-                value={formData.fundingSource}
-                onChange={(e) => updateFormData('fundingSource', e.target.value)}
-                placeholder="General Fund"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Additional Information Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold border-b pb-2">Additional Information</h3>
-          <div>
-            <Label htmlFor="hrNotes">HR Notes</Label>
-            <Textarea
-              id="hrNotes"
-              value={formData.hrNotes}
-              onChange={(e) => updateFormData('hrNotes', e.target.value)}
-              placeholder="Internal HR notes or comments..."
-              rows={2}
-            />
-          </div>
-          <div>
-            <Label htmlFor="attachments">Attachments</Label>
-            <Input
-              id="attachments"
-              value={formData.attachments}
-              onChange={(e) => updateFormData('attachments', e.target.value)}
-              placeholder="List any supporting documents..."
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end space-x-2 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={createSubmission.isPending}>
-            {createSubmission.isPending ? "Submitting..." : "Submit Personnel Action Form"}
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function PafSubmissionViewer({ submission, onClose }: { submission: PafSubmission; onClose: () => void }) {
-  const formData = submission.formData as any || {};
-
-  return (
-    <div className="space-y-6">
-      {/* Header Information */}
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-gray-600">Status:</span>
-            <div className="mt-1">
-              <StatusBadge status={submission.status} />
-            </div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Employee:</span>
-            <div className="mt-1">{submission.employeeName || 'Not specified'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Position:</span>
-            <div className="mt-1">{submission.positionTitle || 'Not specified'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Effective Date:</span>
-            <div className="mt-1">
-              {submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : 'Not specified'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Employee Information Section */}
-      <div className="border rounded-lg p-4">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <User className="h-5 w-5 mr-2" />
-          Employee Information
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-gray-600">Employee Name:</span>
-            <div className="mt-1">{submission.employeeName || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Employee ID:</span>
-            <div className="mt-1">{formData.employeeId || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Department:</span>
-            <div className="mt-1">{formData.department || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Work Location:</span>
-            <div className="mt-1">{formData.workLocation || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Current Position:</span>
-            <div className="mt-1">{formData.currentPosition || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">New Position:</span>
-            <div className="mt-1">{formData.newPosition || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Pay Grade:</span>
-            <div className="mt-1">{formData.payGrade || 'Not provided'}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Details Section */}
-      <div className="border rounded-lg p-4">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <FileText className="h-5 w-5 mr-2" />
-          Action Details
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-gray-600">Action Type:</span>
-            <div className="mt-1">{formData.actionType || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Effective Date:</span>
-            <div className="mt-1">
-              {submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : 'Not provided'}
-            </div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Reason:</span>
-            <div className="mt-1">{(submission as any).reason || 'Not provided'}</div>
-          </div>
-          <div className="md:col-span-2">
-            <span className="font-medium text-gray-600">Description:</span>
-            <div className="mt-1">{formData.description || 'Not provided'}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Salary Information Section */}
-      <div className="border rounded-lg p-4">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <DollarSign className="h-5 w-5 mr-2" />
-          Salary Information
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-gray-600">Current Salary:</span>
-            <div className="mt-1">{formData.currentSalary || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">New Salary:</span>
-            <div className="mt-1">{formData.newSalary || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Budget Account:</span>
-            <div className="mt-1">{formData.budgetAccount || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Funding Source:</span>
-            <div className="mt-1">{formData.fundingSource || 'Not provided'}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Information Section */}
-      <div className="border rounded-lg p-4">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <Info className="h-5 w-5 mr-2" />
-          Additional Information
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-gray-600">Supervisor Name:</span>
-            <div className="mt-1">{formData.supervisorName || 'Not provided'}</div>
-          </div>
-          <div>
-            <span className="font-medium text-gray-600">Attachments:</span>
-            <div className="mt-1">{formData.attachments || 'Not provided'}</div>
-          </div>
-          <div className="md:col-span-2">
-            <span className="font-medium text-gray-600">HR Notes:</span>
-            <div className="mt-1">{formData.hrNotes || 'Not provided'}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end pt-4 border-t">
-        <Button onClick={onClose}>Close</Button>
-      </div>
-    </div>
-  );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -693,595 +49,253 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-
-
-function CompletedPafUpload({ onClose }: { onClose: () => void }) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [templateId, setTemplateId] = useState<number | null>(null);
-  const [employeeName, setEmployeeName] = useState("");
-  const [positionTitle, setPositionTitle] = useState("");
-  const [effectiveDate, setEffectiveDate] = useState("");
-  const [reason, setReason] = useState("");
-  
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const { data: templates } = useQuery({
-    queryKey: ["/api/paf/templates"],
-  });
-
-  const uploadSubmission = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/paf/submissions/upload', {
-        method: 'POST',
-        body: formData
-      });
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
-      toast({
-        title: "Success", 
-        description: "PAF uploaded successfully"
-      });
-      onClose();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedFile || !templateId || !employeeName || !effectiveDate) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields and select a PDF file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('pdfFile', selectedFile);
-    formData.append('templateId', templateId.toString());
-    formData.append('employeeName', employeeName);
-    formData.append('positionTitle', positionTitle);
-    formData.append('effectiveDate', effectiveDate);
-    formData.append('reason', reason);
-
-    uploadSubmission.mutate(formData);
-  };
+function PafSubmissionViewer({ submission, onClose }: { submission: PafSubmission; onClose: () => void }) {
+  const formData = submission.formData as any || {};
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="template">Related Template</Label>
-        <Select value={templateId?.toString() || ""} onValueChange={(value) => setTemplateId(parseInt(value))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select the template this PAF is based on" />
-          </SelectTrigger>
-          <SelectContent>
-            {(templates as PafTemplate[] || []).map((template) => (
-              <SelectItem key={template.id} value={template.id.toString()}>
-                {template.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="space-y-6">
+      {/* Header Information */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-600">Status:</span>
+            <div className="mt-1">
+              <StatusBadge status={submission.status} />
+            </div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Employee:</span>
+            <div className="mt-1">{submission.employeeName}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Position:</span>
+            <div className="mt-1">{submission.positionTitle || 'Not specified'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Submitted:</span>
+            <div className="mt-1">{new Date(submission.createdAt).toLocaleDateString()}</div>
+          </div>
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="employeeName">Employee Name *</Label>
-        <Input
-          id="employeeName"
-          value={employeeName}
-          onChange={(e) => setEmployeeName(e.target.value)}
-          placeholder="Enter employee name"
-          required
-        />
+      {/* Form Data Display */}
+      <div className="border rounded-lg p-4">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <FileText className="h-5 w-5 mr-2" />
+          Form Details
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-600">Effective Date:</span>
+            <div className="mt-1">
+              {submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : 'Not provided'}
+            </div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Submitted By:</span>
+            <div className="mt-1">{submission.submittedBy}</div>
+          </div>
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="positionTitle">Position</Label>
-        <Input
-          id="positionTitle"
-          value={positionTitle}
-          onChange={(e) => setPositionTitle(e.target.value)}
-          placeholder="Enter position title"
-        />
+      <div className="flex justify-end pt-4 border-t">
+        <Button onClick={onClose}>Close</Button>
       </div>
-
-      <div>
-        <Label htmlFor="effectiveDate">Effective Date *</Label>
-        <Input
-          id="effectiveDate"
-          type="date"
-          value={effectiveDate}
-          onChange={(e) => setEffectiveDate(e.target.value)}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="reason">Reason</Label>
-        <Input
-          id="reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Enter reason for action"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="pdfFile">Upload Completed PDF *</Label>
-        <Input
-          id="pdfFile"
-          type="file"
-          accept=".pdf"
-          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-          required
-        />
-        {selectedFile && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Selected: {selectedFile.name}
-          </p>
-        )}
-      </div>
-
-      <div className="flex justify-end space-x-2 pt-4 border-t">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={uploadSubmission.isPending}>
-          Upload PAF
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }
 
 export default function PafManagement() {
-  const [selectedTemplate, setSelectedTemplate] = useState<PafTemplate | null>(null);
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  // Upload dialog for completed PDFs
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-
   const [selectedSubmission, setSelectedSubmission] = useState<PafSubmission | null>(null);
   const [isViewSubmissionDialogOpen, setIsViewSubmissionDialogOpen] = useState(false);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  // Check PDF fillability
-  const checkPdfFillability = async (templateId: number) => {
-    try {
-      const response = await fetch(`/api/paf/templates/${templateId}/fillable-status`);
-      const result = await response.json();
-      
-      const signatureFields = result.fieldNames?.filter((name: string) => 
-        name.includes('Signature') || name.includes('_Name') || name.includes('_Date')
-      ) || [];
-      
-      toast({
-        title: result.isFillable ? "PDF Ready for E-Signatures" : "PDF Needs E-Signature Setup",
-        description: result.isFillable 
-          ? `This PDF has ${result.fieldCount} form fields including ${signatureFields.length} signature-related fields for department approvals.`
-          : "This PDF has no fillable form fields. Click 'Add E-Signature Fields' to enable department approvals.",
-        variant: result.isFillable ? "default" : "destructive"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to check PDF e-signature readiness",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Make PDF fillable
-  const makePdfFillable = async (templateId: number) => {
-    try {
-      const response = await fetch(`/api/paf/templates/${templateId}/make-fillable`, {
-        method: 'POST'
-      });
-      const result = await response.json();
-      
-      const signatureFieldCount = result.fieldNames?.filter((name: string) => 
-        name.includes('Signature') || name.includes('_Name') || name.includes('_Date')
-      ).length || 0;
-      
-      toast({
-        title: "E-Signature Fields Added Successfully",
-        description: `Added ${result.fieldCount} total fields including ${signatureFieldCount} signature fields for HR, Finance, Supervisor, and Administrator approvals.`,
-      });
-      
-      // Refresh templates
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
-    } catch (error) {
-      toast({
-        title: "Error", 
-        description: "Failed to add e-signature fields to PDF",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const { data: templates, isLoading: templatesLoading } = useQuery({
-    queryKey: ["/api/paf/templates"],
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [, setLocation] = useLocation();
 
   const { data: submissions, isLoading: submissionsLoading } = useQuery({
     queryKey: ["/api/paf/submissions"],
   });
 
-  const deleteTemplate = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest(`/api/paf/templates/${id}`, 'DELETE');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
-      toast({
-        title: "Success",
-        description: "PAF template deleted successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const filteredSubmissions = submissions?.filter((submission: PafSubmission) => 
+    submission.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    submission.positionTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    submission.status.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
-  const loadStandardTemplate = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('/api/paf/templates/load-prebuilt', 'POST');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
-      toast({
-        title: "Success",
-        description: "Standard PAF template loaded successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleViewSubmission = (submission: PafSubmission) => {
+    setSelectedSubmission(submission);
+    setIsViewSubmissionDialogOpen(true);
+  };
 
-  const submitForApproval = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest(`/api/paf/submissions/${id}/submit`, 'POST');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
-      toast({
-        title: "Success",
-        description: "PAF submitted for approval",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleCreateNewPaf = () => {
+    setLocation("/paf-form");
+  };
 
-  if (templatesLoading || submissionsLoading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>;
+  if (submissionsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center space-x-2">
+          <FileText className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Personnel Action Forms</h1>
+        </div>
+        <div className="animate-pulse space-y-4">
+          <div className="h-32 bg-gray-200 rounded-lg"></div>
+          <div className="h-64 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Personnel Action Forms (PAF)</h1>
-          <p className="text-muted-foreground">Manage personnel action form templates and submissions</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <FileText className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Personnel Action Forms</h1>
         </div>
       </div>
 
-      <Tabs defaultValue="templates" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="submissions">Submissions</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="templates" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">PAF Templates</h2>
-            <div className="space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => loadStandardTemplate.mutate()}
-                disabled={loadStandardTemplate.isPending}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Load Standard Template
-              </Button>
-              <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setSelectedTemplate(null)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Template
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>
-                    {selectedTemplate ? "Edit Template" : "Create New Template"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {selectedTemplate 
-                      ? "Update the template details" 
-                      : "Upload a new PAF template and configure its settings"}
-                  </DialogDescription>
-                </DialogHeader>
-                <PafTemplateForm 
-                  template={selectedTemplate || undefined} 
-                  onClose={() => setIsTemplateDialogOpen(false)} 
-                />
-                </DialogContent>
-              </Dialog>
+      {/* Create New PAF Section */}
+      <Card className="border-2 border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center text-blue-800">
+            <Plus className="h-5 w-5 mr-2" />
+            Create New Personnel Action Form
+          </CardTitle>
+          <CardDescription className="text-blue-700">
+            Start a new Personnel Action Form with comprehensive tracking and approval workflow
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-700 mb-4">
+                <div className="flex items-center">
+                  <User className="h-4 w-4 mr-2" />
+                  Employee Information
+                </div>
+                <div className="flex items-center">
+                  <Building className="h-4 w-4 mr-2" />
+                  Position Details
+                </div>
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Approval Workflow
+                </div>
+              </div>
+              <p className="text-sm text-blue-600 mb-4">
+                Complete online form with real-time audit trail, automatic workflow routing, and comprehensive timestamping system.
+              </p>
             </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {(templates as PafTemplate[] || []).map((template: PafTemplate) => (
-              <Card key={template.id} className="relative">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <CardDescription>{template.description}</CardDescription>
-                    </div>
-                    <div className="flex space-x-1">
-                      {template.isDefault && (
-                        <Badge variant="secondary">Default</Badge>
-                      )}
-                      {template.isActive ? (
-                        <Badge variant="default">Active</Badge>
-                      ) : (
-                        <Badge variant="secondary">Inactive</Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {/* Primary Action Buttons */}
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          // Download the fillable PDF directly
-                          const downloadUrl = template.fileUrl;
-                          const link = document.createElement('a');
-                          link.href = downloadUrl;
-                          link.download = `${template.name}.pdf`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download PDF
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          console.log('Opening template URL:', template.fileUrl);
-                          // Create a direct link and click it
-                          const link = document.createElement('a');
-                          link.href = template.fileUrl;
-                          link.target = '_blank';
-                          link.rel = 'noopener noreferrer';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View Template
-                      </Button>
-                    </div>
-                    
-                    {/* PDF Management Buttons */}
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => checkPdfFillability(template.id)}
-                      >
-                        <FileText className="h-4 w-4 mr-1" />
-                        Check E-Signature Fields
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => makePdfFillable(template.id)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add E-Signature Fields
-                      </Button>
-                    </div>
-
-                    {/* Template Management */}
-                    <div className="flex justify-between items-center">
-                      <div className="space-x-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedTemplate(template);
-                            setIsTemplateDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteTemplate.mutate(template.id)}
-                          disabled={deleteTemplate.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="submissions" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">PAF Submissions</h2>
-            <div className="space-x-2">
-              <Button
-                onClick={() => window.open('/paf-form', '_self')}
-                className="flex items-center gap-2"
-                variant="default"
+            <div className="flex items-center">
+              <Button 
+                onClick={handleCreateNewPaf}
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8"
               >
-                <Plus className="h-4 w-4" />
                 Create New PAF
-              </Button>
-              <Button
-                onClick={() => setIsUploadDialogOpen(true)}
-                className="flex items-center gap-2"
-                variant="outline"
-              >
-                <Upload className="h-4 w-4" />
-                Upload Completed PAF
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Submissions</CardTitle>
-              <CardDescription>All personnel action form submissions</CardDescription>
-            </CardHeader>
-            <CardContent>
+      {/* Submissions Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Recent Personnel Action Forms</span>
+            <Badge variant="outline" className="text-xs">
+              {filteredSubmissions.length} Total Forms
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            Track and manage all Personnel Action Form submissions
+          </CardDescription>
+          
+          {/* Search */}
+          <div className="flex items-center space-x-2 pt-4">
+            <Search className="h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by employee name, position, or status..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-md"
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredSubmissions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium mb-2">No Personnel Action Forms Found</p>
+              <p className="text-sm">
+                {searchTerm ? "Try adjusting your search criteria" : "Get started by creating your first PAF"}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Employee</TableHead>
                     <TableHead>Position</TableHead>
-                    <TableHead>Effective Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Effective Date</TableHead>
                     <TableHead>Submitted</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(submissions as PafSubmission[] || []).map((submission: PafSubmission) => (
+                  {filteredSubmissions.map((submission: PafSubmission) => (
                     <TableRow key={submission.id}>
-                      <TableCell className="font-medium">
-                        {submission.employeeName}
-                      </TableCell>
-                      <TableCell>{submission.positionTitle}</TableCell>
                       <TableCell>
-                        {new Date(submission.effectiveDate).toLocaleDateString()}
+                        <div className="flex items-center space-x-2">
+                          <User className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium">{submission.employeeName}</span>
+                        </div>
                       </TableCell>
+                      <TableCell>{submission.positionTitle || 'Not specified'}</TableCell>
                       <TableCell>
                         <StatusBadge status={submission.status} />
                       </TableCell>
                       <TableCell>
-                        {new Date(submission.createdAt).toLocaleDateString()}
+                        {submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : 'Not set'}
                       </TableCell>
+                      <TableCell>{new Date(submission.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <div className="flex space-x-2">
-                          {submission.status === 'draft' && (
-                            <Button
-                              size="sm"
-                              onClick={() => submitForApproval.mutate(submission.id)}
-                              disabled={submitForApproval.isPending}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              Submit
-                            </Button>
-                          )}
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedSubmission(submission);
-                              setIsViewSubmissionDialogOpen(true);
-                            }}
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            View Data
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => {
-                              // Open filled PDF in new tab
-                              const pdfUrl = `/api/paf/submissions/${submission.id}/pdf`;
-                              window.open(pdfUrl, '_blank');
-                            }}
-                          >
-                            <Download className="h-4 w-4 mr-1" />
-                            View PDF
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewSubmission(submission)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-
-
-      {/* Upload Completed PDF Dialog */}
-      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Upload Completed PAF</DialogTitle>
-            <DialogDescription>
-              Upload your filled Personnel Action Form PDF
-            </DialogDescription>
-          </DialogHeader>
-          <CompletedPafUpload onClose={() => setIsUploadDialogOpen(false)} />
-        </DialogContent>
-      </Dialog>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* View Submission Dialog */}
       <Dialog open={isViewSubmissionDialogOpen} onOpenChange={setIsViewSubmissionDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Personnel Action Form Submission</DialogTitle>
+            <DialogTitle>Personnel Action Form Details</DialogTitle>
             <DialogDescription>
-              Submitted on {selectedSubmission?.createdAt ? new Date(selectedSubmission.createdAt).toLocaleDateString() : ''}
+              View complete form information and submission details
             </DialogDescription>
           </DialogHeader>
           {selectedSubmission && (
-            <PafSubmissionViewer 
-              submission={selectedSubmission} 
-              onClose={() => setIsViewSubmissionDialogOpen(false)} 
+            <PafSubmissionViewer
+              submission={selectedSubmission}
+              onClose={() => setIsViewSubmissionDialogOpen(false)}
             />
           )}
         </DialogContent>
