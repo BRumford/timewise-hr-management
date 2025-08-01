@@ -43,6 +43,7 @@ import { tenantMiddleware, requireDistrict, withDistrictFilter } from './tenantM
 import { getDistrictStorage } from './multiTenantStorage';
 import { getDistrictAuth } from './districtAuth';
 import { registerMultiTenantRoutes } from './multiTenantRoutes';
+import { registerSystemOwnerRoutes } from './systemOwnerRoutes';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {
@@ -5638,6 +5639,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to fetch email logs' });
     }
   });
+
+  // Register system owner routes
+  registerSystemOwnerRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

@@ -62,17 +62,17 @@ const mainMenuItems = [
 
 // Administrative settings dropdown items
 const adminDropdownItems = [
-  { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["hr", "payroll"] },
-  { path: "/documents", icon: FileText, label: "Documents", roles: ["hr", "payroll"] },
-  { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["hr", "payroll"] },
-  { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["hr", "payroll"] },
-  { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["hr", "payroll"] },
-
-  { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["hr", "payroll"] },
-  { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["payroll"] },
-  { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["hr", "payroll"] },
-  { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["hr", "payroll"] },
-  { path: "/settings", icon: Settings, label: "Settings", roles: ["hr", "payroll"] },
+  { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/documents", icon: FileText, label: "Documents", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/workflow-management", icon: Activity, label: "Workflow Management", roles: ["system_owner"] },
+  { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/employee-access-management", icon: UserCheck, label: "Employee Access Management", roles: ["payroll", "system_owner"] },
+  { path: "/privacy-policies", icon: Shield, label: "Privacy Policies", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/data-deletion-requests", icon: Trash2, label: "Data Deletion Requests", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/settings", icon: Settings, label: "Settings", roles: ["hr", "payroll", "system_owner"] },
 ];
 
 export default function Sidebar() {

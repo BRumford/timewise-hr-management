@@ -75,12 +75,12 @@ export const sessions = pgTable(
 // User storage table - required for authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
-  districtId: integer("district_id").references(() => districts.id), // Multi-tenant support
+  districtId: integer("district_id").references(() => districts.id), // Multi-tenant support (null for system_owner)
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("employee"), // admin, hr, payroll, employee, secretary
+  role: varchar("role").notNull().default("employee"), // admin, hr, payroll, employee, secretary, system_owner
   passwordHash: varchar("password_hash"), // For password authentication
   mfaEnabled: boolean("mfa_enabled").default(false),
   mfaSecret: varchar("mfa_secret"),
@@ -92,6 +92,7 @@ export const users = pgTable("users", {
   mfaBackupCodes: text("mfa_backup_codes"), // JSON string of backup codes
   passwordChangedAt: timestamp("password_changed_at"),
   passwordHistory: text("password_history"), // JSON string of previous password hashes
+  isSystemOwner: boolean("is_system_owner").default(false), // System owner access
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -804,6 +805,56 @@ export const timecardTemplateFields = pgTable("timecard_template_fields", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Custom workflows for districts - managed by system owner
+export const districtWorkflows = pgTable("district_workflows", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }).notNull(), // onboarding, payroll, leave, timecard, compliance, etc.
+  isActive: boolean("is_active").default(true),
+  isTemplate: boolean("is_template").default(false), // Can be copied to other districts
+  workflowSteps: jsonb("workflow_steps").notNull().default([]), // Array of workflow steps
+  triggers: jsonb("triggers").default({}), // Automation triggers
+  conditions: jsonb("conditions").default({}), // Conditional logic
+  settings: jsonb("settings").default({}), // Workflow-specific settings
+  assignedRoles: jsonb("assigned_roles").default([]), // Which roles can execute this workflow
+  approvalRequired: boolean("approval_required").default(false),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  lastModifiedBy: varchar("last_modified_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Workflow execution history
+export const workflowExecutions = pgTable("workflow_executions", {
+  id: serial("id").primaryKey(),
+  workflowId: integer("workflow_id").notNull().references(() => districtWorkflows.id),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  executedBy: varchar("executed_by").notNull().references(() => users.id),
+  triggerType: varchar("trigger_type").notNull(), // manual, automatic, scheduled
+  status: varchar("status").notNull().default("running"), // running, completed, failed, cancelled
+  inputData: jsonb("input_data").default({}),
+  outputData: jsonb("output_data").default({}),
+  errorDetails: text("error_details"),
+  stepResults: jsonb("step_results").default([]), // Results from each step
+  duration: integer("duration"), // Execution time in milliseconds
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// System owner access log
+export const systemOwnerAccessLog = pgTable("system_owner_access_log", {
+  id: serial("id").primaryKey(),
+  systemOwnerId: varchar("system_owner_id").notNull().references(() => users.id),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  action: varchar("action").notNull(), // login, workflow_create, workflow_modify, etc.
+  details: jsonb("details").default({}),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   employees: many(employees),
@@ -904,11 +955,22 @@ export const payPeriodsRelations = relations(payPeriods, ({ many }) => ({
   substituteTimeCards: many(substituteTimeCards),
 }));
 
+// Export types for workflow management
+export type DistrictWorkflow = typeof districtWorkflows.$inferSelect;
+export type InsertDistrictWorkflow = typeof districtWorkflows.$inferInsert;
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
+export type InsertWorkflowExecution = typeof workflowExecutions.$inferInsert;
+export type SystemOwnerAccessLog = typeof systemOwnerAccessLog.$inferSelect;
+export type InsertSystemOwnerAccessLog = typeof systemOwnerAccessLog.$inferInsert;
+
 // Zod schemas
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   hireDate: z.coerce.date().optional(),
   certifications: z.array(z.string()).optional(),
 });
+
+export const insertDistrictWorkflowSchema = createInsertSchema(districtWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWorkflowExecutionSchema = createInsertSchema(workflowExecutions).omit({ id: true, startedAt: true, completedAt: true });
 export const insertLeaveRequestSchema = z.object({
   employeeId: z.number(),
   leaveTypeId: z.number(), 

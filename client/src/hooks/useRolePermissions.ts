@@ -14,6 +14,11 @@ export function useRolePermissions() {
   });
 
   const hasAccess = (pagePath: string): boolean => {
+    // System owner has universal access to everything
+    if (role === 'system_owner') {
+      return true;
+    }
+    
     // Employee role has extremely limited access - only dashboard
     if (role === 'employee') {
       return pagePath === '/';
@@ -29,15 +34,15 @@ export function useRolePermissions() {
     
     // HR role has full access to all HR and system functions
     if (role === 'hr') {
-      // HR gets access to everything except admin-only features
-      const restrictedPages: string[] = []; // No restrictions for HR
+      // HR gets access to everything except system owner features
+      const restrictedPages = ['/workflow-management', '/system-owner-login'];
       return !restrictedPages.includes(pagePath);
     }
     
     // Payroll role has full access including employee access management
     if (role === 'payroll') {
-      // Payroll gets access to everything including employee access approval
-      const restrictedPages: string[] = []; // No restrictions for Payroll
+      // Payroll gets access to everything except system owner features
+      const restrictedPages = ['/workflow-management', '/system-owner-login'];
       return !restrictedPages.includes(pagePath);
     }
     

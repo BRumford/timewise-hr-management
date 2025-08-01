@@ -37,6 +37,9 @@ import DistrictManagement from "@/pages/district-management";
 import DistrictLogin from "@/pages/district-login";
 import MultiTenantDemo from "@/pages/multi-tenant-demo";
 import DataIsolationDemo from "@/pages/data-isolation-demo";
+import SystemOwnerLogin from "@/pages/system-owner-login";
+import SystemOwnerDashboard from "@/pages/system-owner-dashboard";
+import WorkflowManagement from "@/pages/workflow-management";
 
 import DistrictSetup from "@/pages/district-setup";
 import Sidebar from "@/components/layout/sidebar";
@@ -50,6 +53,9 @@ function Router() {
       <Route path="/district-setup" component={DistrictSetup} />
       <Route path="/employee-login" component={EmployeeLogin} />
       <Route path="/district-login" component={DistrictLogin} />
+      <Route path="/system-owner-login" component={SystemOwnerLogin} />
+      <Route path="/system-owner/dashboard" component={SystemOwnerDashboard} />
+      <Route path="/system-owner/workflows" component={WorkflowManagement} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       
@@ -84,6 +90,7 @@ function Router() {
                 <Route path="/dropdown-settings" component={DropdownSettings} />
                 <Route path="/privacy-policies" component={PrivacyPolicies} />
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
+                <Route path="/workflow-management" component={WorkflowManagement} />
 
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route path="/district-management" component={DistrictManagement} />

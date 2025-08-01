@@ -114,6 +114,10 @@ import {
   type InsertOpenEnrollmentCampaign,
   type OpenEnrollmentEmail,
   type InsertOpenEnrollmentEmail,
+  districts,
+  districtWorkflows,
+  workflowExecutions,
+  systemOwnerAccessLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, count, sql, ne, inArray } from "drizzle-orm";
@@ -382,6 +386,19 @@ export interface IStorage {
   createOpenEnrollmentEmail(email: InsertOpenEnrollmentEmail): Promise<OpenEnrollmentEmail>;
   updateOpenEnrollmentEmail(id: number, email: Partial<InsertOpenEnrollmentEmail>): Promise<OpenEnrollmentEmail>;
   getEmployeesForOpenEnrollment(classifications?: string[]): Promise<Employee[]>;
+  
+  // System owner operations
+  getAllDistricts(): Promise<any[]>;
+  getDistrict(id: number): Promise<any>;
+  logSystemOwnerAccess(log: any): Promise<any>;
+  
+  // Workflow operations
+  getDistrictWorkflows(districtId?: number): Promise<any[]>;
+  createDistrictWorkflow(workflow: any): Promise<any>;
+  updateDistrictWorkflow(id: number, workflow: any): Promise<any>;
+  deleteDistrictWorkflow(id: number): Promise<boolean>;
+  getWorkflowExecutions(districtId?: number): Promise<any[]>;
+  createWorkflowExecution(execution: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3146,6 +3163,61 @@ export class DatabaseStorage implements IStorage {
     }
     
     return query;
+  }
+
+  // System owner operations
+  async getAllDistricts(): Promise<any[]> {
+    return await db.select().from(districts).orderBy(districts.name);
+  }
+
+  async getDistrict(id: number): Promise<any> {
+    const [district] = await db.select().from(districts).where(eq(districts.id, id));
+    return district;
+  }
+
+  async logSystemOwnerAccess(log: any): Promise<any> {
+    const [created] = await db.insert(systemOwnerAccessLog).values(log).returning();
+    return created;
+  }
+
+  // Workflow operations
+  async getDistrictWorkflows(districtId?: number): Promise<any[]> {
+    let query = db.select().from(districtWorkflows);
+    if (districtId) {
+      query = query.where(eq(districtWorkflows.districtId, districtId));
+    }
+    return await query.orderBy(desc(districtWorkflows.createdAt));
+  }
+
+  async createDistrictWorkflow(workflow: any): Promise<any> {
+    const [created] = await db.insert(districtWorkflows).values(workflow).returning();
+    return created;
+  }
+
+  async updateDistrictWorkflow(id: number, workflow: any): Promise<any> {
+    const [updated] = await db.update(districtWorkflows)
+      .set({ ...workflow, updatedAt: new Date() })
+      .where(eq(districtWorkflows.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDistrictWorkflow(id: number): Promise<boolean> {
+    const result = await db.delete(districtWorkflows).where(eq(districtWorkflows.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getWorkflowExecutions(districtId?: number): Promise<any[]> {
+    let query = db.select().from(workflowExecutions);
+    if (districtId) {
+      query = query.where(eq(workflowExecutions.districtId, districtId));
+    }
+    return await query.orderBy(desc(workflowExecutions.startedAt));
+  }
+
+  async createWorkflowExecution(execution: any): Promise<any> {
+    const [created] = await db.insert(workflowExecutions).values(execution).returning();
+    return created;
   }
 }
 
