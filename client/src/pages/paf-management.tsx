@@ -718,7 +718,25 @@ export default function PafManagement() {
                       <h3 className="font-semibold text-gray-900">SECTION 4 - WORK SHIFT INFORMATION</h3>
                     </div>
                     <div className="p-4 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="fte"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">FTE:</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="FTE" 
+                                  className="border-gray-300"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
                         <FormField
                           control={form.control}
                           name="totalHoursDay"
