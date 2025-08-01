@@ -500,10 +500,20 @@ export default function PafManagement() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => window.open(template.fileUrl, '_blank')}
+                        onClick={() => {
+                          console.log('Opening template URL:', template.fileUrl);
+                          // Create a direct link and click it
+                          const link = document.createElement('a');
+                          link.href = template.fileUrl;
+                          link.target = '_blank';
+                          link.rel = 'noopener noreferrer';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
                       >
                         <Download className="h-4 w-4 mr-1" />
-                        View
+                        View Template
                       </Button>
                     </div>
                     <div className="space-x-1">
