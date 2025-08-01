@@ -15,6 +15,17 @@ import { auditMiddleware } from "./security/auditLogger";
 
 const app = express();
 
+// IMMEDIATE: Static file serving for PAF templates (before ANY other middleware)
+import path from 'path';
+app.use('/uploads/paf-templates', express.static(path.join(process.cwd(), 'uploads', 'paf-templates'), {
+  setHeaders: (res, filePath) => {
+    if (path.extname(filePath) === '.pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline');
+    }
+  }
+}));
+
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
@@ -62,6 +73,8 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+
+// Static file serving moved to very beginning before any middleware
 
 // Body parsing with size limits
 app.use(express.json({ limit: '10mb' }));

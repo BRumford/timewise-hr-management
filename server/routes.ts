@@ -5644,15 +5644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register system owner routes
   registerSystemOwnerRoutes(app);
   
-  // Simple static file serving for PAF templates - bypassing all middleware
-  app.use('/uploads/paf-templates', express.static(path.join(process.cwd(), 'uploads', 'paf-templates'), {
-    setHeaders: (res, filePath) => {
-      if (path.extname(filePath) === '.pdf') {
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline');
-      }
-    }
-  }));
+  // Static file serving is now handled in index.ts before middleware chain
 
   // Register PAF routes
   registerPafRoutes(app);

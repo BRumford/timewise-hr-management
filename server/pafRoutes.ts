@@ -118,7 +118,7 @@ export function registerPafRoutes(app: Express) {
         districtId,
         name: templateName,
         description: templateDescription,
-        fileUrl: "/uploads/paf-templates/personnel-action-form-template.pdf",
+        fileUrl: "/attached_assets/paf-templates/personnel-action-form-template.pdf",
         formFields,
         isActive: true,
         isDefault: true,
