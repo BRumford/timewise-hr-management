@@ -693,279 +693,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function PafFormOverlay({ templateId, onClose }: { templateId: number; onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    templateId,
-    // Employee Information
-    employeeName: "",
-    employeeId: "",
-    department: "",
-    currentPosition: "",
-    newPosition: "",
-    payGrade: "",
-    workLocation: "",
-    
-    // Action Details
-    actionType: "",
-    effectiveDate: "",
-    reason: "",
-    description: "",
-    
-    // Salary Information
-    currentSalary: "",
-    newSalary: "",
-    budgetAccount: "",
-    fundingSource: "",
-    
-    // Additional Information
-    supervisorName: "",
-    hrNotes: "",
-    attachments: "",
-  });
-  
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { data: template } = useQuery({
-    queryKey: ["/api/paf/templates", templateId],
-    queryFn: () => fetch(`/api/paf/templates/${templateId}`).then(res => res.json()),
-  });
-
-  const createSubmission = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('/api/paf/submissions', 'POST', data);
-    },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
-      toast({
-        title: "Success",
-        description: "Personnel Action Form created successfully",
-      });
-      
-      // Open the generated PDF in a new tab
-      const pdfUrl = `/api/paf/submissions/${result.id}/pdf`;
-      window.open(pdfUrl, '_blank');
-      
-      onClose();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Clean up form data before submission
-    const cleanedFormData = {
-      templateId: formData.templateId,
-      employeeName: formData.employeeName,
-      positionTitle: formData.newPosition || formData.currentPosition,
-      effectiveDate: formData.effectiveDate,
-      reason: formData.reason,
-      status: 'draft',
-      formData: {
-        employeeId: formData.employeeId || null,
-        department: formData.department,
-        currentPosition: formData.currentPosition,
-        newPosition: formData.newPosition,
-        payGrade: formData.payGrade,
-        workLocation: formData.workLocation,
-        actionType: formData.actionType,
-        description: formData.description,
-        currentSalary: formData.currentSalary,
-        newSalary: formData.newSalary,
-        budgetAccount: formData.budgetAccount,
-        fundingSource: formData.fundingSource,
-        supervisorName: formData.supervisorName,
-        hrNotes: formData.hrNotes,
-        attachments: formData.attachments,
-      }
-    };
-
-    createSubmission.mutate(cleanedFormData);
-  };
-
-  return (
-    <div className="flex h-[70vh] gap-4">
-      {/* Form Section */}
-      <div className="w-1/2 overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-6 pr-4">
-          {/* Employee Information Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center">
-              <User className="h-5 w-5 mr-2" />
-              Employee Information
-            </h3>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label htmlFor="employeeName">Employee Name *</Label>
-                <Input
-                  id="employeeName"
-                  value={formData.employeeName}
-                  onChange={(e) => setFormData({ ...formData, employeeName: e.target.value })}
-                  placeholder="Enter employee name"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="employeeId">Employee ID</Label>
-                <Input
-                  id="employeeId"
-                  value={formData.employeeId}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                  placeholder="Enter employee ID"
-                />
-              </div>
-              <div>
-                <Label htmlFor="department">Department</Label>
-                <Input
-                  id="department"
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  placeholder="Enter department"
-                />
-              </div>
-              <div>
-                <Label htmlFor="currentPosition">Current Position</Label>
-                <Input
-                  id="currentPosition"
-                  value={formData.currentPosition}
-                  onChange={(e) => setFormData({ ...formData, currentPosition: e.target.value })}
-                  placeholder="Enter current position"
-                />
-              </div>
-              <div>
-                <Label htmlFor="newPosition">New Position</Label>
-                <Input
-                  id="newPosition"
-                  value={formData.newPosition}
-                  onChange={(e) => setFormData({ ...formData, newPosition: e.target.value })}
-                  placeholder="Enter new position"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Details Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center">
-              <FileText className="h-5 w-5 mr-2" />
-              Action Details
-            </h3>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label htmlFor="actionType">Action Type</Label>
-                <Select value={formData.actionType} onValueChange={(value) => setFormData({ ...formData, actionType: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select action type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hire">New Hire</SelectItem>
-                    <SelectItem value="promotion">Promotion</SelectItem>
-                    <SelectItem value="transfer">Transfer</SelectItem>
-                    <SelectItem value="resignation">Resignation</SelectItem>
-                    <SelectItem value="retirement">Retirement</SelectItem>
-                    <SelectItem value="termination">Termination</SelectItem>
-                    <SelectItem value="leave">Leave of Absence</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="effectiveDate">Effective Date *</Label>
-                <Input
-                  id="effectiveDate"
-                  type="date"
-                  value={formData.effectiveDate}
-                  onChange={(e) => setFormData({ ...formData, effectiveDate: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="reason">Reason</Label>
-                <Input
-                  id="reason"
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  placeholder="Enter reason"
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Enter description"
-                  rows={3}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Salary Information Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center">
-              <DollarSign className="h-5 w-5 mr-2" />
-              Salary Information
-            </h3>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label htmlFor="currentSalary">Current Salary</Label>
-                <Input
-                  id="currentSalary"
-                  value={formData.currentSalary}
-                  onChange={(e) => setFormData({ ...formData, currentSalary: e.target.value })}
-                  placeholder="Enter current salary"
-                />
-              </div>
-              <div>
-                <Label htmlFor="newSalary">New Salary</Label>
-                <Input
-                  id="newSalary"
-                  value={formData.newSalary}
-                  onChange={(e) => setFormData({ ...formData, newSalary: e.target.value })}
-                  placeholder="Enter new salary"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={createSubmission.isPending}>
-              Create & View PDF
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* PDF Preview Section */}
-      <div className="w-1/2">
-        <div className="h-full border rounded-lg">
-          <div className="p-3 border-b bg-gray-50">
-            <h4 className="font-medium">PDF Preview</h4>
-          </div>
-          <div className="h-full">
-            {template && (
-              <iframe
-                src={template.fileUrl}
-                className="w-full h-full border-0"
-                title="PAF Template Preview"
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function CompletedPafUpload({ onClose }: { onClose: () => void }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -1126,9 +854,7 @@ export default function PafManagement() {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   // Upload dialog for completed PDFs
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  // Form overlay for fillable forms
-  const [isFormOverlayOpen, setIsFormOverlayOpen] = useState(false);
-  const [selectedTemplateForForm, setSelectedTemplateForForm] = useState<number | null>(null);
+
   const [selectedSubmission, setSelectedSubmission] = useState<PafSubmission | null>(null);
   const [isViewSubmissionDialogOpen, setIsViewSubmissionDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -1288,12 +1014,18 @@ export default function PafManagement() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          setSelectedTemplateForForm(template.id);
-                          setIsFormOverlayOpen(true);
+                          // Download the fillable PDF directly
+                          const downloadUrl = template.fileUrl;
+                          const link = document.createElement('a');
+                          link.href = downloadUrl;
+                          link.download = `${template.name}.pdf`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
                         }}
                       >
-                        <FileText className="h-4 w-4 mr-1" />
-                        Fill Out Form
+                        <Download className="h-4 w-4 mr-1" />
+                        Download PDF
                       </Button>
                       <Button
                         size="sm"
@@ -1432,23 +1164,7 @@ export default function PafManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* Form Overlay for Fillable Forms */}
-      <Dialog open={isFormOverlayOpen} onOpenChange={setIsFormOverlayOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Fill Out Personnel Action Form</DialogTitle>
-            <DialogDescription>
-              Complete the form and generate a filled PDF
-            </DialogDescription>
-          </DialogHeader>
-          {selectedTemplateForForm && (
-            <PafFormOverlay 
-              templateId={selectedTemplateForForm}
-              onClose={() => setIsFormOverlayOpen(false)} 
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+
 
       {/* Upload Completed PDF Dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
