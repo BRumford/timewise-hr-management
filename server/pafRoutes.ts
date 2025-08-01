@@ -1,66 +1,31 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
-import { requireDistrictAuth } from "./districtAuth";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Role-based middleware for PAF routes
-const requireRole = (allowedRoles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const user = (req as any).user;
-      if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+// Authentication updated to use simple local middleware
 
-      const userRole = user.role;
-      
-      if (!allowedRoles.includes(userRole)) {
-        return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
-      }
-
-      (req as any).currentUser = { id: user.id, role: userRole };
-      next();
-    } catch (error) {
-      console.error("Role authorization error:", error);
-      res.status(500).json({ message: "Authorization error" });
-    }
-  };
+// Simple authentication check that uses main system's auth
+const checkAuth = async (req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user;
+  if (!user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
 };
 
-// Authentication middleware
-const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    let sessionUser = (req as any).session?.user;
-    
-    if (!sessionUser) {
-      const userId = "demo_user";
-      let user = await storage.getUser(userId);
-      if (!user) {
-        user = await storage.upsertUser({
-          id: userId,
-          role: "hr",
-          email: "demo@example.com",
-          firstName: "Demo",
-          lastName: "User"
-        });
-      }
-      sessionUser = user;
+// Simple role check
+const checkRole = (allowedRoles: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user || !allowedRoles.includes(user.role)) {
+      console.log(`[PAF] Role check failed. User role: ${user?.role || 'none'}, Required: ${allowedRoles.join(', ')}`);
+      return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
     }
-    
-    const userId = typeof sessionUser === 'string' ? sessionUser : sessionUser.id;
-    const user = await storage.getUser(userId);
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    (req as any).user = user;
+    console.log(`[PAF] Role check passed. User role: ${user.role}`);
     next();
-  } catch (error) {
-    console.error("Authentication error:", error);
-    res.status(500).json({ message: "Authentication error" });
-  }
+  };
 };
 
 // Configure multer for file uploads
@@ -98,7 +63,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Load pre-built PAF template
-  app.post("/api/paf/templates/load-prebuilt", isAuthenticated, requireRole(['admin', 'hr']), async (req: any, res) => {
+  app.post("/api/paf/templates/load-prebuilt", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
     try {
       const districtId = 1; // For now, hardcoded to district 1
       const userId = req.user.id;
@@ -148,7 +113,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Get all PAF templates for a district
-  app.get("/api/paf/templates", isAuthenticated, requireRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+  app.get("/api/paf/templates", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
     try {
       const districtId = 1; // For now, hardcoded to district 1
       const templates = await storage.getPafTemplates(districtId);
@@ -160,7 +125,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Upload and create new PAF template
-  app.post("/api/paf/templates", isAuthenticated, requireRole(['admin', 'hr']), upload.single("pdfFile"), async (req: any, res) => {
+  app.post("/api/paf/templates", checkAuth, checkRole(['admin', 'hr']), upload.single("pdfFile"), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "PDF file is required" });
@@ -192,7 +157,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Update PAF template
-  app.put("/api/paf/templates/:id", isAuthenticated, requireRole(['admin', 'hr']), async (req: any, res) => {
+  app.put("/api/paf/templates/:id", checkAuth, checkRole(['admin', 'hr']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { name, description, formFields, isActive, isDefault } = req.body;
@@ -215,7 +180,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Delete PAF template
-  app.delete("/api/paf/templates/:id", isAuthenticated, requireRole(['admin', 'hr']), async (req: any, res) => {
+  app.delete("/api/paf/templates/:id", checkAuth, checkRole(['admin', 'hr']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const success = await storage.deletePafTemplate(parseInt(id));
@@ -232,7 +197,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Get all PAF submissions
-  app.get("/api/paf/submissions", isAuthenticated, requireRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+  app.get("/api/paf/submissions", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const districtId = req.user.districtId;
       const { userId } = req.query;
@@ -249,7 +214,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Get specific PAF submission
-  app.get("/api/paf/submissions/:id", isAuthenticated, requireRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+  app.get("/api/paf/submissions/:id", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const submission = await storage.getPafSubmission(parseInt(id));
@@ -271,7 +236,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Create new PAF submission
-  app.post("/api/paf/submissions", isAuthenticated, requireRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+  app.post("/api/paf/submissions", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const districtId = req.user.districtId;
       const userId = req.user.id;
@@ -318,7 +283,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Update PAF submission
-  app.put("/api/paf/submissions/:id", isAuthenticated, requireRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+  app.put("/api/paf/submissions/:id", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const submissionId = parseInt(id);
@@ -343,7 +308,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Submit PAF for approval (change status from draft to submitted)
-  app.post("/api/paf/submissions/:id/submit", requireRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+  app.post("/api/paf/submissions/:id/submit", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const submissionId = parseInt(id);
@@ -369,7 +334,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Approve/reject PAF step
-  app.post("/api/paf/submissions/:id/approve", requireRole(['admin', 'hr']), async (req: any, res) => {
+  app.post("/api/paf/submissions/:id/approve", checkAuth, checkRole(['admin', 'hr']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { step, action, signature, comments } = req.body; // action: 'approve' or 'reject'
@@ -418,7 +383,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Get approval steps for a submission
-  app.get("/api/paf/submissions/:id/approvals", requireRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+  app.get("/api/paf/submissions/:id/approvals", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const submissionId = parseInt(id);
@@ -444,7 +409,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // System owner routes for PAF management across all districts
-  app.get("/api/system-owner/paf/overview", requireRole(['system_owner']), async (req: any, res) => {
+  app.get("/api/system-owner/paf/overview", checkAuth, checkRole(['system_owner']), async (req: any, res) => {
     try {
       // Get PAF statistics across all districts
       const allDistricts = await storage.getAllDistricts();
