@@ -59,6 +59,16 @@ Preferred communication style: Simple, everyday language.
     - Added "Create New PAF" button to submissions tab for easy access to online form
     - Backend API endpoint processes form submissions and creates draft PAF entries
     - Maintains compatibility with existing approval workflows, templates, and management features
+  - **PAF Workflow Management Enhancement (August 1, 2025)**:
+    - Made Jurisdiction Box optional field with proper "(Optional)" labeling
+    - Made Subject Area optional field with clear "(Optional)" labeling
+    - Implemented Request Corrections and Deny buttons that only appear after PAF submission
+    - Limited workflow controls to Budget/Payroll/Finance departments with proper role-based access
+    - Enhanced database schema with correction/denial workflow fields (correction_requested, correction_reason, etc.)
+    - Added comprehensive API endpoints for correction requests and denials with proper authentication
+    - Fixed uncontrolled input warnings by providing proper default values for all form fields
+    - Confirmed creator access control - only form creators can complete/edit their submissions
+    - Tested full workflow: form creation → submission → correction/denial functionality - all working correctly
 
 ### Technical Implementations & Feature Specifications
 - **Database Schema**: Comprehensive schema including Users (role-based access), Employees, Leave Management, Payroll, Documents, Onboarding, Substitute Assignments, and Activity Logs.
