@@ -97,7 +97,7 @@ const pafFormSchema = z.object({
   justification: z.string().optional(),
   
   // Workflow Selection
-  workflowTemplateId: z.string().optional(),
+  workflowTemplateId: z.string().min(1, "Please select an approval workflow"),
 });
 
 type PafFormData = z.infer<typeof pafFormSchema>;
@@ -1055,9 +1055,10 @@ export default function PafManagement() {
                   </div>
 
                   {/* Workflow Selection */}
-                  <div className="border border-gray-300 rounded-md">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
-                      <h3 className="font-semibold text-gray-900">WORKFLOW SELECTION</h3>
+                  <div className="border-2 border-blue-200 rounded-md bg-blue-50/30">
+                    <div className="bg-blue-100 px-4 py-2 border-b border-blue-200">
+                      <h3 className="font-semibold text-blue-900">WORKFLOW SELECTION</h3>
+                      <p className="text-xs text-blue-700 mt-1">Choose the approval process for this PAF</p>
                     </div>
                     <div className="p-4">
                       <FormField
@@ -1065,14 +1066,14 @@ export default function PafManagement() {
                         name="workflowTemplateId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-sm font-medium">Select Approval Workflow:</FormLabel>
+                            <FormLabel className="text-sm font-medium text-blue-900">Select Approval Workflow: <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger className="border-gray-300">
                                   <SelectValue placeholder="Choose workflow template" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {!workflowTemplatesLoading && workflowTemplates?.map((template: any) => (
+                                  {!workflowTemplatesLoading && Array.isArray(workflowTemplates) && workflowTemplates.map((template: any) => (
                                     <SelectItem key={template.id} value={template.id.toString()}>
                                       <div className="flex flex-col">
                                         <span className="font-medium">{template.name}</span>
@@ -1084,7 +1085,7 @@ export default function PafManagement() {
                               </Select>
                             </FormControl>
                             <FormMessage />
-                            {field.value && workflowTemplates && (
+                            {field.value && Array.isArray(workflowTemplates) && (
                               <div className="mt-2 p-3 bg-gray-50 rounded-md">
                                 <h4 className="text-sm font-medium mb-2">Workflow Steps:</h4>
                                 <div className="space-y-1">
@@ -1098,7 +1099,7 @@ export default function PafManagement() {
                                       <span>{step.title}</span>
                                       <span className="ml-2 text-gray-500">({step.role})</span>
                                     </div>
-                                  ))}
+                                  )) || []}
                                 </div>
                               </div>
                             )}
@@ -1200,7 +1201,7 @@ export default function PafManagement() {
                         <div className="flex items-center space-x-2">
                           <div className="flex items-center space-x-1">
                             <Settings className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs text-gray-500">{submission.currentStep || 0}/3</span>
+                            <span className="text-xs text-gray-500">{(submission as any).currentStep || 0}/3</span>
                           </div>
                         </div>
                       </TableCell>
@@ -1276,7 +1277,7 @@ export default function PafManagement() {
               Manage approval workflow for {selectedWorkflowSubmission?.employeeName} - {selectedWorkflowSubmission?.positionTitle}
             </DialogDescription>
           </DialogHeader>
-          {selectedWorkflowSubmission && workflowSteps && (
+          {selectedWorkflowSubmission && Array.isArray(workflowSteps) && (
             <div className="space-y-4">
               {workflowSteps.map((step: any, index: number) => (
                 <div key={step.id} className="border rounded-lg p-4">
