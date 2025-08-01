@@ -709,11 +709,14 @@ export function registerPafRoutes(app: Express) {
       
       console.log(`[PAF] Created submission ${submission.id} with pre-filled PDF`);
       
-      res.json({
+      const responseData = {
         submission: { ...submission, fileUrl },
         fillablePdfUrl: fileUrl,
         message: "PAF created successfully with fillable PDF"
-      });
+      };
+      
+      console.log(`[PAF] Sending response:`, responseData);
+      res.json(responseData);
       
     } catch (error) {
       console.error("[PAF] Error creating PAF submission:", error);
