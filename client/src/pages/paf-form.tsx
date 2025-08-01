@@ -89,6 +89,9 @@ const pafFormSchema = z.object({
   
   // Section 6 - Reason/Justification
   justification: z.string().min(1, "Justification is required for new or changed positions"),
+  
+  // Additional optional fields
+  jurisdiction: z.string().optional(), // Make jurisdiction optional
 });
 
 type PAFFormData = z.infer<typeof pafFormSchema>;
@@ -144,6 +147,48 @@ export default function PAFForm() {
       advertise: false,
       screeningCommittee: false,
       formalInterview: false,
+      // Initialize all optional string fields to prevent uncontrolled component warnings
+      positionTitle: "",
+      workSite: "",
+      fte: "",
+      gradeLevel: "",
+      subjectArea: "", // Ensure Subject Area is optional
+      extraDutyType: "",
+      jurisdiction: "", // Add jurisdiction field as optional
+      employeeName: "",
+      effectiveDate: "",
+      justification: "",
+      postingDate: "",
+      screeningDate: "",
+      interviewDate: "",
+      transferFromPC: "",
+      transferToPC: "",
+      hoursChange: "",
+      otherReason: "",
+      totalHoursDay: "",
+      totalDaysWeek: "",
+      totalDaysYear: "",
+      mondayTimeIn: "",
+      mondayTimeOut: "",
+      tuesdayTimeIn: "",
+      tuesdayTimeOut: "",
+      wednesdayTimeIn: "",
+      wednesdayTimeOut: "",
+      thursdayTimeIn: "",
+      thursdayTimeOut: "",
+      fridayTimeIn: "",
+      fridayTimeOut: "",
+      budgetCode1: "",
+      budgetPercentage1: "",
+      budgetCode2: "",
+      budgetPercentage2: "",
+      budgetCode3: "",
+      budgetPercentage3: "",
+      budgetCode4: "",
+      budgetPercentage4: "",
+      budgetCode5: "",
+      budgetPercentage5: "",
+      workflowTemplateId: "",
     },
   });
 
@@ -437,7 +482,7 @@ export default function PAFForm() {
                     name="subjectArea"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Subject Area(s) *</FormLabel>
+                        <FormLabel>Subject Area(s) (Optional)</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="e.g., Math, Science" />
                         </FormControl>
@@ -463,6 +508,21 @@ export default function PAFForm() {
                   )}
                 />
               )}
+
+              {/* Jurisdiction Box - Optional field */}
+              <FormField
+                control={form.control}
+                name="jurisdiction"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jurisdiction (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter jurisdiction if applicable" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 
@@ -1358,16 +1418,16 @@ export default function PAFForm() {
             </Card>
           )}
 
-          {/* Workflow Management Controls for HR/Payroll */}
-          {currentUser && ['admin', 'hr', 'payroll'].includes(currentUser.role) && (
+          {/* Workflow Management Controls for Budget/Payroll - Only show after submission */}
+          {currentUser && ['payroll', 'finance', 'budget'].includes(currentUser.role) && submissionId && (
             <Card className="mb-6 bg-yellow-50 border-yellow-200">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2 text-yellow-800">
                   <Settings className="h-5 w-5" />
-                  <span>Workflow Management Controls</span>
+                  <span>Budget/Payroll Workflow Controls</span>
                 </CardTitle>
                 <CardDescription className="text-yellow-700">
-                  HR and Payroll staff can send corrections or deny submissions
+                  Budget and Payroll departments can request corrections or deny submitted PAFs
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1379,13 +1439,19 @@ export default function PAFForm() {
                     onClick={() => {
                       const reason = prompt("Please enter the reason for requesting corrections:");
                       if (reason) {
-                        // This would make an API call to request corrections
-                        toast({
-                          title: "Correction Requested",
-                          description: "Form has been sent back to creator for corrections.",
-                          variant: "default",
+                        // API call to request corrections
+                        fetch(`/api/paf/submissions/${submissionId}/request-correction`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ reason, comments: `${currentUser.role} department requested corrections` })
+                        }).then(() => {
+                          toast({
+                            title: "Correction Requested",
+                            description: "Form has been sent back to creator for corrections.",
+                            variant: "default",
+                          });
+                          addAuditEntry('correction_requested', `Correction requested by ${currentUser.role}: ${reason}`);
                         });
-                        addAuditEntry('correction_requested', `Correction requested: ${reason}`);
                       }
                     }}
                   >
@@ -1399,13 +1465,19 @@ export default function PAFForm() {
                     onClick={() => {
                       const reason = prompt("Please enter the reason for denial:");
                       if (reason && confirm("Are you sure you want to deny this submission? This action cannot be undone.")) {
-                        // This would make an API call to deny the submission
-                        toast({
-                          title: "Submission Denied",
-                          description: "PAF submission has been denied.",
-                          variant: "destructive",
+                        // API call to deny submission
+                        fetch(`/api/paf/submissions/${submissionId}/deny`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ reason, comments: `Denied by ${currentUser.role} department` })
+                        }).then(() => {
+                          toast({
+                            title: "Submission Denied",
+                            description: "PAF submission has been denied.",
+                            variant: "destructive",
+                          });
+                          addAuditEntry('submission_denied', `Submission denied by ${currentUser.role}: ${reason}`);
                         });
-                        addAuditEntry('submission_denied', `Submission denied: ${reason}`);
                       }
                     }}
                   >
