@@ -969,7 +969,19 @@ export default function PafManagement() {
                             }}
                           >
                             <FileText className="h-4 w-4 mr-1" />
-                            View
+                            View Data
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              // Open filled PDF in new tab
+                              const pdfUrl = `/api/paf/submissions/${submission.id}/pdf`;
+                              window.open(pdfUrl, '_blank');
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            View PDF
                           </Button>
                         </div>
                       </TableCell>

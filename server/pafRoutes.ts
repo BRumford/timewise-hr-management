@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { PDFDocument, PDFForm, PDFTextField, PDFCheckBox, PDFDropdown } from "pdf-lib";
 
 // Authentication updated to use simple local middleware
 
@@ -317,6 +318,41 @@ export function registerPafRoutes(app: Express) {
     }
   });
 
+  // Generate filled PDF for PAF submission
+  app.get("/api/paf/submissions/:id/pdf", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const submission = await storage.getPafSubmission(parseInt(id));
+      
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Check access permissions
+      if (req.user.role === "employee" && submission.submittedBy !== req.user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get the template
+      const template = await storage.getPafTemplate(submission.templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      // Generate filled PDF
+      const filledPdfBuffer = await generateFilledPdf(template, submission);
+
+      // Set response headers for PDF
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="PAF_${submission.employeeName || 'Submission'}_${submission.id}.pdf"`);
+      res.send(filledPdfBuffer);
+
+    } catch (error) {
+      console.error("Error generating filled PDF:", error);
+      res.status(500).json({ error: "Failed to generate filled PDF" });
+    }
+  });
+
   // Update PAF submission
   app.put("/api/paf/submissions/:id", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
@@ -470,4 +506,91 @@ export function registerPafRoutes(app: Express) {
       res.status(500).json({ error: "Failed to fetch PAF overview" });
     }
   });
+}
+
+// Function to generate a filled PDF from template and submission data
+async function generateFilledPdf(template: any, submission: any) {
+  try {
+    const templatePath = path.join(process.cwd(), template.fileUrl);
+    const templateBuffer = fs.readFileSync(templatePath);
+    
+    // Load the PDF template
+    const pdfDoc = await PDFDocument.load(templateBuffer);
+    const form = pdfDoc.getForm();
+    
+    // Get form data from submission
+    const formData = submission.formData || {};
+    
+    // Field mappings from form data to PDF field names
+    const fieldMappings = {
+      // Employee Information
+      'employee_name': submission.employeeName || formData.employeeName || '',
+      'employee_id': formData.employeeId || '',
+      'department': formData.department || '',
+      'current_position': formData.currentPosition || '',
+      'new_position': formData.newPosition || '',
+      'pay_grade': formData.payGrade || '',
+      'work_location': formData.workLocation || '',
+      
+      // Action Details
+      'action_type': formData.actionType || '',
+      'effective_date': submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : '',
+      'reason': submission.reason || '',
+      'description': formData.description || '',
+      
+      // Salary Information
+      'current_salary': formData.currentSalary || '',
+      'new_salary': formData.newSalary || '',
+      'budget_account': formData.budgetAccount || '',
+      'funding_source': formData.fundingSource || '',
+      
+      // Additional Information
+      'supervisor_name': formData.supervisorName || '',
+      'hr_notes': formData.hrNotes || '',
+      'attachments': formData.attachments || '',
+      
+      // Status and dates
+      'status': submission.status || '',
+      'submission_date': new Date(submission.createdAt).toLocaleDateString(),
+      'submitted_by': submission.submittedBy || ''
+    };
+    
+    // Fill in the form fields
+    const fields = form.getFields();
+    
+    for (const field of fields) {
+      const fieldName = field.getName();
+      const mappedValue = fieldMappings[fieldName as keyof typeof fieldMappings];
+      
+      try {
+        if (field instanceof PDFTextField) {
+          if (mappedValue) {
+            field.setText(String(mappedValue));
+          }
+        } else if (field instanceof PDFCheckBox) {
+          // Handle checkbox fields - you can customize this logic
+          if (mappedValue && (mappedValue === 'true' || mappedValue === '1' || mappedValue === 'yes')) {
+            field.check();
+          }
+        } else if (field instanceof PDFDropdown) {
+          if (mappedValue) {
+            const options = field.getOptions();
+            if (options.includes(String(mappedValue))) {
+              field.select(String(mappedValue));
+            }
+          }
+        }
+      } catch (fieldError) {
+        console.warn(`Could not fill field ${fieldName}:`, fieldError.message);
+      }
+    }
+    
+    // Generate the filled PDF buffer
+    const filledPdfBytes = await pdfDoc.save();
+    return Buffer.from(filledPdfBytes);
+    
+  } catch (error) {
+    console.error("Error generating filled PDF:", error);
+    throw error;
+  }
 }
