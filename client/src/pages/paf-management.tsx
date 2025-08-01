@@ -866,17 +866,21 @@ export default function PafManagement() {
       const response = await fetch(`/api/paf/templates/${templateId}/fillable-status`);
       const result = await response.json();
       
+      const signatureFields = result.fieldNames?.filter((name: string) => 
+        name.includes('Signature') || name.includes('_Name') || name.includes('_Date')
+      ) || [];
+      
       toast({
-        title: result.isFillable ? "PDF is Fillable" : "PDF Not Fillable",
+        title: result.isFillable ? "PDF Ready for E-Signatures" : "PDF Needs E-Signature Setup",
         description: result.isFillable 
-          ? `This PDF has ${result.fieldCount} form fields: ${result.fieldNames.join(', ')}`
-          : "This PDF has no fillable form fields. Click 'Make Fillable' to add them.",
+          ? `This PDF has ${result.fieldCount} form fields including ${signatureFields.length} signature-related fields for department approvals.`
+          : "This PDF has no fillable form fields. Click 'Add E-Signature Fields' to enable department approvals.",
         variant: result.isFillable ? "default" : "destructive"
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to check PDF fillability",
+        description: "Failed to check PDF e-signature readiness",
         variant: "destructive"
       });
     }
@@ -890,9 +894,13 @@ export default function PafManagement() {
       });
       const result = await response.json();
       
+      const signatureFieldCount = result.fieldNames?.filter((name: string) => 
+        name.includes('Signature') || name.includes('_Name') || name.includes('_Date')
+      ).length || 0;
+      
       toast({
-        title: "Success",
-        description: result.message + ` (${result.fieldCount} fields added)`,
+        title: "E-Signature Fields Added Successfully",
+        description: `Added ${result.fieldCount} total fields including ${signatureFieldCount} signature fields for HR, Finance, Supervisor, and Administrator approvals.`,
       });
       
       // Refresh templates
@@ -900,7 +908,7 @@ export default function PafManagement() {
     } catch (error) {
       toast({
         title: "Error", 
-        description: "Failed to make PDF fillable",
+        description: "Failed to add e-signature fields to PDF",
         variant: "destructive"
       });
     }
@@ -1102,7 +1110,7 @@ export default function PafManagement() {
                         onClick={() => checkPdfFillability(template.id)}
                       >
                         <FileText className="h-4 w-4 mr-1" />
-                        Check Fields
+                        Check E-Signature Fields
                       </Button>
                       <Button
                         size="sm"
@@ -1110,7 +1118,7 @@ export default function PafManagement() {
                         onClick={() => makePdfFillable(template.id)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        Make Fillable
+                        Add E-Signature Fields
                       </Button>
                     </div>
 

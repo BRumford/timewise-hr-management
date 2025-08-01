@@ -147,7 +147,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Make PDF fillable by adding form fields
-  app.post("/api/paf/templates/:id/make-fillable", checkAuth, checkRole(['admin', 'hr']), async (req: any, res) => {
+  app.post("/api/paf/templates/:id/make-fillable", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const template = await storage.getPafTemplate(parseInt(id));
@@ -182,19 +182,47 @@ export function registerPafRoutes(app: Express) {
       const { width, height } = firstPage.getSize();
 
       // Add fillable form fields at strategic positions
-      // Adjust these coordinates based on your PDF layout
-      const baseOptions = { x: 150, width: 200, height: 20 };
+      // Employee Information Section
+      const textFieldOptions = { x: 150, width: 200, height: 20 };
+      const signatureFieldOptions = { x: 150, width: 250, height: 40 };
       
-      form.createTextField('Employee_Name').addToPage(firstPage, { ...baseOptions, y: height - 150 });
-      form.createTextField('Employee_ID').addToPage(firstPage, { ...baseOptions, y: height - 180 });
-      form.createTextField('Department').addToPage(firstPage, { ...baseOptions, y: height - 210 });
-      form.createTextField('Current_Position').addToPage(firstPage, { ...baseOptions, y: height - 240 });
-      form.createTextField('New_Position').addToPage(firstPage, { ...baseOptions, y: height - 270 });
-      form.createTextField('Effective_Date').addToPage(firstPage, { ...baseOptions, y: height - 300 });
-      form.createTextField('Action_Type').addToPage(firstPage, { ...baseOptions, y: height - 330 });
-      form.createTextField('Reason').addToPage(firstPage, { ...baseOptions, y: height - 360 });
-      form.createTextField('Current_Salary').addToPage(firstPage, { ...baseOptions, y: height - 390 });
-      form.createTextField('New_Salary').addToPage(firstPage, { ...baseOptions, y: height - 420 });
+      // Employee Information Fields
+      form.createTextField('Employee_Name').addToPage(firstPage, { ...textFieldOptions, y: height - 150 });
+      form.createTextField('Employee_ID').addToPage(firstPage, { ...textFieldOptions, y: height - 180 });
+      form.createTextField('Department').addToPage(firstPage, { ...textFieldOptions, y: height - 210 });
+      form.createTextField('Current_Position').addToPage(firstPage, { ...textFieldOptions, y: height - 240 });
+      form.createTextField('New_Position').addToPage(firstPage, { ...textFieldOptions, y: height - 270 });
+      form.createTextField('Effective_Date').addToPage(firstPage, { ...textFieldOptions, y: height - 300 });
+      form.createTextField('Action_Type').addToPage(firstPage, { ...textFieldOptions, y: height - 330 });
+      form.createTextField('Reason').addToPage(firstPage, { ...textFieldOptions, y: height - 360 });
+      form.createTextField('Current_Salary').addToPage(firstPage, { ...textFieldOptions, y: height - 390 });
+      form.createTextField('New_Salary').addToPage(firstPage, { ...textFieldOptions, y: height - 420 });
+      
+      // Justification and Details
+      form.createTextField('Justification').addToPage(firstPage, { x: 150, width: 300, height: 60, y: height - 500 });
+      
+      // Department Approval Signatures Section
+      const signatureY = height - 600;
+      
+      // HR Department Approval
+      form.createTextField('HR_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY });
+      form.createTextField('HR_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 30 });
+      form.createTextField('HR_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 60 });
+      
+      // Finance Department Approval
+      form.createTextField('Finance_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY - 100 });
+      form.createTextField('Finance_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 130 });
+      form.createTextField('Finance_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 160 });
+      
+      // Supervisor Approval
+      form.createTextField('Supervisor_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY - 200 });
+      form.createTextField('Supervisor_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 230 });
+      form.createTextField('Supervisor_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 260 });
+      
+      // Administrator Final Approval
+      form.createTextField('Admin_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY - 300 });
+      form.createTextField('Admin_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 330 });
+      form.createTextField('Admin_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 360 });
 
       // Save the fillable PDF
       const fillablePdfBytes = await pdfDoc.save();
@@ -221,7 +249,7 @@ export function registerPafRoutes(app: Express) {
   });
 
   // Check PDF fillability status
-  app.get("/api/paf/templates/:id/fillable-status", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+  app.get("/api/paf/templates/:id/fillable-status", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {
       const { id } = req.params;
       const template = await storage.getPafTemplate(parseInt(id));
@@ -276,6 +304,77 @@ export function registerPafRoutes(app: Express) {
         isActive: true,
         isDefault: false,
       });
+
+      // Automatically make the uploaded PDF fillable
+      try {
+        const filePath = path.join(process.cwd(), fileUrl);
+        const existingPdfBytes = fs.readFileSync(filePath);
+        const pdfDoc = await PDFDocument.load(existingPdfBytes);
+        const form = pdfDoc.getForm();
+        
+        // Check if it already has form fields
+        const existingFields = form.getFields();
+        if (existingFields.length === 0) {
+          // Add comprehensive form fields including e-signature fields
+          const pages = pdfDoc.getPages();
+          const firstPage = pages[0];
+          const { width, height } = firstPage.getSize();
+
+          const textFieldOptions = { x: 150, width: 200, height: 20 };
+          const signatureFieldOptions = { x: 150, width: 250, height: 40 };
+          
+          // Employee Information Fields
+          form.createTextField('Employee_Name').addToPage(firstPage, { ...textFieldOptions, y: height - 150 });
+          form.createTextField('Employee_ID').addToPage(firstPage, { ...textFieldOptions, y: height - 180 });
+          form.createTextField('Department').addToPage(firstPage, { ...textFieldOptions, y: height - 210 });
+          form.createTextField('Current_Position').addToPage(firstPage, { ...textFieldOptions, y: height - 240 });
+          form.createTextField('New_Position').addToPage(firstPage, { ...textFieldOptions, y: height - 270 });
+          form.createTextField('Effective_Date').addToPage(firstPage, { ...textFieldOptions, y: height - 300 });
+          form.createTextField('Action_Type').addToPage(firstPage, { ...textFieldOptions, y: height - 330 });
+          form.createTextField('Reason').addToPage(firstPage, { ...textFieldOptions, y: height - 360 });
+          form.createTextField('Current_Salary').addToPage(firstPage, { ...textFieldOptions, y: height - 390 });
+          form.createTextField('New_Salary').addToPage(firstPage, { ...textFieldOptions, y: height - 420 });
+          
+          // Justification and Details
+          form.createTextField('Justification').addToPage(firstPage, { x: 150, width: 300, height: 60, y: height - 500 });
+          
+          // Department Approval Signatures Section
+          const signatureY = height - 600;
+          
+          // HR Department Approval
+          form.createTextField('HR_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY });
+          form.createTextField('HR_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 30 });
+          form.createTextField('HR_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 60 });
+          
+          // Finance Department Approval
+          form.createTextField('Finance_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY - 100 });
+          form.createTextField('Finance_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 130 });
+          form.createTextField('Finance_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 160 });
+          
+          // Supervisor Approval
+          form.createTextField('Supervisor_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY - 200 });
+          form.createTextField('Supervisor_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 230 });
+          form.createTextField('Supervisor_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 260 });
+          
+          // Administrator Final Approval
+          form.createTextField('Admin_Signature').addToPage(firstPage, { ...signatureFieldOptions, y: signatureY - 300 });
+          form.createTextField('Admin_Name').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 330 });
+          form.createTextField('Admin_Date').addToPage(firstPage, { ...textFieldOptions, y: signatureY - 360 });
+
+          // Save the fillable PDF
+          const fillablePdfBytes = await pdfDoc.save();
+          
+          // Create backup and save fillable version
+          const backupPath = filePath.replace('.pdf', '_original.pdf');
+          fs.copyFileSync(filePath, backupPath);
+          fs.writeFileSync(filePath, fillablePdfBytes);
+          
+          console.log(`[PAF] Auto-converted uploaded PDF to fillable format with ${form.getFields().length} fields`);
+        }
+      } catch (error) {
+        console.error("[PAF] Failed to auto-convert PDF to fillable:", error);
+        // Continue anyway - the template is still created
+      }
 
       res.json(template);
     } catch (error) {
