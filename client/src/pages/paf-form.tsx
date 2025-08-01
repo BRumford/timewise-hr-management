@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,9 +70,20 @@ const pafFormSchema = z.object({
   fridayTimeIn: z.string().optional(),
   fridayTimeOut: z.string().optional(),
   
-  // Section 5 - Budget Code Information
-  budgetCode: z.string().optional(),
-  budgetPercentage: z.string().optional(),
+  // Section 5 - Budget Code Information (multiple budget lines)
+  budgetCode1: z.string().optional(),
+  budgetPercentage1: z.string().optional(),
+  budgetCode2: z.string().optional(),
+  budgetPercentage2: z.string().optional(),
+  budgetCode3: z.string().optional(),
+  budgetPercentage3: z.string().optional(),
+  budgetCode4: z.string().optional(),
+  budgetPercentage4: z.string().optional(),
+  budgetCode5: z.string().optional(),
+  budgetPercentage5: z.string().optional(),
+  
+  // Workflow Selection
+  workflowTemplateId: z.string().optional(),
   
   // Section 6 - Reason/Justification
   justification: z.string().min(1, "Justification is required for new or changed positions"),
@@ -84,6 +95,11 @@ export default function PAFForm() {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch workflow templates
+  const { data: workflowTemplates } = useQuery({
+    queryKey: ["/api/paf/workflow-templates"],
+  });
 
   const form = useForm<PAFFormData>({
     resolver: zodResolver(pafFormSchema),
@@ -300,9 +316,9 @@ export default function PAFForm() {
                   name="fte"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>FTE</FormLabel>
+                      <FormLabel>FTE *</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="e.g., 1.0" />
+                        <Input {...field} placeholder="e.g., 1.0, 0.5, 0.75" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -673,46 +689,7 @@ export default function PAFForm() {
                 />
               </div>
 
-              <div className="space-y-4">
-                <h4 className="font-medium">Daily Schedule</h4>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  {[
-                    { day: "Monday", prefix: "monday" },
-                    { day: "Tuesday", prefix: "tuesday" },
-                    { day: "Wednesday", prefix: "wednesday" },
-                    { day: "Thursday", prefix: "thursday" },
-                    { day: "Friday", prefix: "friday" },
-                  ].map(({ day, prefix }) => (
-                    <div key={day} className="space-y-2">
-                      <Label className="font-medium">{day}</Label>
-                      <FormField
-                        control={form.control}
-                        name={`${prefix}TimeIn` as keyof PAFFormData}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Time In</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="time" />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`${prefix}TimeOut` as keyof PAFFormData}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Time Out</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="time" />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
+
             </CardContent>
           </Card>
 
@@ -720,37 +697,80 @@ export default function PAFForm() {
           <Card>
             <CardHeader>
               <CardTitle>Section 5 - Budget Code Information</CardTitle>
+              <CardDescription>Fund - Resource - Year - Object - Goal - Function - School - Budget Responsibility - Type</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="budgetCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Budget Code</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="XX-XXXX-X-XXXX-XXXX-XXXX-XXX-XXXX-XXXX" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="text-sm font-medium text-muted-foreground">Format: XX-XXXX-X-XXXX-XXXX-XXXX-XXX-XXXX-XXXX</div>
+                
+                {[1, 2, 3, 4, 5].map((index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
+                    <div className="md:col-span-2">
+                      <FormField
+                        control={form.control}
+                        name={`budgetCode${index}` as keyof PAFFormData}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Budget Code {index}</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="XX-XXXX-X-XXXX-XXXX-XXXX-XXX-XXXX-XXXX" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                <FormField
-                  control={form.control}
-                  name="budgetPercentage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Budget Percentage</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="e.g., 100%" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name={`budgetPercentage${index}` as keyof PAFFormData}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Percentage {index}</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="e.g., 100%" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Workflow Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Approval Workflow</CardTitle>
+              <CardDescription>Select the approval workflow for this PAF</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="workflowTemplateId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Workflow Template</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select approval workflow" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {(workflowTemplates as any[] || []).map((template: any) => (
+                          <SelectItem key={template.id} value={template.id.toString()}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 
