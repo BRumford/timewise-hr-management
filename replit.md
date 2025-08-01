@@ -72,6 +72,7 @@ Preferred communication style: Simple, everyday language.
     - **PAF Interface Cleanup (August 1, 2025)**: Successfully removed New PAF page as requested
       - Deleted client/src/pages/paf-form.tsx file completely
       - Removed all route references from App.tsx
+      - Removed "New PAF" navigation item from left sidebar
       - Cleaned up PAF management page by removing Create New PAF section and associated navigation
       - Fixed TypeScript errors and import statements
       - Maintained existing PAF workflow functionality through management interface
