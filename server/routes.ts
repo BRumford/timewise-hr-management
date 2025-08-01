@@ -5654,6 +5654,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // Serve uploads directory for generated PAF PDFs and other uploads
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+    setHeaders: (res, filePath) => {
+      if (path.extname(filePath) === '.pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+      }
+    }
+  }));
+
   // Register PAF routes
   registerPafRoutes(app);
 
