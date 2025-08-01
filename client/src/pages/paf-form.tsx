@@ -823,11 +823,12 @@ export default function PAFForm() {
                 <Settings className="h-5 w-5" />
                 <span>Workflow Management</span>
               </CardTitle>
-              <CardDescription>Track the approval process for this PAF</CardDescription>
+              <CardDescription>Manage and customize approval workflows for this PAF</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-6">
+                {/* Quick Status Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="flex items-center space-x-2 p-3 border rounded-lg">
                     <Clock className="h-4 w-4 text-blue-500" />
                     <div>
@@ -848,36 +849,181 @@ export default function PAFForm() {
                     <Calendar className="h-4 w-4 text-purple-500" />
                     <div>
                       <div className="text-sm font-medium">Priority</div>
-                      <div className="text-xs text-gray-600">Standard</div>
+                      <Select defaultValue="standard">
+                        <SelectTrigger className="h-6 text-xs border-0 p-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="standard">Standard</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                    <Building2 className="h-4 w-4 text-orange-500" />
+                    <div>
+                      <div className="text-sm font-medium">Due Date</div>
+                      <Input type="date" className="h-6 text-xs border-0 p-0" />
                     </div>
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <div className="text-sm font-medium mb-2">Workflow Progress</div>
-                  <div className="space-y-2">
+                {/* Workflow Customization for HR/Payroll */}
+                <div className="border rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-sm font-medium">HR/Payroll Workflow Controls</div>
+                      <div className="text-xs text-gray-600">Modify workflow steps and assignments as needed</div>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      <Settings className="h-3 w-3 mr-1" />
+                      Customize
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs">Override Workflow</Label>
+                      <Select>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Change workflow if needed" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(workflowTemplates as any[] || []).map((template: any) => (
+                            <SelectItem key={template.id} value={template.id.toString()}>
+                              <div className="flex items-center space-x-2">
+                                <span>{template.name}</span>
+                                {template.isDefault && <Badge variant="secondary" className="text-xs">Default</Badge>}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Skip to Step</Label>
+                      <Select>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Jump to specific step" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">HR Review</SelectItem>
+                          <SelectItem value="2">Budget Approval</SelectItem>
+                          <SelectItem value="3">Administrator Approval</SelectItem>
+                          <SelectItem value="final">Final Approval</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
                     <div className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-gray-300" />
-                      <span className="text-sm text-gray-600">Form Submission</span>
-                      <Badge variant="outline" className="text-xs">Pending</Badge>
+                      <Checkbox id="bypass-hr" />
+                      <Label htmlFor="bypass-hr" className="text-xs">Bypass HR Review (Emergency)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="expedite" />
+                      <Label htmlFor="expedite" className="text-xs">Expedite Approval Process</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="require-additional" />
+                      <Label htmlFor="require-additional" className="text-xs">Require Additional Superintendent Approval</Label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic Workflow Progress */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm font-medium">Workflow Progress</div>
+                    <Button size="sm" variant="ghost">
+                      <User className="h-3 w-3 mr-1" />
+                      Assign Approvers
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-2 border rounded">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-gray-300" />
+                        <span className="text-sm text-gray-600">Form Submission</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">Pending</Badge>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs">
+                          Edit
+                        </Button>
+                      </div>
                     </div>
                     
                     {selectedWorkflow && selectedWorkflow.steps
                       .sort((a: any, b: any) => a.order - b.order)
                       .map((step: any, index: number) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <CheckCircle2 className="h-4 w-4 text-gray-300" />
-                          <span className="text-sm text-gray-600">{step.title}</span>
-                          <Badge variant="outline" className="text-xs">Waiting</Badge>
+                        <div key={index} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle2 className="h-4 w-4 text-gray-300" />
+                            <div>
+                              <span className="text-sm text-gray-600">{step.title}</span>
+                              <div className="text-xs text-gray-500 capitalize">Role: {step.role}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="outline" className="text-xs">Waiting</Badge>
+                            <Select>
+                              <SelectTrigger className="h-6 w-24 text-xs">
+                                <SelectValue placeholder="Assign" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="user1">J. Smith</SelectItem>
+                                <SelectItem value="user2">M. Johnson</SelectItem>
+                                <SelectItem value="user3">A. Davis</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" variant="ghost" className="h-6 text-xs">
+                              Skip
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-4 w-4 text-gray-300" />
-                      <span className="text-sm text-gray-600">Final Approval</span>
-                      <Badge variant="outline" className="text-xs">Pending</Badge>
+                    <div className="flex items-center justify-between p-2 border rounded">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 text-gray-300" />
+                        <span className="text-sm text-gray-600">Final Approval</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">Pending</Badge>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs">
+                          Configure
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Workflow Actions */}
+                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                  <Button size="sm" variant="outline">
+                    <FileText className="h-3 w-3 mr-1" />
+                    Save Workflow Template
+                  </Button>
+                  <Button size="sm" variant="outline">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Set Deadline
+                  </Button>
+                  <Button size="sm" variant="outline">
+                    <User className="h-3 w-3 mr-1" />
+                    Notify Approvers
+                  </Button>
+                  <Button size="sm" variant="outline">
+                    <Settings className="h-3 w-3 mr-1" />
+                    Advanced Settings
+                  </Button>
                 </div>
               </div>
             </CardContent>
