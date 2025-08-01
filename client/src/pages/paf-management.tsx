@@ -201,10 +201,32 @@ function PafTemplateForm({ template, onClose }: { template?: PafTemplate; onClos
 function PafSubmissionForm({ templateId, onClose }: { templateId: number; onClose: () => void }) {
   const [formData, setFormData] = useState({
     templateId,
+    // Employee Information
     employeeName: "",
-    positionTitle: "",
+    employeeId: "",
+    department: "",
+    currentPosition: "",
+    newPosition: "",
+    payGrade: "",
+    workLocation: "",
+    
+    // Action Details
+    actionType: "",
     effectiveDate: "",
     reason: "",
+    description: "",
+    
+    // Salary Information
+    currentSalary: "",
+    newSalary: "",
+    budgetAccount: "",
+    fundingSource: "",
+    
+    // Additional Information
+    supervisorName: "",
+    hrNotes: "",
+    attachments: "",
+    
     formData: {},
   });
   const { toast } = useToast();
@@ -222,7 +244,7 @@ function PafSubmissionForm({ templateId, onClose }: { templateId: number; onClos
       queryClient.invalidateQueries({ queryKey: ["/api/paf/submissions"] });
       toast({
         title: "Success",
-        description: "PAF submission created successfully",
+        description: "Personnel Action Form submitted successfully",
       });
       onClose();
     },
@@ -240,58 +262,235 @@ function PafSubmissionForm({ templateId, onClose }: { templateId: number; onClos
     createSubmission.mutate(formData);
   };
 
+  const updateFormData = (field: string, value: string) => {
+    setFormData({ ...formData, [field]: value });
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="employeeName">Employee Name</Label>
-        <Input
-          id="employeeName"
-          value={formData.employeeName}
-          onChange={(e) => setFormData({ ...formData, employeeName: e.target.value })}
-          required
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="positionTitle">Position Title</Label>
-        <Input
-          id="positionTitle"
-          value={formData.positionTitle}
-          onChange={(e) => setFormData({ ...formData, positionTitle: e.target.value })}
-          required
-        />
-      </div>
+    <div className="max-h-[80vh] overflow-y-auto">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Employee Information Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">Employee Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="employeeName">Employee Name *</Label>
+              <Input
+                id="employeeName"
+                value={formData.employeeName}
+                onChange={(e) => updateFormData('employeeName', e.target.value)}
+                placeholder="First Last"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="employeeId">Employee ID</Label>
+              <Input
+                id="employeeId"
+                value={formData.employeeId}
+                onChange={(e) => updateFormData('employeeId', e.target.value)}
+                placeholder="EMP-12345"
+              />
+            </div>
+            <div>
+              <Label htmlFor="department">Department</Label>
+              <Input
+                id="department"
+                value={formData.department}
+                onChange={(e) => updateFormData('department', e.target.value)}
+                placeholder="Human Resources"
+              />
+            </div>
+            <div>
+              <Label htmlFor="workLocation">Work Location</Label>
+              <Input
+                id="workLocation"
+                value={formData.workLocation}
+                onChange={(e) => updateFormData('workLocation', e.target.value)}
+                placeholder="Main Campus"
+              />
+            </div>
+          </div>
+        </div>
 
-      <div>
-        <Label htmlFor="effectiveDate">Effective Date</Label>
-        <Input
-          id="effectiveDate"
-          type="date"
-          value={formData.effectiveDate}
-          onChange={(e) => setFormData({ ...formData, effectiveDate: e.target.value })}
-          required
-        />
-      </div>
+        {/* Position Information Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">Position Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="currentPosition">Current Position</Label>
+              <Input
+                id="currentPosition"
+                value={formData.currentPosition}
+                onChange={(e) => updateFormData('currentPosition', e.target.value)}
+                placeholder="Teacher"
+              />
+            </div>
+            <div>
+              <Label htmlFor="newPosition">New Position</Label>
+              <Input
+                id="newPosition"
+                value={formData.newPosition}
+                onChange={(e) => updateFormData('newPosition', e.target.value)}
+                placeholder="Department Head"
+              />
+            </div>
+            <div>
+              <Label htmlFor="payGrade">Pay Grade</Label>
+              <Input
+                id="payGrade"
+                value={formData.payGrade}
+                onChange={(e) => updateFormData('payGrade', e.target.value)}
+                placeholder="Grade 5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="supervisorName">Supervisor Name</Label>
+              <Input
+                id="supervisorName"
+                value={formData.supervisorName}
+                onChange={(e) => updateFormData('supervisorName', e.target.value)}
+                placeholder="Jane Smith"
+              />
+            </div>
+          </div>
+        </div>
 
-      <div>
-        <Label htmlFor="reason">Reason</Label>
-        <Textarea
-          id="reason"
-          value={formData.reason}
-          onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-          required
-        />
-      </div>
+        {/* Action Details Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">Action Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="actionType">Action Type *</Label>
+              <select
+                id="actionType"
+                value={formData.actionType}
+                onChange={(e) => updateFormData('actionType', e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                required
+              >
+                <option value="">Select Action Type</option>
+                <option value="hire">New Hire</option>
+                <option value="promotion">Promotion</option>
+                <option value="transfer">Transfer</option>
+                <option value="salary_change">Salary Change</option>
+                <option value="title_change">Title Change</option>
+                <option value="termination">Termination</option>
+                <option value="leave">Leave of Absence</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="effectiveDate">Effective Date *</Label>
+              <Input
+                id="effectiveDate"
+                type="date"
+                value={formData.effectiveDate}
+                onChange={(e) => updateFormData('effectiveDate', e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="reason">Reason for Action *</Label>
+            <Textarea
+              id="reason"
+              value={formData.reason}
+              onChange={(e) => updateFormData('reason', e.target.value)}
+              placeholder="Provide detailed reason for this personnel action..."
+              rows={3}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="description">Additional Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => updateFormData('description', e.target.value)}
+              placeholder="Any additional details or special circumstances..."
+              rows={2}
+            />
+          </div>
+        </div>
 
-      <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={createSubmission.isPending}>
-          Create Submission
-        </Button>
-      </div>
-    </form>
+        {/* Salary Information Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">Salary Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="currentSalary">Current Salary</Label>
+              <Input
+                id="currentSalary"
+                value={formData.currentSalary}
+                onChange={(e) => updateFormData('currentSalary', e.target.value)}
+                placeholder="$50,000"
+              />
+            </div>
+            <div>
+              <Label htmlFor="newSalary">New Salary</Label>
+              <Input
+                id="newSalary"
+                value={formData.newSalary}
+                onChange={(e) => updateFormData('newSalary', e.target.value)}
+                placeholder="$55,000"
+              />
+            </div>
+            <div>
+              <Label htmlFor="budgetAccount">Budget Account</Label>
+              <Input
+                id="budgetAccount"
+                value={formData.budgetAccount}
+                onChange={(e) => updateFormData('budgetAccount', e.target.value)}
+                placeholder="ACC-2024-001"
+              />
+            </div>
+            <div>
+              <Label htmlFor="fundingSource">Funding Source</Label>
+              <Input
+                id="fundingSource"
+                value={formData.fundingSource}
+                onChange={(e) => updateFormData('fundingSource', e.target.value)}
+                placeholder="General Fund"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Information Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">Additional Information</h3>
+          <div>
+            <Label htmlFor="hrNotes">HR Notes</Label>
+            <Textarea
+              id="hrNotes"
+              value={formData.hrNotes}
+              onChange={(e) => updateFormData('hrNotes', e.target.value)}
+              placeholder="Internal HR notes or comments..."
+              rows={2}
+            />
+          </div>
+          <div>
+            <Label htmlFor="attachments">Attachments</Label>
+            <Input
+              id="attachments"
+              value={formData.attachments}
+              onChange={(e) => updateFormData('attachments', e.target.value)}
+              placeholder="List any supporting documents..."
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-2 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={createSubmission.isPending}>
+            {createSubmission.isPending ? "Submitting..." : "Submit Personnel Action Form"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -495,7 +694,7 @@ export default function PafManagement() {
                         }}
                       >
                         <FileText className="h-4 w-4 mr-1" />
-                        Use
+                        Fill Out Form
                       </Button>
                       <Button
                         size="sm"

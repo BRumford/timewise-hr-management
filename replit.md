@@ -46,6 +46,12 @@ Preferred communication style: Simple, everyday language.
   - Added working logout functionality with session cleanup
   - Replaced all hardcoded demo content with real user registration data
   - Enhanced header and sidebar to show actual administrator names and roles
+- **Personnel Action Forms (PAF) System (August 1, 2025)**:
+  - Successfully integrated user's actual Personnel Action Form PDF with "Load Standard Template" feature
+  - Fixed authentication middleware across PAF routes with proper role-based access controls
+  - Resolved PAF file serving issues by implementing static file serving through attached_assets directory
+  - Confirmed PDF viewing functionality - templates now open correctly in new browser tabs
+  - Updated file serving architecture to bypass middleware conflicts and ensure reliable PDF access
 
 ### Technical Implementations & Feature Specifications
 - **Database Schema**: Comprehensive schema including Users (role-based access), Employees, Leave Management, Payroll, Documents, Onboarding, Substitute Assignments, and Activity Logs.
