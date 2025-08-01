@@ -244,393 +244,440 @@ export default function PafManagement() {
               <span>Create New PAF</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create New Personnel Action Form</DialogTitle>
+              <DialogTitle>Personnel Action Form</DialogTitle>
               <DialogDescription>
-                Fill out the form below to create a new Personnel Action Form
+                Complete the form below for personnel action processing
               </DialogDescription>
             </DialogHeader>
             
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Employee Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-sm">
-                      <User className="h-4 w-4 mr-2" />
-                      Employee Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="employeeName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Employee Name *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter employee full name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="employeeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Employee ID</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter employee ID" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Position Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-sm">
-                      <Building className="h-4 w-4 mr-2" />
-                      Position Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="positionTitle"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Position Title *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter position title" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="department"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Department *</FormLabel>
-                          <FormControl>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select department" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="administration">Administration</SelectItem>
-                                <SelectItem value="elementary">Elementary Education</SelectItem>
-                                <SelectItem value="middle-school">Middle School</SelectItem>
-                                <SelectItem value="high-school">High School</SelectItem>
-                                <SelectItem value="special-education">Special Education</SelectItem>
-                                <SelectItem value="transportation">Transportation</SelectItem>
-                                <SelectItem value="maintenance">Maintenance</SelectItem>
-                                <SelectItem value="food-service">Food Service</SelectItem>
-                                <SelectItem value="technology">Technology</SelectItem>
-                                <SelectItem value="counseling">Counseling</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {showSubjectArea && (
-                      <FormField
-                        control={form.control}
-                        name="subjectArea"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Subject Area (Optional)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter subject area" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    <FormField
-                      control={form.control}
-                      name="jurisdictionBox"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Jurisdiction Box (Optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter jurisdiction" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Action Details */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-sm">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Action Details
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="pafType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>PAF Type *</FormLabel>
-                          <FormControl>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select PAF type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="new-hire">New Hire</SelectItem>
-                                <SelectItem value="promotion">Promotion</SelectItem>
-                                <SelectItem value="transfer">Transfer</SelectItem>
-                                <SelectItem value="salary-adjustment">Salary Adjustment</SelectItem>
-                                <SelectItem value="position-change">Position Change</SelectItem>
-                                <SelectItem value="termination">Termination</SelectItem>
-                                <SelectItem value="leave">Leave of Absence</SelectItem>
-                                <SelectItem value="return-from-leave">Return from Leave</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="effectiveDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Effective Date *</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="actionReason"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Action Reason *</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Provide detailed reason for this personnel action"
-                              className="min-h-[80px]"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Compensation & Benefits (Conditional) */}
-                {showSalaryFields && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Compensation & Benefits</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="salaryGrade"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Salary Grade</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter salary grade" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="stepLevel"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Step Level</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter step level" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="annualSalary"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Annual Salary</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter annual salary" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="hourlyRate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Hourly Rate</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter hourly rate" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="benefitEligible"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Benefit Eligible</FormLabel>
-                            <FormControl>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select benefit eligibility" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="yes">Yes</SelectItem>
-                                  <SelectItem value="no">No</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Work Schedule (Conditional) */}
-                {showScheduleFields && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Work Schedule</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="workSchedule"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Work Schedule</FormLabel>
-                            <FormControl>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select work schedule" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="full-time">Full-time</SelectItem>
-                                  <SelectItem value="part-time">Part-time</SelectItem>
-                                  <SelectItem value="substitute">Substitute</SelectItem>
-                                  <SelectItem value="temporary">Temporary</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="supervisorName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Supervisor Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter supervisor name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Additional Comments */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Additional Information</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="additionalComments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Additional Comments</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Enter any additional comments or special instructions"
-                              className="min-h-[80px]"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Submit Buttons */}
-                <div className="flex justify-end space-x-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCreatePafDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createPafMutation.isPending}
-                    className="flex items-center space-x-2"
-                  >
-                    <Send className="h-4 w-4" />
-                    <span>{createPafMutation.isPending ? "Submitting..." : "Submit PAF"}</span>
-                  </Button>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="border-b border-gray-200 px-6 py-4">
+                <div className="text-center">
+                  <h2 className="text-xl font-bold text-gray-900">PERSONNEL ACTION FORM</h2>
+                  <p className="text-sm text-gray-600 mt-1">Springfield School District</p>
                 </div>
-              </form>
-            </Form>
+              </div>
+
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-6">
+                  {/* Employee Information Section */}
+                  <div className="border border-gray-300 rounded-md">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                      <h3 className="font-semibold text-gray-900">Employee Information</h3>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="employeeName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Employee Name *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter full name" 
+                                className="border-gray-300"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="employeeId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Employee ID</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter employee ID" 
+                                className="border-gray-300"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Position Information Section */}
+                  <div className="border border-gray-300 rounded-md">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                      <h3 className="font-semibold text-gray-900">Position Information</h3>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="positionTitle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Position Title *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter position title" 
+                                className="border-gray-300"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="department"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Department *</FormLabel>
+                            <FormControl>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger className="border-gray-300">
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="administration">Administration</SelectItem>
+                                  <SelectItem value="elementary">Elementary Education</SelectItem>
+                                  <SelectItem value="middle-school">Middle School</SelectItem>
+                                  <SelectItem value="high-school">High School</SelectItem>
+                                  <SelectItem value="special-education">Special Education</SelectItem>
+                                  <SelectItem value="transportation">Transportation</SelectItem>
+                                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                                  <SelectItem value="food-service">Food Service</SelectItem>
+                                  <SelectItem value="technology">Technology</SelectItem>
+                                  <SelectItem value="counseling">Counseling</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="jurisdictionBox"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Jurisdiction Box (Optional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter jurisdiction" 
+                                className="border-gray-300"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {showSubjectArea && (
+                        <FormField
+                          control={form.control}
+                          name="subjectArea"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Subject Area (Optional)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter subject area" 
+                                  className="border-gray-300"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Details Section */}
+                  <div className="border border-gray-300 rounded-md">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                      <h3 className="font-semibold text-gray-900">Action Details</h3>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="pafType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">PAF Type *</FormLabel>
+                            <FormControl>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger className="border-gray-300">
+                                  <SelectValue placeholder="Select PAF type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="new-hire">New Hire</SelectItem>
+                                  <SelectItem value="promotion">Promotion</SelectItem>
+                                  <SelectItem value="transfer">Transfer</SelectItem>
+                                  <SelectItem value="salary-adjustment">Salary Adjustment</SelectItem>
+                                  <SelectItem value="position-change">Position Change</SelectItem>
+                                  <SelectItem value="termination">Termination</SelectItem>
+                                  <SelectItem value="leave">Leave of Absence</SelectItem>
+                                  <SelectItem value="return-from-leave">Return from Leave</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="effectiveDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Effective Date *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="date" 
+                                className="border-gray-300"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="actionReason"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel className="text-sm font-medium">Action Reason *</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Provide detailed reason for this personnel action"
+                                className="min-h-[80px] border-gray-300"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Compensation & Benefits (Conditional) */}
+                  {showSalaryFields && (
+                    <div className="border border-gray-300 rounded-md">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                        <h3 className="font-semibold text-gray-900">Compensation & Benefits</h3>
+                      </div>
+                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="salaryGrade"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Salary Grade</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter salary grade" 
+                                  className="border-gray-300"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="stepLevel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Step Level</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter step level" 
+                                  className="border-gray-300"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="annualSalary"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Annual Salary</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter annual salary" 
+                                  className="border-gray-300"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="hourlyRate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Hourly Rate</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter hourly rate" 
+                                  className="border-gray-300"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="benefitEligible"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Benefit Eligible</FormLabel>
+                              <FormControl>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className="border-gray-300">
+                                    <SelectValue placeholder="Select benefit eligibility" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="yes">Yes</SelectItem>
+                                    <SelectItem value="no">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Work Schedule (Conditional) */}
+                  {showScheduleFields && (
+                    <div className="border border-gray-300 rounded-md">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                        <h3 className="font-semibold text-gray-900">Work Schedule</h3>
+                      </div>
+                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="workSchedule"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Work Schedule</FormLabel>
+                              <FormControl>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className="border-gray-300">
+                                    <SelectValue placeholder="Select work schedule" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="full-time">Full-time</SelectItem>
+                                    <SelectItem value="part-time">Part-time</SelectItem>
+                                    <SelectItem value="substitute">Substitute</SelectItem>
+                                    <SelectItem value="temporary">Temporary</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="supervisorName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Supervisor Name</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter supervisor name" 
+                                  className="border-gray-300"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Additional Comments */}
+                  <div className="border border-gray-300 rounded-md">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                      <h3 className="font-semibold text-gray-900">Additional Information</h3>
+                    </div>
+                    <div className="p-4">
+                      <FormField
+                        control={form.control}
+                        name="additionalComments"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Additional Comments</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Enter any additional comments or special instructions"
+                                className="min-h-[80px] border-gray-300"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Section */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex justify-end space-x-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCreatePafDialogOpen(false)}
+                        className="px-6 py-2"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createPafMutation.isPending}
+                        className="flex items-center space-x-2 px-6 py-2 bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Send className="h-4 w-4" />
+                        <span>{createPafMutation.isPending ? "Submitting..." : "Submit PAF"}</span>
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              </Form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
