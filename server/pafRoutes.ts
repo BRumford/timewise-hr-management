@@ -624,9 +624,12 @@ export function registerPafRoutes(app: Express) {
   // Create PAF submission with fillable PDF
   app.post("/api/paf/submissions/create-and-fill", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
     try {
-      const { districtId, userId } = req.user;
+      const user = req.user;
       const formData = req.body;
+      const districtId = user.districtId || 1; // Fallback to district 1
+      const userId = user.id || user.userId || 'demo_user'; // Extract user ID from different possible fields
       
+      console.log("[PAF] User object:", user);
       console.log("[PAF] Creating submission with data:", {
         districtId,
         userId,
@@ -652,7 +655,7 @@ export function registerPafRoutes(app: Express) {
       const submissionData = {
         districtId,
         templateId: parseInt(formData.templateId),
-        workflowTemplateId: null,
+        workflowTemplateId: formData.workflowTemplateId ? parseInt(formData.workflowTemplateId) : null,
         submittedBy: userId,
         status: "draft",
         formData: formData,
