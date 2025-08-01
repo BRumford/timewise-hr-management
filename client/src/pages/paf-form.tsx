@@ -14,8 +14,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { ArrowLeft, Building2, FileText, Clock, Calendar, DollarSign, User, Settings, Briefcase, Users, CheckCircle2 } from "lucide-react";
 
 // PAF Form Schema based on the PDF structure
 const pafFormSchema = z.object({
@@ -96,11 +98,7 @@ export default function PAFForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch workflow templates
-  const { data: workflowTemplates } = useQuery({
-    queryKey: ["/api/paf/workflow-templates"],
-  });
-
+  // Initialize form first
   const form = useForm<PAFFormData>({
     resolver: zodResolver(pafFormSchema),
     defaultValues: {
@@ -113,12 +111,17 @@ export default function PAFForm() {
     },
   });
 
+  // Fetch workflow templates
+  const { data: workflowTemplates } = useQuery({
+    queryKey: ["/api/paf/workflow-templates"],
+  });
+
+  const watchWorkflowTemplateId = form.watch("workflowTemplateId");
+  const selectedWorkflow = workflowTemplates?.find((w: any) => w.id.toString() === watchWorkflowTemplateId);
+
   const submitPAF = useMutation({
     mutationFn: async (data: PAFFormData) => {
-      return await apiRequest("/api/paf/submit", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("/api/paf/submit", "POST", data);
     },
     onSuccess: (data) => {
       toast({
@@ -740,37 +743,143 @@ export default function PAFForm() {
             </CardContent>
           </Card>
 
-          {/* Workflow Selection */}
+          {/* Approval Workflow Selection */}
           <Card>
             <CardHeader>
-              <CardTitle>Approval Workflow</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="h-5 w-5" />
+                <span>Approval Workflow</span>
+              </CardTitle>
               <CardDescription>Select the approval workflow for this PAF</CardDescription>
             </CardHeader>
             <CardContent>
-              <FormField
-                control={form.control}
-                name="workflowTemplateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Workflow Template</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select approval workflow" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {(workflowTemplates as any[] || []).map((template: any) => (
-                          <SelectItem key={template.id} value={template.id.toString()}>
-                            {template.name}
-                          </SelectItem>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="workflowTemplateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Workflow *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose approval workflow" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(workflowTemplates as any[] || []).map((template: any) => (
+                            <SelectItem key={template.id} value={template.id.toString()}>
+                              <div className="flex items-center space-x-2">
+                                <span>{template.name}</span>
+                                {template.isDefault && <Badge variant="secondary">Default</Badge>}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedWorkflow && (
+                  <div>
+                    <Label>Approval Steps</Label>
+                    <div className="space-y-3 mt-2">
+                      {selectedWorkflow.steps
+                        .sort((a: any, b: any) => a.order - b.order)
+                        .map((step: any, index: number) => (
+                          <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 text-sm font-medium">
+                              {step.order}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{step.title}</div>
+                              <div className="text-xs text-gray-600 capitalize">{step.role}</div>
+                            </div>
+                            {step.required && (
+                              <Badge variant="outline" className="text-xs">Required</Badge>
+                            )}
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+                    </div>
+                    
+                    {selectedWorkflow.description && (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-600">Workflow Description:</div>
+                        <div className="text-sm">{selectedWorkflow.description}</div>
+                      </div>
+                    )}
+                  </div>
                 )}
-              />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Workflow Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="h-5 w-5" />
+                <span>Workflow Management</span>
+              </CardTitle>
+              <CardDescription>Track the approval process for this PAF</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                    <Clock className="h-4 w-4 text-blue-500" />
+                    <div>
+                      <div className="text-sm font-medium">Status</div>
+                      <div className="text-xs text-gray-600">Draft</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                    <User className="h-4 w-4 text-green-500" />
+                    <div>
+                      <div className="text-sm font-medium">Current Step</div>
+                      <div className="text-xs text-gray-600">Not Started</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                    <Calendar className="h-4 w-4 text-purple-500" />
+                    <div>
+                      <div className="text-sm font-medium">Priority</div>
+                      <div className="text-xs text-gray-600">Standard</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <div className="text-sm font-medium mb-2">Workflow Progress</div>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-gray-300" />
+                      <span className="text-sm text-gray-600">Form Submission</span>
+                      <Badge variant="outline" className="text-xs">Pending</Badge>
+                    </div>
+                    
+                    {selectedWorkflow && selectedWorkflow.steps
+                      .sort((a: any, b: any) => a.order - b.order)
+                      .map((step: any, index: number) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <CheckCircle2 className="h-4 w-4 text-gray-300" />
+                          <span className="text-sm text-gray-600">{step.title}</span>
+                          <Badge variant="outline" className="text-xs">Waiting</Badge>
+                        </div>
+                      ))}
+                    
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-gray-300" />
+                      <span className="text-sm text-gray-600">Final Approval</span>
+                      <Badge variant="outline" className="text-xs">Pending</Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
