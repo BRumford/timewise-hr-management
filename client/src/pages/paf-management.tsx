@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, CheckCircle, Clock, FileText, Plus, Upload, Download, Edit, Trash2, Send } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, FileText, Plus, Upload, Download, Edit, Trash2, Send, User, DollarSign, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -514,6 +514,158 @@ function PafSubmissionForm({ templateId, onClose }: { templateId: number; onClos
   );
 }
 
+function PafSubmissionViewer({ submission, onClose }: { submission: PafSubmission; onClose: () => void }) {
+  const formData = submission.formData as any || {};
+
+  return (
+    <div className="space-y-6">
+      {/* Header Information */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-600">Status:</span>
+            <div className="mt-1">
+              <StatusBadge status={submission.status} />
+            </div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Employee:</span>
+            <div className="mt-1">{submission.employeeName || 'Not specified'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Position:</span>
+            <div className="mt-1">{submission.positionTitle || 'Not specified'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Effective Date:</span>
+            <div className="mt-1">
+              {submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : 'Not specified'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Employee Information Section */}
+      <div className="border rounded-lg p-4">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <User className="h-5 w-5 mr-2" />
+          Employee Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-600">Employee Name:</span>
+            <div className="mt-1">{submission.employeeName || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Employee ID:</span>
+            <div className="mt-1">{formData.employeeId || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Department:</span>
+            <div className="mt-1">{formData.department || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Work Location:</span>
+            <div className="mt-1">{formData.workLocation || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Current Position:</span>
+            <div className="mt-1">{formData.currentPosition || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">New Position:</span>
+            <div className="mt-1">{formData.newPosition || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Pay Grade:</span>
+            <div className="mt-1">{formData.payGrade || 'Not provided'}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Details Section */}
+      <div className="border rounded-lg p-4">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <FileText className="h-5 w-5 mr-2" />
+          Action Details
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-600">Action Type:</span>
+            <div className="mt-1">{formData.actionType || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Effective Date:</span>
+            <div className="mt-1">
+              {submission.effectiveDate ? new Date(submission.effectiveDate).toLocaleDateString() : 'Not provided'}
+            </div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Reason:</span>
+            <div className="mt-1">{submission.reason || 'Not provided'}</div>
+          </div>
+          <div className="md:col-span-2">
+            <span className="font-medium text-gray-600">Description:</span>
+            <div className="mt-1">{formData.description || 'Not provided'}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Salary Information Section */}
+      <div className="border rounded-lg p-4">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <DollarSign className="h-5 w-5 mr-2" />
+          Salary Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-600">Current Salary:</span>
+            <div className="mt-1">{formData.currentSalary || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">New Salary:</span>
+            <div className="mt-1">{formData.newSalary || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Budget Account:</span>
+            <div className="mt-1">{formData.budgetAccount || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Funding Source:</span>
+            <div className="mt-1">{formData.fundingSource || 'Not provided'}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Information Section */}
+      <div className="border rounded-lg p-4">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <Info className="h-5 w-5 mr-2" />
+          Additional Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-600">Supervisor Name:</span>
+            <div className="mt-1">{formData.supervisorName || 'Not provided'}</div>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">Attachments:</span>
+            <div className="mt-1">{formData.attachments || 'Not provided'}</div>
+          </div>
+          <div className="md:col-span-2">
+            <span className="font-medium text-gray-600">HR Notes:</span>
+            <div className="mt-1">{formData.hrNotes || 'Not provided'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-4 border-t">
+        <Button onClick={onClose}>Close</Button>
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const variants = {
     draft: "secondary",
@@ -546,6 +698,8 @@ export default function PafManagement() {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
   const [selectedTemplateForSubmission, setSelectedTemplateForSubmission] = useState<number | null>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<PafSubmission | null>(null);
+  const [isViewSubmissionDialogOpen, setIsViewSubmissionDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -806,7 +960,14 @@ export default function PafManagement() {
                               Submit
                             </Button>
                           )}
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedSubmission(submission);
+                              setIsViewSubmissionDialogOpen(true);
+                            }}
+                          >
                             <FileText className="h-4 w-4 mr-1" />
                             View
                           </Button>
@@ -833,6 +994,24 @@ export default function PafManagement() {
             templateId={selectedTemplateForSubmission!} 
             onClose={() => setIsSubmissionDialogOpen(false)} 
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* View Submission Dialog */}
+      <Dialog open={isViewSubmissionDialogOpen} onOpenChange={setIsViewSubmissionDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Personnel Action Form Submission</DialogTitle>
+            <DialogDescription>
+              Submitted on {selectedSubmission?.createdAt ? new Date(selectedSubmission.createdAt).toLocaleDateString() : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedSubmission && (
+            <PafSubmissionViewer 
+              submission={selectedSubmission} 
+              onClose={() => setIsViewSubmissionDialogOpen(false)} 
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
