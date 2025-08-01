@@ -146,6 +146,112 @@ export function registerPafRoutes(app: Express) {
     }
   });
 
+  // Make PDF fillable by adding form fields
+  app.post("/api/paf/templates/:id/make-fillable", checkAuth, checkRole(['admin', 'hr']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getPafTemplate(parseInt(id));
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      const filePath = path.join(process.cwd(), template.fileUrl);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "PDF file not found" });
+      }
+
+      // Read and load the original PDF
+      const existingPdfBytes = fs.readFileSync(filePath);
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+      const form = pdfDoc.getForm();
+      
+      // Check if already has form fields
+      const existingFields = form.getFields();
+      if (existingFields.length > 0) {
+        return res.json({ 
+          message: "PDF already has form fields", 
+          fieldCount: existingFields.length,
+          fieldNames: existingFields.map(f => f.getName())
+        });
+      }
+
+      // Add form fields to make it fillable
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const { width, height } = firstPage.getSize();
+
+      // Add fillable form fields at strategic positions
+      // Adjust these coordinates based on your PDF layout
+      const baseOptions = { x: 150, width: 200, height: 20 };
+      
+      form.createTextField('Employee_Name').addToPage(firstPage, { ...baseOptions, y: height - 150 });
+      form.createTextField('Employee_ID').addToPage(firstPage, { ...baseOptions, y: height - 180 });
+      form.createTextField('Department').addToPage(firstPage, { ...baseOptions, y: height - 210 });
+      form.createTextField('Current_Position').addToPage(firstPage, { ...baseOptions, y: height - 240 });
+      form.createTextField('New_Position').addToPage(firstPage, { ...baseOptions, y: height - 270 });
+      form.createTextField('Effective_Date').addToPage(firstPage, { ...baseOptions, y: height - 300 });
+      form.createTextField('Action_Type').addToPage(firstPage, { ...baseOptions, y: height - 330 });
+      form.createTextField('Reason').addToPage(firstPage, { ...baseOptions, y: height - 360 });
+      form.createTextField('Current_Salary').addToPage(firstPage, { ...baseOptions, y: height - 390 });
+      form.createTextField('New_Salary').addToPage(firstPage, { ...baseOptions, y: height - 420 });
+
+      // Save the fillable PDF
+      const fillablePdfBytes = await pdfDoc.save();
+      
+      // Create a backup of original and save fillable version
+      const backupPath = filePath.replace('.pdf', '_original.pdf');
+      fs.copyFileSync(filePath, backupPath);
+      
+      // Overwrite with fillable version
+      fs.writeFileSync(filePath, fillablePdfBytes);
+
+      const newFields = form.getFields();
+      res.json({ 
+        message: "PDF made fillable successfully", 
+        fieldCount: newFields.length,
+        fieldNames: newFields.map(f => f.getName()),
+        backupCreated: backupPath
+      });
+
+    } catch (error) {
+      console.error("Error making PDF fillable:", error);
+      res.status(500).json({ error: "Failed to make PDF fillable" });
+    }
+  });
+
+  // Check PDF fillability status
+  app.get("/api/paf/templates/:id/fillable-status", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getPafTemplate(parseInt(id));
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      const filePath = path.join(process.cwd(), template.fileUrl);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "PDF file not found" });
+      }
+
+      const existingPdfBytes = fs.readFileSync(filePath);
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+      const form = pdfDoc.getForm();
+      const fields = form.getFields();
+      
+      res.json({
+        isFillable: fields.length > 0,
+        fieldCount: fields.length,
+        fieldNames: fields.map(f => f.getName())
+      });
+
+    } catch (error) {
+      console.error("Error checking PDF fillability:", error);
+      res.status(500).json({ error: "Failed to check PDF fillability" });
+    }
+  });
+
   // Upload and create new PAF template
   app.post("/api/paf/templates", checkAuth, checkRole(['admin', 'hr']), upload.single("pdfFile"), async (req: any, res) => {
     try {

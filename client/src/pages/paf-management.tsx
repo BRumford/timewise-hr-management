@@ -860,6 +860,52 @@ export default function PafManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Check PDF fillability
+  const checkPdfFillability = async (templateId: number) => {
+    try {
+      const response = await fetch(`/api/paf/templates/${templateId}/fillable-status`);
+      const result = await response.json();
+      
+      toast({
+        title: result.isFillable ? "PDF is Fillable" : "PDF Not Fillable",
+        description: result.isFillable 
+          ? `This PDF has ${result.fieldCount} form fields: ${result.fieldNames.join(', ')}`
+          : "This PDF has no fillable form fields. Click 'Make Fillable' to add them.",
+        variant: result.isFillable ? "default" : "destructive"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to check PDF fillability",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Make PDF fillable
+  const makePdfFillable = async (templateId: number) => {
+    try {
+      const response = await fetch(`/api/paf/templates/${templateId}/make-fillable`, {
+        method: 'POST'
+      });
+      const result = await response.json();
+      
+      toast({
+        title: "Success",
+        description: result.message + ` (${result.fieldCount} fields added)`,
+      });
+      
+      // Refresh templates
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to make PDF fillable",
+        variant: "destructive"
+      });
+    }
+  };
+
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["/api/paf/templates"],
   });
@@ -1008,8 +1054,9 @@ export default function PafManagement() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex justify-between items-center">
-                    <div className="space-x-2">
+                  <div className="space-y-3">
+                    {/* Primary Action Buttons */}
+                    <div className="flex space-x-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -1042,29 +1089,53 @@ export default function PafManagement() {
                           document.body.removeChild(link);
                         }}
                       >
-                        <Download className="h-4 w-4 mr-1" />
+                        <Eye className="h-4 w-4 mr-1" />
                         View Template
                       </Button>
                     </div>
-                    <div className="space-x-1">
+                    
+                    {/* PDF Management Buttons */}
+                    <div className="flex space-x-2">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setSelectedTemplate(template);
-                          setIsTemplateDialogOpen(true);
-                        }}
+                        variant="secondary"
+                        onClick={() => checkPdfFillability(template.id)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <FileText className="h-4 w-4 mr-1" />
+                        Check Fields
                       </Button>
                       <Button
                         size="sm"
-                        variant="ghost"
-                        onClick={() => deleteTemplate.mutate(template.id)}
-                        disabled={deleteTemplate.isPending}
+                        variant="outline"
+                        onClick={() => makePdfFillable(template.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Plus className="h-4 w-4 mr-1" />
+                        Make Fillable
                       </Button>
+                    </div>
+
+                    {/* Template Management */}
+                    <div className="flex justify-between items-center">
+                      <div className="space-x-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedTemplate(template);
+                            setIsTemplateDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteTemplate.mutate(template.id)}
+                          disabled={deleteTemplate.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
