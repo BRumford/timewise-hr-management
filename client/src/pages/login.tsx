@@ -295,10 +295,10 @@ export default function Login() {
                           <SelectValue placeholder="Select your role" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="employee">Employee (Timecard & Leave Access)</SelectItem>
-                          <SelectItem value="hr">HR Staff (Employee Management)</SelectItem>
-                          <SelectItem value="payroll">Payroll Staff (Payroll & Timecards)</SelectItem>
-                          <SelectItem value="admin">Administrator (Full System Access)</SelectItem>
+                          <SelectItem value="employee">Employee</SelectItem>
+                          <SelectItem value="admin">Administrator</SelectItem>
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="payroll">Payroll</SelectItem>
                         </SelectContent>
                       </Select>
                       <div className="text-xs text-gray-500">
