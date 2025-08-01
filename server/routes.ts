@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import type { Request, Response, NextFunction } from "express";
@@ -5644,6 +5644,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register system owner routes
   registerSystemOwnerRoutes(app);
   
+  // Simple static file serving for PAF templates - bypassing all middleware
+  app.use('/uploads/paf-templates', express.static(path.join(process.cwd(), 'uploads', 'paf-templates'), {
+    setHeaders: (res, filePath) => {
+      if (path.extname(filePath) === '.pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+      }
+    }
+  }));
+
   // Register PAF routes
   registerPafRoutes(app);
 

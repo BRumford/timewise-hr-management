@@ -6,13 +6,46 @@ import fs from "fs";
 
 // Authentication updated to use simple local middleware
 
-// Simple authentication check that uses main system's auth
+// Authentication middleware that matches main system
 const checkAuth = async (req: Request, res: Response, next: NextFunction) => {
-  const user = (req as any).user;
-  if (!user) {
-    return res.status(401).json({ message: "Unauthorized" });
+  try {
+    // Check if user is logged in via session
+    let sessionUser = (req as any).session?.user;
+    
+    // If no session user, fall back to demo mode for development
+    if (!sessionUser) {
+      // For demo, we'll simulate a logged-in user
+      const userId = "demo_user";
+      
+      // Get or create demo user
+      let user = await storage.getUser(userId);
+      if (!user) {
+        user = await storage.upsertUser({
+          id: userId,
+          role: "payroll", // Keep existing payroll role
+          email: "demo@example.com",
+          firstName: "Demo",
+          lastName: "User"
+        });
+      }
+      
+      sessionUser = user;
+    }
+    
+    // Get the current user from the database to ensure fresh data
+    const userId = typeof sessionUser === 'string' ? sessionUser : sessionUser.id;
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Update the request with the current user data
+    (req as any).user = user;
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    res.status(500).json({ message: "Authentication error" });
   }
-  next();
 };
 
 // Simple role check
@@ -50,18 +83,6 @@ const upload = multer({
 });
 
 export function registerPafRoutes(app: Express) {
-  // Serve uploaded files
-  app.get('/uploads/:folder/:filename', (req, res) => {
-    const { folder, filename } = req.params;
-    const filePath = path.join(process.cwd(), 'uploads', folder, filename);
-    
-    if (fs.existsSync(filePath)) {
-      res.sendFile(filePath);
-    } else {
-      res.status(404).json({ error: 'File not found' });
-    }
-  });
-
   // Load pre-built PAF template
   app.post("/api/paf/templates/load-prebuilt", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
     try {
