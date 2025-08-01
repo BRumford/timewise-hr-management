@@ -673,22 +673,61 @@ export function registerPafRoutes(app: Express) {
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const form = pdfDoc.getForm();
       
-      // Pre-fill the form with submitted data
-      try {
-        if (formData.employeeName) form.getTextField('Employee_Name').setText(formData.employeeName);
-        if (formData.employeeId) form.getTextField('Employee_ID').setText(formData.employeeId);
-        if (formData.department) form.getTextField('Department').setText(formData.department);
-        if (formData.currentPosition) form.getTextField('Current_Position').setText(formData.currentPosition);
-        if (formData.newPosition) form.getTextField('New_Position').setText(formData.newPosition);
-        if (formData.effectiveDate) form.getTextField('Effective_Date').setText(formData.effectiveDate);
-        if (formData.actionType) form.getTextField('Action_Type').setText(formData.actionType);
-        if (formData.reason) form.getTextField('Reason').setText(formData.reason);
-        if (formData.currentSalary) form.getTextField('Current_Salary').setText(formData.currentSalary);
-        if (formData.newSalary) form.getTextField('New_Salary').setText(formData.newSalary);
-        if (formData.justification) form.getTextField('Justification').setText(formData.justification);
-      } catch (error) {
-        console.log("[PAF] Some form fields not found - this is normal for pre-filled forms");
-      }
+      // Get the first page for field positioning
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const { width, height } = firstPage.getSize();
+      
+      // Add form fields programmatically with better positioning
+      const fieldConfigs = [
+        { name: 'Employee_Name', x: 150, y: height - 150, width: 200, height: 20, value: formData.employeeName || '' },
+        { name: 'Employee_ID', x: 150, y: height - 180, width: 100, height: 20, value: formData.employeeId || '' },
+        { name: 'Department', x: 150, y: height - 210, width: 150, height: 20, value: formData.department || '' },
+        { name: 'Current_Position', x: 150, y: height - 240, width: 200, height: 20, value: formData.currentPosition || '' },
+        { name: 'New_Position', x: 150, y: height - 270, width: 200, height: 20, value: formData.newPosition || '' },
+        { name: 'Effective_Date', x: 150, y: height - 300, width: 120, height: 20, value: formData.effectiveDate || '' },
+        { name: 'Action_Type', x: 150, y: height - 330, width: 150, height: 20, value: formData.actionType || '' },
+        { name: 'Current_Salary', x: 150, y: height - 360, width: 100, height: 20, value: formData.currentSalary || '' },
+        { name: 'New_Salary', x: 150, y: height - 390, width: 100, height: 20, value: formData.newSalary || '' },
+        { name: 'Reason', x: 150, y: height - 420, width: 300, height: 40, value: formData.reason || '' },
+        { name: 'Justification', x: 150, y: height - 480, width: 300, height: 60, value: formData.justification || '' },
+        // Signature fields
+        { name: 'HR_Signature', x: 100, y: height - 550, width: 150, height: 20, value: '' },
+        { name: 'Finance_Signature', x: 100, y: height - 580, width: 150, height: 20, value: '' },
+        { name: 'Admin_Signature', x: 100, y: height - 610, width: 150, height: 20, value: '' },
+        { name: 'HR_Date', x: 300, y: height - 550, width: 80, height: 20, value: '' },
+        { name: 'Finance_Date', x: 300, y: height - 580, width: 80, height: 20, value: '' },
+        { name: 'Admin_Date', x: 300, y: height - 610, width: 80, height: 20, value: '' }
+      ];
+      
+      // Create or update form fields
+      fieldConfigs.forEach(config => {
+        try {
+          // Try to get existing field, if not found, create new one
+          let field;
+          try {
+            field = form.getTextField(config.name);
+          } catch (e) {
+            // Field doesn't exist, create it
+            field = form.createTextField(config.name);
+            field.addToPage(firstPage, {
+              x: config.x,
+              y: config.y,
+              width: config.width,
+              height: config.height,
+            });
+          }
+          
+          // Set field properties
+          if (config.value) {
+            field.setText(config.value);
+          }
+          field.enableRequiredConstraint();
+          field.updateAppearances();
+        } catch (error) {
+          console.log(`[PAF] Could not create/update field ${config.name}:`, error.message);
+        }
+      });
       
       // Save the filled PDF
       const filledPdfBytes = await pdfDoc.save();
