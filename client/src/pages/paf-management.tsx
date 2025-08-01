@@ -80,8 +80,18 @@ const pafFormSchema = z.object({
   fridayTimeOut2: z.string().optional(),
   
   // Section 5 - Budget Code Information
-  budgetCode: z.string().optional(),
-  budgetPercentage: z.string().optional(),
+  budgetCode1: z.string().optional(),
+  budgetPercentage1: z.string().optional(),
+  budgetCode2: z.string().optional(),
+  budgetPercentage2: z.string().optional(),
+  budgetCode3: z.string().optional(),
+  budgetPercentage3: z.string().optional(),
+  budgetCode4: z.string().optional(),
+  budgetPercentage4: z.string().optional(),
+  budgetCode5: z.string().optional(),
+  budgetPercentage5: z.string().optional(),
+  budgetCode6: z.string().optional(),
+  budgetPercentage6: z.string().optional(),
   
   // Section 6 - Reason/Justification
   justification: z.string().optional(),
@@ -263,8 +273,18 @@ export default function PafManagement() {
       fridayTimeOut: "",
       fridayTimeIn2: "",
       fridayTimeOut2: "",
-      budgetCode: "",
-      budgetPercentage: "",
+      budgetCode1: "",
+      budgetPercentage1: "",
+      budgetCode2: "",
+      budgetPercentage2: "",
+      budgetCode3: "",
+      budgetPercentage3: "",
+      budgetCode4: "",
+      budgetPercentage4: "",
+      budgetCode5: "",
+      budgetPercentage5: "",
+      budgetCode6: "",
+      budgetPercentage6: "",
       justification: "",
     },
   });
@@ -895,42 +915,50 @@ export default function PafManagement() {
                     </div>
                     <div className="p-4">
                       <p className="text-sm text-gray-600 mb-3">Fund - Resource - Year - Object - Goal - Function - School - Budget Responsibility - Type</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="budgetCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Budget Code:</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="XX - XXXX - X - XXXX - XXXX - XXXX - XXX - XXXX - XXXX" 
-                                  className="border-gray-300"
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="budgetPercentage"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Percentage:</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="%" 
-                                  className="border-gray-300"
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                      <div className="space-y-3">
+                        {[1, 2, 3, 4, 5, 6].map((lineNumber) => (
+                          <div key={lineNumber} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name={`budgetCode${lineNumber}` as any}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium">
+                                    Budget Code {lineNumber}:
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="XX - XXXX - X - XXXX - XXXX - XXXX - XXX - XXXX - XXXX" 
+                                      className="border-gray-300"
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name={`budgetPercentage${lineNumber}` as any}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium">
+                                    Percentage {lineNumber}:
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="%" 
+                                      className="border-gray-300"
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
