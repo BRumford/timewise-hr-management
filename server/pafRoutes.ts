@@ -637,6 +637,7 @@ export function registerPafRoutes(app: Express) {
       const submission = await storage.createPafSubmission({
         districtId,
         templateId: parseInt(formData.templateId),
+        workflowTemplateId: null, // Use null for now since we don't have workflow templates in DB yet
         submittedBy: userId,
         status: "draft",
         formData: formData,
