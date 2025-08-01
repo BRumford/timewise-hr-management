@@ -68,7 +68,8 @@ export default function NewPaf() {
   // Create PAF submission
   const createPafMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/paf/submissions/create-and-fill", "POST", data);
+      const response = await apiRequest("/api/paf/submissions/create-and-fill", "POST", data);
+      return response.json();
     },
     onSuccess: (result) => {
       console.log("PAF Creation Response:", result);
