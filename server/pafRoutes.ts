@@ -877,6 +877,47 @@ export function registerPafRoutes(app: Express) {
     }
   });
 
+  // Submit new PAF form (online form submission)
+  app.post("/api/paf/submit", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+    try {
+      const formData = req.body;
+      const userId = req.user.id;
+      const districtId = req.user.districtId || 1; // Default to district 1 for demo
+
+      // Create a new PAF submission from the online form
+      const submission = await storage.createPafSubmission({
+        districtId,
+        templateId: null, // Online form doesn't use a template
+        workflowTemplateId: 1, // Use default workflow
+        submittedBy: userId,
+        employeeId: null,
+        status: "draft",
+        currentStep: 0,
+        formData: formData,
+        
+        // Extract key fields for easy querying
+        employeeName: formData.employeeName || '',
+        positionTitle: formData.positionTitle || '',
+        effectiveDate: formData.effectiveDate || null,
+        pafType: formData.pafType || null,
+        positionType: formData.positionType || null,
+        positionCategory: formData.positionCategory || null,
+        reason: formData.reason || null,
+        justification: formData.justification || null,
+      });
+
+      console.log("[PAF] Online form submitted successfully:", submission.id);
+      res.json({
+        success: true,
+        submission,
+        message: "PAF submitted successfully and is now in draft status"
+      });
+    } catch (error) {
+      console.error("Error submitting online PAF form:", error);
+      res.status(500).json({ error: "Failed to submit PAF form" });
+    }
+  });
+
   // Submit PAF for approval (change status from draft to submitted)
   app.post("/api/paf/submissions/:id/submit", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
     try {

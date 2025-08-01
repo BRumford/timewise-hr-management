@@ -1155,13 +1155,24 @@ export default function PafManagement() {
         <TabsContent value="submissions" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">PAF Submissions</h2>
-            <Button
-              onClick={() => setIsUploadDialogOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <Upload className="h-4 w-4" />
-              Upload Completed PAF
-            </Button>
+            <div className="space-x-2">
+              <Button
+                onClick={() => window.open('/paf-form', '_self')}
+                className="flex items-center gap-2"
+                variant="default"
+              >
+                <Plus className="h-4 w-4" />
+                Create New PAF
+              </Button>
+              <Button
+                onClick={() => setIsUploadDialogOpen(true)}
+                className="flex items-center gap-2"
+                variant="outline"
+              >
+                <Upload className="h-4 w-4" />
+                Upload Completed PAF
+              </Button>
+            </div>
           </div>
 
           <Card>
