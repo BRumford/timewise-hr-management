@@ -3250,6 +3250,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(pafTemplates.createdAt));
   }
 
+  async getPafTemplate(id: number): Promise<any> {
+    const [template] = await db.select().from(pafTemplates).where(eq(pafTemplates.id, id));
+    return template;
+  }
+
   async createPafTemplate(template: any): Promise<any> {
     const [created] = await db.insert(pafTemplates).values(template).returning();
     return created;

@@ -580,7 +580,7 @@ async function generateFilledPdf(template: any, submission: any) {
             }
           }
         }
-      } catch (fieldError) {
+      } catch (fieldError: any) {
         console.warn(`Could not fill field ${fieldName}:`, fieldError.message);
       }
     }

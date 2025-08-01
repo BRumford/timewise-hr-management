@@ -602,7 +602,7 @@ function PafSubmissionViewer({ submission, onClose }: { submission: PafSubmissio
           </div>
           <div>
             <span className="font-medium text-gray-600">Reason:</span>
-            <div className="mt-1">{submission.reason || 'Not provided'}</div>
+            <div className="mt-1">{(submission as any).reason || 'Not provided'}</div>
           </div>
           <div className="md:col-span-2">
             <span className="font-medium text-gray-600">Description:</span>
