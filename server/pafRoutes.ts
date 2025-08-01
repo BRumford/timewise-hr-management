@@ -3,7 +3,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { PDFDocument, PDFForm, PDFTextField, PDFCheckBox, PDFDropdown } from "pdf-lib";
+import { PDFDocument, PDFForm, PDFTextField, PDFCheckBox, PDFDropdown, rgb } from "pdf-lib";
 
 // Authentication updated to use simple local middleware
 
@@ -679,28 +679,34 @@ export function registerPafRoutes(app: Express) {
       const { width, height } = firstPage.getSize();
       
       // Add form fields programmatically with better positioning
+      // Calculate positions based on PDF dimensions
+      const leftMargin = 100;
+      const fieldWidth = Math.min(200, width - leftMargin - 50);
+      const fieldHeight = 18;
+      const lineSpacing = 25;
+      
       const fieldConfigs = [
-        { name: 'Employee_Name', x: 150, y: height - 150, width: 200, height: 20, value: formData.employeeName || '' },
-        { name: 'Employee_ID', x: 150, y: height - 180, width: 100, height: 20, value: formData.employeeId || '' },
-        { name: 'Department', x: 150, y: height - 210, width: 150, height: 20, value: formData.department || '' },
-        { name: 'Current_Position', x: 150, y: height - 240, width: 200, height: 20, value: formData.currentPosition || '' },
-        { name: 'New_Position', x: 150, y: height - 270, width: 200, height: 20, value: formData.newPosition || '' },
-        { name: 'Effective_Date', x: 150, y: height - 300, width: 120, height: 20, value: formData.effectiveDate || '' },
-        { name: 'Action_Type', x: 150, y: height - 330, width: 150, height: 20, value: formData.actionType || '' },
-        { name: 'Current_Salary', x: 150, y: height - 360, width: 100, height: 20, value: formData.currentSalary || '' },
-        { name: 'New_Salary', x: 150, y: height - 390, width: 100, height: 20, value: formData.newSalary || '' },
-        { name: 'Reason', x: 150, y: height - 420, width: 300, height: 40, value: formData.reason || '' },
-        { name: 'Justification', x: 150, y: height - 480, width: 300, height: 60, value: formData.justification || '' },
-        // Signature fields
-        { name: 'HR_Signature', x: 100, y: height - 550, width: 150, height: 20, value: '' },
-        { name: 'Finance_Signature', x: 100, y: height - 580, width: 150, height: 20, value: '' },
-        { name: 'Admin_Signature', x: 100, y: height - 610, width: 150, height: 20, value: '' },
-        { name: 'HR_Date', x: 300, y: height - 550, width: 80, height: 20, value: '' },
-        { name: 'Finance_Date', x: 300, y: height - 580, width: 80, height: 20, value: '' },
-        { name: 'Admin_Date', x: 300, y: height - 610, width: 80, height: 20, value: '' }
+        { name: 'Employee_Name', x: leftMargin, y: height - 200, width: fieldWidth, height: fieldHeight, value: formData.employeeName || '', label: 'Employee Name:' },
+        { name: 'Employee_ID', x: leftMargin, y: height - 230, width: 120, height: fieldHeight, value: formData.employeeId || '', label: 'Employee ID:' },
+        { name: 'Department', x: leftMargin, y: height - 260, width: fieldWidth, height: fieldHeight, value: formData.department || '', label: 'Department:' },
+        { name: 'Current_Position', x: leftMargin, y: height - 290, width: fieldWidth, height: fieldHeight, value: formData.currentPosition || '', label: 'Current Position:' },
+        { name: 'New_Position', x: leftMargin, y: height - 320, width: fieldWidth, height: fieldHeight, value: formData.newPosition || '', label: 'New Position:' },
+        { name: 'Effective_Date', x: leftMargin, y: height - 350, width: 150, height: fieldHeight, value: formData.effectiveDate || '', label: 'Effective Date:' },
+        { name: 'Action_Type', x: leftMargin, y: height - 380, width: fieldWidth, height: fieldHeight, value: formData.actionType || '', label: 'Action Type:' },
+        { name: 'Current_Salary', x: leftMargin, y: height - 410, width: 120, height: fieldHeight, value: formData.currentSalary || '', label: 'Current Salary:' },
+        { name: 'New_Salary', x: leftMargin, y: height - 440, width: 120, height: fieldHeight, value: formData.newSalary || '', label: 'New Salary:' },
+        { name: 'Reason', x: leftMargin, y: height - 470, width: fieldWidth + 100, height: fieldHeight * 2, value: formData.reason || '', label: 'Reason:' },
+        { name: 'Justification', x: leftMargin, y: height - 520, width: fieldWidth + 100, height: fieldHeight * 3, value: formData.justification || '', label: 'Justification:' },
+        // Signature fields at bottom
+        { name: 'HR_Signature', x: 80, y: 150, width: 180, height: fieldHeight, value: '', label: 'HR Signature:' },
+        { name: 'HR_Date', x: 280, y: 150, width: 100, height: fieldHeight, value: '', label: 'Date:' },
+        { name: 'Finance_Signature', x: 80, y: 120, width: 180, height: fieldHeight, value: '', label: 'Finance Signature:' },
+        { name: 'Finance_Date', x: 280, y: 120, width: 100, height: fieldHeight, value: '', label: 'Date:' },
+        { name: 'Admin_Signature', x: 80, y: 90, width: 180, height: fieldHeight, value: '', label: 'Admin Signature:' },
+        { name: 'Admin_Date', x: 280, y: 90, width: 100, height: fieldHeight, value: '', label: 'Date:' }
       ];
       
-      // Create or update form fields
+      // Create or update form fields with labels
       fieldConfigs.forEach(config => {
         try {
           // Try to get existing field, if not found, create new one
@@ -716,14 +722,25 @@ export function registerPafRoutes(app: Express) {
               width: config.width,
               height: config.height,
             });
+            
+            // Add a label next to the field
+            if (config.label) {
+              firstPage.drawText(config.label, {
+                x: config.x - 80,
+                y: config.y + 4,
+                size: 10,
+                color: rgb(0, 0, 0),
+              });
+            }
           }
           
           // Set field properties
           if (config.value) {
             field.setText(config.value);
           }
-          field.enableRequiredConstraint();
           field.updateAppearances();
+          
+          console.log(`[PAF] Successfully created/updated field ${config.name} with value: ${config.value}`);
         } catch (error) {
           console.log(`[PAF] Could not create/update field ${config.name}:`, error.message);
         }
