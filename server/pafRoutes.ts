@@ -261,8 +261,22 @@ export function registerPafRoutes(app: Express) {
     try {
       const districtId = req.user.districtId;
       const userId = req.user.id;
+      
+      // Clean up the form data - convert empty strings to null for optional integer fields
+      const cleanedData = { ...req.body };
+      
+      // Convert empty string employeeId to null
+      if (cleanedData.employeeId === "") {
+        cleanedData.employeeId = null;
+      }
+      
+      // Convert date strings to proper format
+      if (cleanedData.effectiveDate) {
+        cleanedData.effectiveDate = new Date(cleanedData.effectiveDate);
+      }
+      
       const submissionData = {
-        ...req.body,
+        ...cleanedData,
         districtId,
         submittedBy: userId,
         status: "draft",

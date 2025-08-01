@@ -255,7 +255,31 @@ function PafSubmissionForm({ templateId, onClose }: { templateId: number; onClos
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createSubmission.mutate(formData);
+    
+    // Clean up form data before submission
+    const cleanedFormData = {
+      ...formData,
+      // Store all the form fields in the formData JSON field for the database
+      formData: {
+        employeeId: formData.employeeId || null,
+        department: formData.department,
+        currentPosition: formData.currentPosition,
+        newPosition: formData.newPosition,
+        payGrade: formData.payGrade,
+        workLocation: formData.workLocation,
+        actionType: formData.actionType,
+        description: formData.description,
+        currentSalary: formData.currentSalary,
+        newSalary: formData.newSalary,
+        budgetAccount: formData.budgetAccount,
+        fundingSource: formData.fundingSource,
+        supervisorName: formData.supervisorName,
+        hrNotes: formData.hrNotes,
+        attachments: formData.attachments,
+      }
+    };
+    
+    createSubmission.mutate(cleanedFormData);
   };
 
   const updateFormData = (field: string, value: string) => {
