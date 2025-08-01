@@ -5644,7 +5644,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register system owner routes
   registerSystemOwnerRoutes(app);
   
-  // Static file serving is now handled in index.ts before middleware chain
+  // Serve attached_assets directory for PAF templates and other assets
+  app.use('/attached_assets', express.static(path.join(process.cwd(), 'attached_assets'), {
+    setHeaders: (res, filePath) => {
+      if (path.extname(filePath) === '.pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+      }
+    }
+  }));
 
   // Register PAF routes
   registerPafRoutes(app);
