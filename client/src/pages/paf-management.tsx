@@ -360,6 +360,28 @@ export default function PafManagement() {
     },
   });
 
+  const loadStandardTemplate = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/paf/templates/load-prebuilt', {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/templates"] });
+      toast({
+        title: "Success",
+        description: "Standard PAF template loaded successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const submitForApproval = useMutation({
     mutationFn: async (id: number) => {
       return await apiRequest(`/api/paf/submissions/${id}/submit`, {
@@ -404,14 +426,23 @@ export default function PafManagement() {
         <TabsContent value="templates" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">PAF Templates</h2>
-            <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => setSelectedTemplate(null)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Template
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+            <div className="space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => loadStandardTemplate.mutate()}
+                disabled={loadStandardTemplate.isPending}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Load Standard Template
+              </Button>
+              <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setSelectedTemplate(null)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Template
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
                     {selectedTemplate ? "Edit Template" : "Create New Template"}
@@ -426,8 +457,9 @@ export default function PafManagement() {
                   template={selectedTemplate || undefined} 
                   onClose={() => setIsTemplateDialogOpen(false)} 
                 />
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

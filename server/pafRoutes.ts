@@ -85,6 +85,68 @@ const upload = multer({
 });
 
 export function registerPafRoutes(app: Express) {
+  // Serve uploaded files
+  app.get('/uploads/:folder/:filename', (req, res) => {
+    const { folder, filename } = req.params;
+    const filePath = path.join(process.cwd(), 'uploads', folder, filename);
+    
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).json({ error: 'File not found' });
+    }
+  });
+
+  // Load pre-built PAF template
+  app.post("/api/paf/templates/load-prebuilt", isAuthenticated, requireRole(['admin', 'hr']), async (req: any, res) => {
+    try {
+      const districtId = 1; // For now, hardcoded to district 1
+      const userId = req.user.id;
+      const templateName = "Standard Personnel Action Form";
+      const templateDescription = "Official Personnel Action Form template with all required sections including position information, advertisement status, employee information, work shift details, budget codes, and authorization signatures.";
+      
+      // Create a form template using the uploaded PDF
+      const formFields = [
+        { name: "pafType", type: "select", required: true, options: ["New Position", "Vacant Position", "Change Existing Position"] },
+        { name: "positionType", type: "select", required: true, options: ["Certificated", "Classified", "Management/Confidential", "Administrator", "Coach or Extra Duty"] },
+        { name: "positionCategory", type: "select", required: true, options: ["Prob/Perm", "Temporary", "Short-Term", "Categorical", "Summer Program"] },
+        { name: "positionTitle", type: "text", required: true },
+        { name: "workSite", type: "text", required: true },
+        { name: "fte", type: "number", required: true },
+        { name: "gradeLevel", type: "text", required: false },
+        { name: "subjectArea", type: "text", required: false },
+        { name: "extraDutyType", type: "text", required: false },
+        { name: "advertise", type: "select", required: true, options: ["Yes", "No"] },
+        { name: "advertisementType", type: "select", required: true, options: ["In-House Only", "Out-of-House Only", "Both"] },
+        { name: "employeeName", type: "text", required: false },
+        { name: "effectiveDate", type: "date", required: false },
+        { name: "reason", type: "select", required: false, options: ["Resignation", "Retirement", "Leave of Absence", "Transfer"] },
+        { name: "totalHoursDay", type: "number", required: true },
+        { name: "totalDaysWeek", type: "number", required: true },
+        { name: "totalDaysYear", type: "number", required: true },
+        { name: "budgetCode", type: "text", required: true },
+        { name: "justification", type: "textarea", required: false }
+      ];
+
+      const template = await storage.createPafTemplate({
+        districtId,
+        name: templateName,
+        description: templateDescription,
+        fileUrl: "/uploads/paf-templates/personnel-action-form-template.pdf",
+        formFields,
+        isActive: true,
+        isDefault: true,
+        createdBy: userId,
+        updatedBy: userId,
+      });
+
+      res.json(template);
+    } catch (error) {
+      console.error("Error loading pre-built PAF template:", error);
+      res.status(500).json({ error: "Failed to load pre-built PAF template" });
+    }
+  });
+
   // Get all PAF templates for a district
   app.get("/api/paf/templates", isAuthenticated, requireRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
     try {
