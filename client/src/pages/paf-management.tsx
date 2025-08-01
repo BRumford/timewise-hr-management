@@ -6,8 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertCircle, CheckCircle, Clock, FileText, Plus, User, Search, ArrowRight, Calendar, Building, Send, Eye } from "lucide-react";
-import { useLocation } from "wouter";
+import { AlertCircle, CheckCircle, Clock, FileText, User, Search, Send, Eye } from "lucide-react";
 
 interface PafSubmission {
   id: number;
@@ -109,25 +108,20 @@ export default function PafManagement() {
   const [selectedSubmission, setSelectedSubmission] = useState<PafSubmission | null>(null);
   const [isViewSubmissionDialogOpen, setIsViewSubmissionDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [, setLocation] = useLocation();
 
   const { data: submissions, isLoading: submissionsLoading } = useQuery({
     queryKey: ["/api/paf/submissions"],
   });
 
-  const filteredSubmissions = submissions?.filter((submission: PafSubmission) => 
+  const filteredSubmissions = (submissions as PafSubmission[] || []).filter((submission: PafSubmission) => 
     submission.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     submission.positionTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     submission.status.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  );
 
   const handleViewSubmission = (submission: PafSubmission) => {
     setSelectedSubmission(submission);
     setIsViewSubmissionDialogOpen(true);
-  };
-
-  const handleCreateNewPaf = () => {
-    setLocation("/paf-form");
   };
 
   if (submissionsLoading) {
@@ -154,52 +148,6 @@ export default function PafManagement() {
           <h1 className="text-2xl font-bold">Personnel Action Forms</h1>
         </div>
       </div>
-
-      {/* Create New PAF Section */}
-      <Card className="border-2 border-blue-200 bg-blue-50">
-        <CardHeader>
-          <CardTitle className="flex items-center text-blue-800">
-            <Plus className="h-5 w-5 mr-2" />
-            Create New Personnel Action Form
-          </CardTitle>
-          <CardDescription className="text-blue-700">
-            Start a new Personnel Action Form with comprehensive tracking and approval workflow
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-700 mb-4">
-                <div className="flex items-center">
-                  <User className="h-4 w-4 mr-2" />
-                  Employee Information
-                </div>
-                <div className="flex items-center">
-                  <Building className="h-4 w-4 mr-2" />
-                  Position Details
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Approval Workflow
-                </div>
-              </div>
-              <p className="text-sm text-blue-600 mb-4">
-                Complete online form with real-time audit trail, automatic workflow routing, and comprehensive timestamping system.
-              </p>
-            </div>
-            <div className="flex items-center">
-              <Button 
-                onClick={handleCreateNewPaf}
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8"
-              >
-                Create New PAF
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Submissions Section */}
       <Card>

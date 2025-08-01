@@ -41,8 +41,6 @@ import SystemOwnerLogin from "@/pages/system-owner-login";
 import SystemOwnerDashboard from "@/pages/system-owner-dashboard";
 import WorkflowManagement from "@/pages/workflow-management";
 import PafManagement from "@/pages/paf-management";
-
-import PAFForm from "@/pages/paf-form";
 import SystemOwnerPafOverview from "@/pages/system-owner-paf-overview";
 
 import DistrictSetup from "@/pages/district-setup";
@@ -97,9 +95,6 @@ function Router() {
                 <Route path="/data-deletion-requests" component={DataDeletionRequests} />
                 <Route path="/workflow-management" component={WorkflowManagement} />
                 <Route path="/paf-management" component={PafManagement} />
-
-                <Route path="/paf-form" component={PAFForm} />
-
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route path="/district-management" component={DistrictManagement} />
                 <Route path="/data-isolation-demo" component={DataIsolationDemo} />
