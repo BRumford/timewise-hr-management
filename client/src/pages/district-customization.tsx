@@ -176,10 +176,12 @@ export default function DistrictCustomization() {
 
   const handleSaveField = async (fieldData: Partial<CustomField>) => {
     try {
-      if (editingField) {
+      if (editingField && editingField.id) {
+        // Updating existing field
         await updateFieldMutation.mutateAsync({ id: editingField.id, ...fieldData });
         toast({ title: "Field updated successfully" });
       } else {
+        // Creating new field
         await createFieldMutation.mutateAsync({
           ...fieldData,
           districtId,

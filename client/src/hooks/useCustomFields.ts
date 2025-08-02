@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 
 export interface CustomField {
@@ -92,8 +92,12 @@ export function useFormConfiguration(formName: string, districtId: number = 1) {
 
 // Hook to update custom field
 export function useUpdateCustomField() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<CustomField> & { id: number }) => {
+      if (!id || isNaN(id)) {
+        throw new Error('Invalid field ID provided');
+      }
       const response = await fetch(`/api/custom-fields/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -102,15 +106,15 @@ export function useUpdateCustomField() {
       if (!response.ok) throw new Error("Failed to update custom field");
       return response.json();
     },
-    onSuccess: (_, { districtId, category }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields", districtId, category] });
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields", districtId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
     },
   });
 }
 
 // Hook to create custom field
 export function useCreateCustomField() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: Omit<CustomField, "id" | "createdAt" | "updatedAt">) => {
       const response = await fetch("/api/custom-fields", {
@@ -121,17 +125,20 @@ export function useCreateCustomField() {
       if (!response.ok) throw new Error("Failed to create custom field");
       return response.json();
     },
-    onSuccess: (_, { districtId, category }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields", districtId, category] });
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields", districtId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
     },
   });
 }
 
 // Hook to delete custom field
 export function useDeleteCustomField() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
+      if (!id || isNaN(id)) {
+        throw new Error('Invalid field ID provided');
+      }
       const response = await fetch(`/api/custom-fields/${id}`, {
         method: "DELETE",
       });
