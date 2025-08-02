@@ -7,6 +7,7 @@
 - **Complete Field Customization System**: Implemented comprehensive district-level field customization allowing full control over all form fields, labels, validation rules, and display properties across all HR modules
 - **Multi-Tenant Database Schema**: Enhanced database architecture with proper multi-tenant support for field configurations
 - **Dynamic Form Generation**: Real-time form customization with immediate field updates and validation
+- **AI Automation System**: Comprehensive AI-powered automation including intelligent document processing, smart form enhancement, automated onboarding workflows, compliance checking, and centralized AI Dashboard for managing all automation features
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -42,6 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **E-Signature System**: Integrated for onboarding and extra pay activities.
 - **Workflow Automation**: Automated onboarding with one-click workflow creation and personalized welcome letter generation. Comprehensive workflow management for PAFs with visual step tracking and role-based access for approvals, corrections, and denials.
 - **Complete Field Customization**: Full district-level control over all field properties including labels, types, validation rules, help text, visibility, and requirements. Supports Employee, Timecard, Leave, Payroll, and Onboarding modules with real-time updates and multi-tenant data isolation.
+- **AI Automation Infrastructure**: Comprehensive AI-powered automation system with OpenAI integration for intelligent document processing, smart form enhancement, automated workflow routing, compliance checking, onboarding automation, payroll analysis, and substitute assignment matching. Includes dedicated AI Dashboard with real-time system monitoring and analytics.
 - **Timecard Management**: Comprehensive tracking with multi-step approval workflows, custom templates, locking mechanisms, and automated monthly generation with configurable pay dates. Includes monthly and substitute timecard types with payroll processing sections and export functionality.
 - **Payroll Processing**: Automated tax calculations, employee benefit elections, batch processing, and comprehensive reporting. Integrated payroll calendar for district-specific scheduling and reminders with automated notifications.
 - **Google Calendar-Style Payroll Calendar**: Dedicated payroll calendar page with interactive monthly grid view, event creation/editing, color-coded priority levels, event type filtering, and comprehensive event management for payroll scheduling and deadline tracking.
@@ -53,11 +55,12 @@ Preferred communication style: Simple, everyday language.
 
 ## External Dependencies
 - **Database Provider**: Neon serverless PostgreSQL
-- **AI Services**: OpenAI API (GPT-4o)
-- **UI Components**: Radix UI
-- **Styling**: Tailwind CSS
+- **AI Services**: OpenAI API (Claude Sonnet 4.0) for intelligent automation
+- **UI Components**: Radix UI with shadcn/ui component library
+- **Styling**: Tailwind CSS with custom design system
 - **Date Handling**: date-fns
 - **Form Management**: React Hook Form with Zod validation
-- **Email Service**: SendGrid
-- **Image Uploads**: Multer
-- **Security Enhancements**: Helmet, CORS, bcrypt
+- **Email Service**: SendGrid for automated notifications
+- **Image Uploads**: Multer for file handling
+- **Security Enhancements**: Helmet, CORS, bcrypt for enterprise security
+- **State Management**: TanStack Query for efficient data fetching and caching

@@ -346,7 +346,7 @@ export class AIAutomationService {
         results.push({ 
           recipient: notification.recipient, 
           status: 'failed', 
-          error: error.message 
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
