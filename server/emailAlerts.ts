@@ -71,6 +71,40 @@ class EmailAlerts {
     }
   }
 
+  async sendPayrollError(error: Error, context?: string) {
+    if (!this.isConfigured) {
+      console.log('Email alerts not configured - payroll error logged:', error.message);
+      return;
+    }
+
+    const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+    if (adminEmails.length === 0) {
+      console.log('No admin emails configured for payroll error alerts');
+      return;
+    }
+
+    const emailContent = {
+      to: adminEmails,
+      subject: `[HIGH] Payroll System Error - HR Management System`,
+      message: `
+        A payroll system error has occurred:
+        
+        Error: ${error.message}
+        Context: ${context || 'No additional context'}
+        Timestamp: ${new Date().toISOString()}
+        
+        Please investigate promptly.
+      `,
+      priority: 'high' as const
+    };
+
+    try {
+      await this.sendAlert(emailContent);
+    } catch (emailError) {
+      console.error('Failed to send payroll error alert email:', emailError);
+    }
+  }
+
   async sendAuthenticationError(error: Error, userId: string) {
     await this.sendSecurityAlert('authentication_error', 'high', `Authentication failed for user: ${userId}`, { error: error.message });
   }

@@ -6016,8 +6016,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/payroll-calendar-events', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
+      
+      // Clean up empty optional date fields
+      const cleanedBody = { ...req.body };
+      if (cleanedBody.endRecurrence === '') {
+        delete cleanedBody.endRecurrence;
+      }
+      if (cleanedBody.eventTime === '') {
+        delete cleanedBody.eventTime;
+      }
+      
       const eventData = insertPayrollCalendarEventSchema.parse({
-        ...req.body,
+        ...cleanedBody,
         createdBy: user.id
       });
 
