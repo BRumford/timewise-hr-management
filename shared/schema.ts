@@ -707,18 +707,78 @@ export const districtSettings = pgTable("district_settings", {
 // Custom field labels table for employee forms
 export const customFieldLabels = pgTable("custom_field_labels", {
   id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(), // District-specific customization
   fieldName: varchar("field_name").notNull(), // e.g., "firstName", "lastName", "department"
+  originalFieldName: varchar("original_field_name").notNull(), // Store original field name for system reference
   displayLabel: varchar("display_label").notNull(), // e.g., "First Name", "Given Name", "Department"
   description: text("description"), // Optional description for the field
+  placeholder: varchar("placeholder"), // Placeholder text for input fields
+  helpText: text("help_text"), // Additional help text for users
   isRequired: boolean("is_required").default(false), // Whether field is required
   isVisible: boolean("is_visible").default(true), // Whether field is visible in forms
-  category: varchar("category").notNull().default("general"), // general, contact, employment, certification
+  isEditable: boolean("is_editable").default(true), // Whether field can be edited
+  category: varchar("category").notNull().default("general"), // employee, timecard, leave, payroll, onboarding, etc.
+  section: varchar("section").default("main"), // Sub-category within main category
   displayOrder: integer("display_order").default(0), // Order for displaying fields
+  fieldType: varchar("field_type").default("text"), // text, number, date, time, dropdown, checkbox, textarea, email, phone
+  validationRules: jsonb("validation_rules").default({}), // Custom validation rules
+  options: jsonb("options").default([]), // For dropdown fields
+  defaultValue: text("default_value"), // Default value for the field
+  maxLength: integer("max_length"), // Maximum character length
+  minLength: integer("min_length"), // Minimum character length
+  createdBy: varchar("created_by").notNull(), // User who created this customization
+  updatedBy: varchar("updated_by"), // User who last updated this customization
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  // Create a unique constraint on fieldName + category combination instead of just fieldName
-  uniqueFieldCategory: uniqueIndex("unique_field_category").on(table.fieldName, table.category)
+  // Create a unique constraint on districtId + fieldName + category combination
+  uniqueDistrictFieldCategory: uniqueIndex("unique_district_field_category").on(table.districtId, table.fieldName, table.category)
+}));
+
+// District-specific form configurations
+export const districtFormConfigurations = pgTable("district_form_configurations", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
+  formName: varchar("form_name").notNull(), // employee_profile, timecard, leave_request, payroll, etc.
+  displayName: varchar("display_name").notNull(), // Human-readable form name
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  layout: varchar("layout").default("standard"), // standard, compact, detailed
+  theme: varchar("theme").default("default"), // default, modern, classic
+  customCSS: text("custom_css"), // Custom styling
+  submitButtonText: varchar("submit_button_text").default("Save"),
+  resetButtonText: varchar("reset_button_text").default("Reset"),
+  sections: jsonb("sections").default([]), // Form sections configuration
+  workflows: jsonb("workflows").default({}), // Associated workflows
+  permissions: jsonb("permissions").default({}), // Role-based access control
+  notifications: jsonb("notifications").default({}), // Notification settings
+  validation: jsonb("validation").default({}), // Form-level validation rules
+  createdBy: varchar("created_by").notNull(),
+  updatedBy: varchar("updated_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueDistrictForm: uniqueIndex("unique_district_form").on(table.districtId, table.formName)
+}));
+
+// Global field templates (system-wide defaults that districts can inherit)
+export const globalFieldTemplates = pgTable("global_field_templates", {
+  id: serial("id").primaryKey(),
+  fieldName: varchar("field_name").notNull(),
+  category: varchar("category").notNull(),
+  defaultLabel: varchar("default_label").notNull(),
+  description: text("description"),
+  fieldType: varchar("field_type").default("text"),
+  defaultRequired: boolean("default_required").default(false),
+  defaultVisible: boolean("default_visible").default(true),
+  defaultPlaceholder: varchar("default_placeholder"),
+  defaultHelpText: text("default_help_text"),
+  validationSchema: jsonb("validation_schema").default({}),
+  isSystemField: boolean("is_system_field").default(false), // Cannot be deleted, only customized
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueGlobalField: uniqueIndex("unique_global_field").on(table.fieldName, table.category)
 }));
 
 // Pay periods table
@@ -1100,6 +1160,16 @@ export const insertTimecardTemplateFieldSchema = createInsertSchema(timecardTemp
 export const insertDistrictSettingsSchema = createInsertSchema(districtSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPayPeriodSchema = createInsertSchema(payPeriods).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCustomFieldLabelSchema = createInsertSchema(customFieldLabels).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCustomFieldLabel = z.infer<typeof insertCustomFieldLabelSchema>;
+export type CustomFieldLabel = typeof customFieldLabels.$inferSelect;
+
+export const insertDistrictFormConfigurationSchema = createInsertSchema(districtFormConfigurations).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDistrictFormConfiguration = z.infer<typeof insertDistrictFormConfigurationSchema>;
+export type DistrictFormConfiguration = typeof districtFormConfigurations.$inferSelect;
+
+export const insertGlobalFieldTemplateSchema = createInsertSchema(globalFieldTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertGlobalFieldTemplate = z.infer<typeof insertGlobalFieldTemplateSchema>;
+export type GlobalFieldTemplate = typeof globalFieldTemplates.$inferSelect;
 export const insertBenefitsDocumentSchema = createInsertSchema(benefitsDocuments).omit({ id: true, createdAt: true, updatedAt: true, downloadCount: true, lastDownloaded: true });
 export const insertBenefitsPlanSchema = createInsertSchema(benefitsPlans).omit({ id: true, createdAt: true, updatedAt: true });
 

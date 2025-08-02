@@ -1902,6 +1902,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Document routes
+  // ========================================
+  // DISTRICT FIELD CUSTOMIZATION API ROUTES
+  // ========================================
+  
+  // Get all custom fields for a district
+  app.get('/api/custom-fields/:districtId', isAuthenticated, async (req, res) => {
+    try {
+      const districtId = parseInt(req.params.districtId);
+      const customFields = await db
+        .select()
+        .from(customFieldLabels)
+        .where(eq(customFieldLabels.districtId, districtId))
+        .orderBy(asc(customFieldLabels.category), asc(customFieldLabels.displayOrder));
+
+      res.json(customFields);
+    } catch (error) {
+      console.error('Error fetching custom fields:', error);
+      res.status(500).json({ message: 'Failed to fetch custom fields' });
+    }
+  });
+
+  // Get custom fields for a specific category and district
+  app.get('/api/custom-fields/:districtId/:category', isAuthenticated, async (req, res) => {
+    try {
+      const districtId = parseInt(req.params.districtId);
+      const { category } = req.params;
+      
+      const customFields = await db
+        .select()
+        .from(customFieldLabels)
+        .where(and(
+          eq(customFieldLabels.districtId, districtId),
+          eq(customFieldLabels.category, category)
+        ))
+        .orderBy(asc(customFieldLabels.displayOrder));
+
+      res.json(customFields);
+    } catch (error) {
+      console.error('Error fetching custom fields for category:', error);
+      res.status(500).json({ message: 'Failed to fetch custom fields for category' });
+    }
+  });
+
+  // Create a new custom field
+  app.post('/api/custom-fields', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const fieldData = {
+        ...req.body,
+        createdBy: user.id,
+        districtId: req.body.districtId || 1 // Default to district 1 if not specified
+      };
+
+      const [newField] = await db
+        .insert(customFieldLabels)
+        .values(fieldData)
+        .returning();
+
+      res.status(201).json(newField);
+    } catch (error) {
+      console.error('Error creating custom field:', error);
+      res.status(500).json({ message: 'Failed to create custom field' });
+    }
+  });
+
+  // Update an existing custom field
+  app.put('/api/custom-fields/:id', isAuthenticated, async (req, res) => {
+    try {
+      const fieldId = parseInt(req.params.id);
+      const user = req.user as any;
+      const updateData = {
+        ...req.body,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      };
+
+      const [updatedField] = await db
+        .update(customFieldLabels)
+        .set(updateData)
+        .where(eq(customFieldLabels.id, fieldId))
+        .returning();
+
+      if (!updatedField) {
+        return res.status(404).json({ message: 'Custom field not found' });
+      }
+
+      res.json(updatedField);
+    } catch (error) {
+      console.error('Error updating custom field:', error);
+      res.status(500).json({ message: 'Failed to update custom field' });
+    }
+  });
+
+  // Delete a custom field
+  app.delete('/api/custom-fields/:id', isAuthenticated, async (req, res) => {
+    try {
+      const fieldId = parseInt(req.params.id);
+
+      const deletedField = await db
+        .delete(customFieldLabels)
+        .where(eq(customFieldLabels.id, fieldId))
+        .returning();
+
+      if (deletedField.length === 0) {
+        return res.status(404).json({ message: 'Custom field not found' });
+      }
+
+      res.json({ message: 'Custom field deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting custom field:', error);
+      res.status(500).json({ message: 'Failed to delete custom field' });
+    }
+  });
+
+  // Get form configuration for a district and form
+  app.get('/api/form-configurations/:districtId/:formName', isAuthenticated, async (req, res) => {
+    try {
+      const districtId = parseInt(req.params.districtId);
+      const { formName } = req.params;
+
+      const [formConfig] = await db
+        .select()
+        .from(districtFormConfigurations)
+        .where(and(
+          eq(districtFormConfigurations.districtId, districtId),
+          eq(districtFormConfigurations.formName, formName)
+        ));
+
+      if (!formConfig) {
+        // Return default configuration if none exists
+        return res.json({
+          districtId,
+          formName,
+          displayName: formName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          isActive: true,
+          layout: 'standard',
+          theme: 'default',
+          submitButtonText: 'Save',
+          resetButtonText: 'Reset',
+          sections: [],
+          workflows: {},
+          permissions: {},
+          notifications: {},
+          validation: {}
+        });
+      }
+
+      res.json(formConfig);
+    } catch (error) {
+      console.error('Error fetching form configuration:', error);
+      res.status(500).json({ message: 'Failed to fetch form configuration' });
+    }
+  });
+
+  // Update form configuration
+  app.put('/api/form-configurations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const configId = parseInt(req.params.id);
+      const user = req.user as any;
+      const updateData = {
+        ...req.body,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      };
+
+      const [updatedConfig] = await db
+        .update(districtFormConfigurations)
+        .set(updateData)
+        .where(eq(districtFormConfigurations.id, configId))
+        .returning();
+
+      if (!updatedConfig) {
+        return res.status(404).json({ message: 'Form configuration not found' });
+      }
+
+      res.json(updatedConfig);
+    } catch (error) {
+      console.error('Error updating form configuration:', error);
+      res.status(500).json({ message: 'Failed to update form configuration' });
+    }
+  });
+
   app.get("/api/documents", requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const documents = await storage.getDocuments();

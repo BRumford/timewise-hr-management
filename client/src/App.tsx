@@ -20,6 +20,7 @@ import ExtraPayActivities from "@/pages/extra-pay-activities";
 import Letters from "@/pages/letters";
 import TimecardTemplates from "@/pages/timecard-templates";
 import FieldLabels from "@/pages/field-labels";
+import DistrictCustomization from "@/pages/district-customization";
 import Login from "@/pages/login";
 import EmployeeLogin from "@/pages/employee-login";
 import ForgotPassword from "@/pages/forgot-password";
@@ -91,6 +92,7 @@ function Router() {
                 <Route path="/settings" component={Settings} />
                 <Route path="/payroll-calendar" component={PayrollCalendar} />
                 <Route path="/field-labels" component={FieldLabels} />
+                <Route path="/district-customization" component={DistrictCustomization} />
                 <Route path="/retirees" component={Retirees} />
                 <Route path="/archived-employees" component={ArchivedEmployees} />
                 <Route path="/support-documentation" component={SupportDocumentation} />

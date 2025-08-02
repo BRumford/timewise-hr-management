@@ -27,7 +27,8 @@ import {
   ChevronRight,
   FileSpreadsheet,
   Building2,
-  ClipboardList
+  ClipboardList,
+  Palette
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
@@ -70,6 +71,7 @@ const adminDropdownItems = [
   { path: "/documents", icon: FileText, label: "Documents", roles: ["hr", "payroll", "system_owner"] },
   { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["hr", "payroll", "system_owner"] },
   { path: "/field-labels", icon: Tag, label: "Field Labels", roles: ["hr", "payroll", "system_owner"] },
+  { path: "/district-customization", icon: Palette, label: "District Customization", roles: ["hr", "payroll", "system_owner"] },
   { path: "/support-documentation", icon: BookOpen, label: "Support Documentation", roles: ["hr", "payroll", "system_owner"] },
   { path: "/workflow-management", icon: Activity, label: "Workflow Management", roles: ["system_owner"] },
   { path: "/dropdown-settings", icon: Settings, label: "Dropdown Settings", roles: ["hr", "payroll", "system_owner"] },
