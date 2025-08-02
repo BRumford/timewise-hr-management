@@ -1398,10 +1398,13 @@ export default function PafManagement() {
                   {/* Workflow Selection */}
                   <div className="border-2 border-blue-200 rounded-md bg-blue-50/30">
                     <div className="bg-blue-100 px-4 py-2 border-b border-blue-200">
-                      <h3 className="font-semibold text-blue-900">WORKFLOW SELECTION</h3>
-                      <p className="text-xs text-blue-700 mt-1">Choose the approval process for this PAF</p>
+                      <h3 className="font-semibold text-blue-900 flex items-center space-x-2">
+                        <Workflow className="h-5 w-5" />
+                        <span>WORKFLOW SELECTION</span>
+                      </h3>
+                      <p className="text-xs text-blue-700 mt-1">Choose the approval process for this PAF - determines who will review and approve this form</p>
                     </div>
-                    <div className="p-4">
+                    <div className="p-4 space-y-4">
                       <FormField
                         control={form.control}
                         name="workflowTemplateId"
@@ -1410,15 +1413,22 @@ export default function PafManagement() {
                             <FormLabel className="text-sm font-medium text-blue-900">Select Approval Workflow: <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
                               <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger className="border-gray-300">
+                                <SelectTrigger className="border-gray-300 h-auto min-h-[48px]">
                                   <SelectValue placeholder="Choose workflow template" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {!workflowTemplatesLoading && Array.isArray(workflowTemplates) && workflowTemplates.map((template: any) => (
                                     <SelectItem key={template.id} value={template.id.toString()}>
-                                      <div className="flex flex-col">
-                                        <span className="font-medium">{template.name}</span>
-                                        <span className="text-xs text-gray-500">{template.description}</span>
+                                      <div className="flex flex-col space-y-1 py-2">
+                                        <span className="font-medium text-sm">{template.name}</span>
+                                        {template.description && (
+                                          <span className="text-xs text-gray-500">{template.description}</span>
+                                        )}
+                                        <div className="flex items-center space-x-1 mt-1">
+                                          <Badge variant="outline" className="text-xs">
+                                            {template.steps?.length || 0} Steps
+                                          </Badge>
+                                        </div>
                                       </div>
                                     </SelectItem>
                                   ))}
@@ -1427,26 +1437,104 @@ export default function PafManagement() {
                             </FormControl>
                             <FormMessage />
                             {field.value && Array.isArray(workflowTemplates) && (
-                              <div className="mt-2 p-3 bg-gray-50 rounded-md">
-                                <h4 className="text-sm font-medium mb-2">Workflow Steps:</h4>
-                                <div className="space-y-1">
+                              <div className="mt-3 p-4 bg-gray-50 border border-gray-200 rounded-md">
+                                <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center space-x-2">
+                                  <Eye className="h-4 w-4 text-blue-600" />
+                                  <span>Selected Workflow Preview</span>
+                                </h4>
+                                <div className="space-y-2">
                                   {workflowTemplates
                                     .find((t: any) => t.id.toString() === field.value)
                                     ?.steps?.map((step: any, index: number) => (
-                                    <div key={index} className="flex items-center text-sm">
-                                      <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs mr-2">
-                                        {step.order}
-                                      </span>
-                                      <span>{step.title}</span>
-                                      <span className="ml-2 text-gray-500">({step.role})</span>
+                                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                                      <div className="flex items-center space-x-3">
+                                        <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">
+                                          {step.order || index + 1}
+                                        </span>
+                                        <div>
+                                          <span className="text-sm font-medium text-gray-900">{step.title}</span>
+                                          <div className="text-xs text-gray-500 capitalize">
+                                            {step.role?.replace('_', ' ').replace('-', '/')}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <Badge variant="outline" className="text-xs">
+                                        {step.required ? 'Required' : 'Optional'}
+                                      </Badge>
                                     </div>
                                   )) || []}
+                                </div>
+                                
+                                {/* Estimated Processing Time */}
+                                <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                                  <div className="flex items-center space-x-2 text-sm text-blue-800">
+                                    <Clock className="h-4 w-4" />
+                                    <span className="font-medium">Estimated Processing Time: </span>
+                                    <span>
+                                      {(() => {
+                                        const selectedTemplate = workflowTemplates.find((t: any) => t.id.toString() === field.value);
+                                        const stepCount = selectedTemplate?.steps?.length || 0;
+                                        return `${stepCount * 2}-${stepCount * 4} business days`;
+                                      })()}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             )}
                           </FormItem>
                         )}
                       />
+                      
+                      {/* Workflow Recommendations */}
+                      {!form.watch("workflowTemplateId") && Array.isArray(workflowTemplates) && workflowTemplates.length > 0 && (
+                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <h4 className="text-sm font-medium text-yellow-800 mb-2 flex items-center space-x-2">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>Recommended Workflows</span>
+                          </h4>
+                          <div className="space-y-2">
+                            {(() => {
+                              const pafType = form.watch("pafType");
+                              const positionType = form.watch("positionType");
+                              
+                              // Simple recommendation logic based on form data
+                              let recommendedTemplates = workflowTemplates;
+                              
+                              if (pafType === "new-position") {
+                                recommendedTemplates = workflowTemplates.filter((t: any) => 
+                                  t.name.toLowerCase().includes("new") || 
+                                  t.name.toLowerCase().includes("standard") ||
+                                  t.steps?.length >= 3
+                                );
+                              } else if (positionType === "administrator") {
+                                recommendedTemplates = workflowTemplates.filter((t: any) => 
+                                  t.name.toLowerCase().includes("admin") || 
+                                  t.name.toLowerCase().includes("executive") ||
+                                  t.steps?.length >= 4
+                                );
+                              }
+                              
+                              return recommendedTemplates.slice(0, 2).map((template: any) => (
+                                <div key={template.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-sm text-gray-900">{template.name}</div>
+                                    <div className="text-xs text-gray-500">{template.description}</div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => form.setValue("workflowTemplateId", template.id.toString())}
+                                    className="ml-2 text-xs"
+                                  >
+                                    Select
+                                  </Button>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
