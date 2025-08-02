@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
+import { pafTimestampService } from "./pafTimestampService";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -464,6 +465,29 @@ export function registerPafRoutes(app: Express) {
         }
       });
 
+      // Record timestamp events
+      await pafTimestampService.recordWorkflowEvent(
+        submission.id, 
+        'created', 
+        req.user.id, 
+        req.user.role,
+        { method: 'upload', fileName: fileName }
+      );
+      
+      await pafTimestampService.recordWorkflowEvent(
+        submission.id, 
+        'submitted', 
+        req.user.id, 
+        req.user.role,
+        { isUploadedPdf: true }
+      );
+
+      // Update main timestamps
+      await pafTimestampService.updateMainTimestamps(submission.id, {
+        submittedAt: new Date(),
+        workflowStartedAt: new Date()
+      });
+
       res.json({ success: true, submissionId: submission.id });
 
     } catch (error) {
@@ -556,6 +580,15 @@ export function registerPafRoutes(app: Express) {
         currentStep: sendBackToStep || 0
       });
 
+      // Record timestamp event
+      await pafTimestampService.recordWorkflowEvent(
+        parseInt(id), 
+        'corrected', 
+        req.user.id, 
+        req.user.role,
+        { reason, sendBackToStep, sendBackToUserId, comments }
+      );
+
       res.json({ 
         success: true, 
         message: "Correction request sent successfully",
@@ -597,6 +630,20 @@ export function registerPafRoutes(app: Express) {
       // Update submission status
       await storage.updatePafSubmission(parseInt(id), {
         status: 'denied'
+      });
+
+      // Record timestamp events
+      await pafTimestampService.recordWorkflowEvent(
+        parseInt(id), 
+        'rejected', 
+        req.user.id, 
+        req.user.role,
+        { reason, comments }
+      );
+
+      // Update main timestamps
+      await pafTimestampService.updateMainTimestamps(parseInt(id), {
+        rejectedAt: new Date()
       });
 
       res.json({ 
@@ -662,6 +709,15 @@ export function registerPafRoutes(app: Express) {
       for (const step of approvalSteps) {
         await storage.createPafApprovalStep(step);
       }
+
+      // Record timestamp event
+      await pafTimestampService.recordWorkflowEvent(
+        submission.id, 
+        'created', 
+        req.user.id, 
+        req.user.role,
+        { method: 'form_creation', status: 'draft' }
+      );
 
       res.json(submission);
     } catch (error) {
@@ -1142,6 +1198,140 @@ export function registerPafRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching PAF overview:", error);
       res.status(500).json({ error: "Failed to fetch PAF overview" });
+    }
+  });
+
+  // Get PAF Timeline - comprehensive timestamp tracking
+  app.get("/api/paf/submissions/:id/timeline", checkAuth, checkRole(['admin', 'hr', 'payroll', 'employee']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const submission = await storage.getPafSubmission(parseInt(id));
+      
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Check access permissions
+      const isCreator = submission.submittedBy === req.user.id;
+      const hasWorkflowPermissions = ['admin', 'hr', 'payroll'].includes(req.user.role);
+      
+      if (!isCreator && !hasWorkflowPermissions && req.user.role === "employee") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const timeline = await pafTimestampService.getTimeline(parseInt(id));
+      res.json(timeline);
+    } catch (error) {
+      console.error("Error fetching PAF timeline:", error);
+      res.status(500).json({ error: "Failed to fetch PAF timeline" });
+    }
+  });
+
+  // Get PAF Performance Analytics
+  app.get("/api/paf/analytics", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const analytics = await pafTimestampService.getPerformanceAnalytics(req.user.districtId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching PAF analytics:", error);
+      res.status(500).json({ error: "Failed to fetch PAF analytics" });
+    }
+  });
+
+  // Record PAF View/Review Event
+  app.post("/api/paf/submissions/:id/record-view", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { eventType } = req.body; // 'viewed' or 'reviewed'
+      
+      const submission = await storage.getPafSubmission(parseInt(id));
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Record the view/review event
+      await pafTimestampService.recordWorkflowEvent(
+        parseInt(id), 
+        eventType === 'reviewed' ? 'reviewed' : 'assigned', 
+        req.user.id, 
+        req.user.role,
+        { action: eventType, userAgent: req.get('User-Agent') }
+      );
+
+      // Update first review timestamp if this is the first review
+      if (eventType === 'reviewed' && !submission.firstReviewedAt) {
+        await pafTimestampService.updateMainTimestamps(parseInt(id), {
+          firstReviewedAt: new Date()
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording PAF view:", error);
+      res.status(500).json({ error: "Failed to record PAF view" });
+    }
+  });
+
+  // Update PAF submission status and record timestamp
+  app.patch("/api/paf/submissions/:id/status", checkAuth, checkRole(['admin', 'hr', 'payroll']), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, comments, workflowStep } = req.body;
+      
+      const submission = await storage.getPafSubmission(parseInt(id));
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      const previousStatus = submission.status;
+
+      // Update submission
+      await storage.updatePafSubmission(parseInt(id), {
+        status,
+        currentStep: workflowStep || submission.currentStep
+      });
+
+      // Record timestamp event
+      await pafTimestampService.recordEvent({
+        submissionId: parseInt(id),
+        eventType: 'status_change',
+        eventDescription: `Status changed from ${previousStatus} to ${status}`,
+        userId: req.user.id,
+        userRole: req.user.role,
+        fromStatus: previousStatus,
+        toStatus: status,
+        workflowStep: workflowStep,
+        metadata: { comments, previousStatus }
+      });
+
+      // Update specific timestamps based on status
+      const timestampUpdates: any = {};
+      
+      if (status === 'submitted' && !submission.submittedAt) {
+        timestampUpdates.submittedAt = new Date();
+        timestampUpdates.workflowStartedAt = new Date();
+      }
+      
+      if (status === 'approved' && !submission.workflowCompletedAt) {
+        timestampUpdates.workflowCompletedAt = new Date();
+      }
+      
+      if (status === 'finalized' && !submission.finalizedAt) {
+        timestampUpdates.finalizedAt = new Date();
+      }
+      
+      if (status === 'reopened') {
+        timestampUpdates.reopenedAt = new Date();
+      }
+
+      if (Object.keys(timestampUpdates).length > 0) {
+        await pafTimestampService.updateMainTimestamps(parseInt(id), timestampUpdates);
+      }
+
+      res.json({ success: true, message: `Status updated to ${status}` });
+    } catch (error) {
+      console.error("Error updating PAF status:", error);
+      res.status(500).json({ error: "Failed to update PAF status" });
     }
   });
 }

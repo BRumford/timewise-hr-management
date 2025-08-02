@@ -2303,8 +2303,35 @@ export const pafSubmissions = pgTable("paf_submissions", {
   rejectionReason: text("rejection_reason"),
   comments: text("comments"),
   
+  // Enhanced timestamp tracking for PAF workflow
+  submittedAt: timestamp("submitted_at"), // When form was officially submitted (changed from draft)
+  firstReviewedAt: timestamp("first_reviewed_at"), // When first reviewer looked at it
+  lastActivityAt: timestamp("last_activity_at").defaultNow(), // Any update/action on PAF
+  workflowStartedAt: timestamp("workflow_started_at"), // When workflow approval process began
+  workflowCompletedAt: timestamp("workflow_completed_at"), // When all approvals completed
+  rejectedAt: timestamp("rejected_at"), // If PAF was rejected
+  reopenedAt: timestamp("reopened_at"), // If PAF was reopened after rejection
+  finalizedAt: timestamp("finalized_at"), // When PAF was completely processed and closed
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// PAF Timestamp Audit Trail - Detailed tracking of all PAF events
+export const pafTimestamps = pgTable("paf_timestamps", {
+  id: serial("id").primaryKey(),
+  submissionId: integer("submission_id").notNull().references(() => pafSubmissions.id),
+  eventType: varchar("event_type").notNull(), // created, submitted, assigned, reviewed, approved, rejected, corrected, reopened, finalized
+  eventDescription: text("event_description").notNull(), // Human-readable description
+  userId: varchar("user_id").references(() => users.id), // Who performed the action
+  userRole: varchar("user_role"), // Role of person who performed action
+  fromStatus: varchar("from_status"), // Previous status
+  toStatus: varchar("to_status"), // New status
+  workflowStep: integer("workflow_step"), // Which step in workflow
+  metadata: jsonb("metadata"), // Additional context (signatures, comments, etc.)
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  ipAddress: varchar("ip_address"), // For audit purposes
+  userAgent: text("user_agent"), // Browser/device info
 });
 
 // Configurable workflow templates
@@ -2339,6 +2366,12 @@ export const pafApprovalWorkflow = pgTable("paf_approval_workflow", {
   correctionRequestedAt: timestamp("correction_requested_at"),
   sendBackToStep: integer("send_back_to_step"), // Which step to send back to
   sendBackToUserId: varchar("send_back_to_user_id").references(() => users.id),
+  
+  // Enhanced workflow timestamps
+  assignedAt: timestamp("assigned_at"), // When assigned to current approver
+  viewedAt: timestamp("viewed_at"), // When approver first viewed this step
+  reminderSentAt: timestamp("reminder_sent_at"), // Last reminder sent
+  escalatedAt: timestamp("escalated_at"), // If escalated due to delay
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -2375,6 +2408,18 @@ export const pafSubmissionsRelations = relations(pafSubmissions, ({ one, many })
     references: [employees.id],
   }),
   approvalSteps: many(pafApprovalWorkflow),
+  timestamps: many(pafTimestamps),
+}));
+
+export const pafTimestampsRelations = relations(pafTimestamps, ({ one }) => ({
+  submission: one(pafSubmissions, {
+    fields: [pafTimestamps.submissionId],
+    references: [pafSubmissions.id],
+  }),
+  user: one(users, {
+    fields: [pafTimestamps.userId],
+    references: [users.id],
+  }),
 }));
 
 export const pafApprovalWorkflowRelations = relations(pafApprovalWorkflow, ({ one }) => ({
@@ -2393,14 +2438,17 @@ export const insertPafTemplateSchema = createInsertSchema(pafTemplates).omit({ i
 export const insertPafWorkflowTemplateSchema = createInsertSchema(pafWorkflowTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPafSubmissionSchema = createInsertSchema(pafSubmissions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPafApprovalWorkflowSchema = createInsertSchema(pafApprovalWorkflow).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPafTimestampSchema = createInsertSchema(pafTimestamps).omit({ id: true, timestamp: true });
 
 // PAF Select types
 export type PafTemplate = typeof pafTemplates.$inferSelect;
 export type PafSubmission = typeof pafSubmissions.$inferSelect;
 export type PafApprovalWorkflow = typeof pafApprovalWorkflow.$inferSelect;
+export type PafTimestamp = typeof pafTimestamps.$inferSelect;
 export type InsertPafTemplate = z.infer<typeof insertPafTemplateSchema>;
 export type InsertPafSubmission = z.infer<typeof insertPafSubmissionSchema>;
 export type InsertPafApprovalWorkflow = z.infer<typeof insertPafApprovalWorkflowSchema>;
+export type InsertPafTimestamp = z.infer<typeof insertPafTimestampSchema>;
 
 // Payroll Calendar Events - for district-specific payroll scheduling and reminders
 export const payrollCalendarEvents = pgTable("payroll_calendar_events", {

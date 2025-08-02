@@ -53,6 +53,7 @@ import { registerSystemOwnerRoutes } from './systemOwnerRoutes';
 import { registerPafRoutes } from './pafRoutes';
 import { timecardAutomationService } from './timecardAutomationService';
 import { aiAutomationService } from './aiAutomationService';
+import { pafTimestampService } from './pafTimestampService';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {
