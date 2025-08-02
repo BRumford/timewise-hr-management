@@ -17,6 +17,327 @@ import { AlertCircle, CheckCircle, Clock, FileText, User, Search, Send, Eye, Plu
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
+// Workflow Management Component
+function WorkflowManagementSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isCreateWorkflowDialogOpen, setIsCreateWorkflowDialogOpen] = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<any>(null);
+
+  // Workflow management form
+  const [workflowFormData, setWorkflowFormData] = useState({
+    name: "",
+    description: "",
+    steps: [
+      { role: "hr", title: "HR Review", required: true, order: 1 },
+      { role: "finance", title: "Budget Approval", required: true, order: 2 },
+      { role: "admin", title: "Administrator Approval", required: true, order: 3 }
+    ]
+  });
+
+  const { data: workflowTemplates, isLoading: workflowTemplatesLoading } = useQuery({
+    queryKey: ["/api/paf/workflow-templates"],
+  });
+
+  const createWorkflowMutation = useMutation({
+    mutationFn: async (workflowData: any) => {
+      return apiRequest("/api/paf/workflow-templates", "POST", workflowData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Workflow template created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/workflow-templates"] });
+      setIsCreateWorkflowDialogOpen(false);
+      setWorkflowFormData({
+        name: "",
+        description: "",
+        steps: [
+          { role: "hr", title: "HR Review", required: true, order: 1 },
+          { role: "finance", title: "Budget Approval", required: true, order: 2 },
+          { role: "admin", title: "Administrator Approval", required: true, order: 3 }
+        ]
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create workflow template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteWorkflowMutation = useMutation({
+    mutationFn: async (workflowId: number) => {
+      return apiRequest(`/api/paf/workflow-templates/${workflowId}`, "DELETE", {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Workflow template deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/paf/workflow-templates"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete workflow template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddWorkflowStep = () => {
+    const newStep = {
+      role: "",
+      title: "",
+      required: true,
+      order: workflowFormData.steps.length + 1
+    };
+    setWorkflowFormData({
+      ...workflowFormData,
+      steps: [...workflowFormData.steps, newStep]
+    });
+  };
+
+  const handleRemoveWorkflowStep = (index: number) => {
+    const updatedSteps = workflowFormData.steps.filter((_, i) => i !== index);
+    const reorderedSteps = updatedSteps.map((step, i) => ({
+      ...step,
+      order: i + 1
+    }));
+    setWorkflowFormData({
+      ...workflowFormData,
+      steps: reorderedSteps
+    });
+  };
+
+  const handleUpdateWorkflowStep = (index: number, field: string, value: any) => {
+    const updatedSteps = [...workflowFormData.steps];
+    updatedSteps[index] = { ...updatedSteps[index], [field]: value };
+    setWorkflowFormData({
+      ...workflowFormData,
+      steps: updatedSteps
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Workflow Templates</h2>
+        <Dialog open={isCreateWorkflowDialogOpen} onOpenChange={setIsCreateWorkflowDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center space-x-2">
+              <Plus className="h-4 w-4" />
+              <span>Create Workflow Template</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Workflow Template</DialogTitle>
+              <DialogDescription>
+                Define the approval steps and requirements for this workflow template
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Template Name *</label>
+                  <Input
+                    placeholder="Enter workflow template name"
+                    value={workflowFormData.name}
+                    onChange={(e) => setWorkflowFormData({ ...workflowFormData, name: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Description</label>
+                  <Textarea
+                    placeholder="Enter workflow description"
+                    value={workflowFormData.description}
+                    onChange={(e) => setWorkflowFormData({ ...workflowFormData, description: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Approval Steps</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddWorkflowStep}
+                    className="flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Step</span>
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {workflowFormData.steps.map((step, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium">Step {index + 1}</h4>
+                        {workflowFormData.steps.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveWorkflowStep(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">Role *</label>
+                          <Select
+                            value={step.role}
+                            onValueChange={(value) => handleUpdateWorkflowStep(index, 'role', value)}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="hr">HR Department</SelectItem>
+                              <SelectItem value="finance">Finance/Budget</SelectItem>
+                              <SelectItem value="admin">Administrator</SelectItem>
+                              <SelectItem value="superintendent">Superintendent</SelectItem>
+                              <SelectItem value="board">School Board</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">Step Title *</label>
+                          <Input
+                            placeholder="Enter step title"
+                            value={step.title}
+                            onChange={(e) => handleUpdateWorkflowStep(index, 'title', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCreateWorkflowDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => createWorkflowMutation.mutate(workflowFormData)}
+                  disabled={!workflowFormData.name || workflowFormData.steps.some(step => !step.role || !step.title) || createWorkflowMutation.isPending}
+                >
+                  {createWorkflowMutation.isPending ? "Creating..." : "Create Template"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="space-y-4">
+        {workflowTemplatesLoading ? (
+          <div className="animate-pulse space-y-4">
+            <div className="h-32 bg-gray-200 rounded-lg"></div>
+            <div className="h-32 bg-gray-200 rounded-lg"></div>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {Array.isArray(workflowTemplates) && workflowTemplates.map((template: any) => (
+              <Card key={template.id} className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="text-lg font-semibold">{template.name}</h3>
+                      <Badge variant="secondary">
+                        {template.steps?.length || 0} Steps
+                      </Badge>
+                    </div>
+                    {template.description && (
+                      <p className="text-gray-600 mb-4">{template.description}</p>
+                    )}
+                    
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-700">Approval Flow:</h4>
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        {template.steps?.map((step: any, index: number) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <Badge variant="outline" className="text-xs">
+                              {step.title}
+                            </Badge>
+                            {index < template.steps.length - 1 && (
+                              <ArrowRight className="h-3 w-3 text-gray-400" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingWorkflow(template);
+                        setWorkflowFormData({
+                          name: template.name,
+                          description: template.description || "",
+                          steps: template.steps || []
+                        });
+                        setIsCreateWorkflowDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteWorkflowMutation.mutate(template.id)}
+                      disabled={deleteWorkflowMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+            
+            {(!workflowTemplates || workflowTemplates.length === 0) && (
+              <Card className="p-8 text-center">
+                <Workflow className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Workflow Templates</h3>
+                <p className="text-gray-600 mb-4">
+                  Create your first workflow template to define approval processes for Personnel Action Forms.
+                </p>
+                <Button onClick={() => setIsCreateWorkflowDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Template
+                </Button>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const pafFormSchema = z.object({
   // PAF Type Section
   pafType: z.string().min(1, "PAF type is required"),
@@ -204,10 +525,8 @@ export default function PafManagement() {
   const [isViewSubmissionDialogOpen, setIsViewSubmissionDialogOpen] = useState(false);
   const [isCreatePafDialogOpen, setIsCreatePafDialogOpen] = useState(false);
   const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = useState(false);
-  const [isCreateWorkflowDialogOpen, setIsCreateWorkflowDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedWorkflowSubmission, setSelectedWorkflowSubmission] = useState<PafSubmission | null>(null);
-  const [editingWorkflow, setEditingWorkflow] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -217,17 +536,6 @@ export default function PafManagement() {
 
   const { data: workflowTemplates, isLoading: workflowTemplatesLoading } = useQuery({
     queryKey: ["/api/paf/workflow-templates"],
-  });
-
-  // Workflow management form
-  const [workflowFormData, setWorkflowFormData] = useState({
-    name: "",
-    description: "",
-    steps: [
-      { role: "hr", title: "HR Review", required: true, order: 1 },
-      { role: "finance", title: "Budget Approval", required: true, order: 2 },
-      { role: "admin", title: "Administrator Approval", required: true, order: 3 }
-    ]
   });
 
   const filteredSubmissions = (submissions as PafSubmission[] || []).filter((submission: PafSubmission) => 
@@ -296,90 +604,7 @@ export default function PafManagement() {
     },
   });
 
-  const createWorkflowMutation = useMutation({
-    mutationFn: async (workflowData: any) => {
-      return apiRequest("/api/paf/workflow-templates", "POST", workflowData);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Workflow template created successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/workflow-templates"] });
-      setIsCreateWorkflowDialogOpen(false);
-      setWorkflowFormData({
-        name: "",
-        description: "",
-        steps: [
-          { role: "hr", title: "HR Review", required: true, order: 1 },
-          { role: "finance", title: "Budget Approval", required: true, order: 2 },
-          { role: "admin", title: "Administrator Approval", required: true, order: 3 }
-        ]
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create workflow template",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const deleteWorkflowMutation = useMutation({
-    mutationFn: async (workflowId: number) => {
-      return apiRequest(`/api/paf/workflow-templates/${workflowId}`, "DELETE", {});
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Workflow template deleted successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/paf/workflow-templates"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete workflow template",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleAddWorkflowStep = () => {
-    const newStep = {
-      role: "",
-      title: "",
-      required: true,
-      order: workflowFormData.steps.length + 1
-    };
-    setWorkflowFormData({
-      ...workflowFormData,
-      steps: [...workflowFormData.steps, newStep]
-    });
-  };
-
-  const handleRemoveWorkflowStep = (index: number) => {
-    const updatedSteps = workflowFormData.steps.filter((_, i) => i !== index);
-    // Re-order the remaining steps
-    const reorderedSteps = updatedSteps.map((step, i) => ({
-      ...step,
-      order: i + 1
-    }));
-    setWorkflowFormData({
-      ...workflowFormData,
-      steps: reorderedSteps
-    });
-  };
-
-  const handleUpdateWorkflowStep = (index: number, field: string, value: any) => {
-    const updatedSteps = [...workflowFormData.steps];
-    updatedSteps[index] = { ...updatedSteps[index], [field]: value };
-    setWorkflowFormData({
-      ...workflowFormData,
-      steps: updatedSteps
-    });
-  };
 
   const form = useForm<PafFormData>({
     resolver: zodResolver(pafFormSchema),
@@ -1492,220 +1717,7 @@ export default function PafManagement() {
 
         {/* Workflow Management Tab */}
         <TabsContent value="workflow-management" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Workflow Templates</h2>
-            <Dialog open={isCreateWorkflowDialogOpen} onOpenChange={setIsCreateWorkflowDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center space-x-2">
-                  <Plus className="h-4 w-4" />
-                  <span>Create Workflow Template</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create Workflow Template</DialogTitle>
-                  <DialogDescription>
-                    Define the approval steps and requirements for this workflow template
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-6 py-4">
-                  {/* Basic Information */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Template Name *</label>
-                      <Input
-                        placeholder="Enter workflow template name"
-                        value={workflowFormData.name}
-                        onChange={(e) => setWorkflowFormData({ ...workflowFormData, name: e.target.value })}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Description</label>
-                      <Textarea
-                        placeholder="Enter workflow description"
-                        value={workflowFormData.description}
-                        onChange={(e) => setWorkflowFormData({ ...workflowFormData, description: e.target.value })}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Workflow Steps */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">Approval Steps</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddWorkflowStep}
-                        className="flex items-center space-x-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        <span>Add Step</span>
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {workflowFormData.steps.map((step, index) => (
-                        <Card key={index} className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-medium">Step {index + 1}</h4>
-                            {workflowFormData.steps.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveWorkflowStep(index)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-gray-700">Role *</label>
-                              <Select
-                                value={step.role}
-                                onValueChange={(value) => handleUpdateWorkflowStep(index, 'role', value)}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="hr">HR Department</SelectItem>
-                                  <SelectItem value="finance">Finance/Budget</SelectItem>
-                                  <SelectItem value="admin">Administrator</SelectItem>
-                                  <SelectItem value="superintendent">Superintendent</SelectItem>
-                                  <SelectItem value="board">School Board</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-gray-700">Step Title *</label>
-                              <Input
-                                placeholder="Enter step title"
-                                value={step.title}
-                                onChange={(e) => handleUpdateWorkflowStep(index, 'title', e.target.value)}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex justify-end space-x-3 pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsCreateWorkflowDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => createWorkflowMutation.mutate(workflowFormData)}
-                      disabled={!workflowFormData.name || workflowFormData.steps.some(step => !step.role || !step.title) || createWorkflowMutation.isPending}
-                    >
-                      {createWorkflowMutation.isPending ? "Creating..." : "Create Template"}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* Workflow Templates List */}
-          <div className="space-y-4">
-            {workflowTemplatesLoading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-32 bg-gray-200 rounded-lg"></div>
-                <div className="h-32 bg-gray-200 rounded-lg"></div>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {workflowTemplates?.map((template: any) => (
-                  <Card key={template.id} className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold">{template.name}</h3>
-                          <Badge variant="secondary">
-                            {template.steps?.length || 0} Steps
-                          </Badge>
-                        </div>
-                        {template.description && (
-                          <p className="text-gray-600 mb-4">{template.description}</p>
-                        )}
-                        
-                        {/* Workflow Steps Preview */}
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-medium text-gray-700">Approval Flow:</h4>
-                          <div className="flex items-center space-x-2">
-                            {template.steps?.map((step: any, index: number) => (
-                              <div key={index} className="flex items-center space-x-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {step.title}
-                                </Badge>
-                                {index < template.steps.length - 1 && (
-                                  <ArrowRight className="h-3 w-3 text-gray-400" />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingWorkflow(template);
-                            setWorkflowFormData({
-                              name: template.name,
-                              description: template.description || "",
-                              steps: template.steps || []
-                            });
-                            setIsCreateWorkflowDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteWorkflowMutation.mutate(template.id)}
-                          disabled={deleteWorkflowMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-                
-                {(!workflowTemplates || workflowTemplates.length === 0) && (
-                  <Card className="p-8 text-center">
-                    <Workflow className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Workflow Templates</h3>
-                    <p className="text-gray-600 mb-4">
-                      Create your first workflow template to define approval processes for Personnel Action Forms.
-                    </p>
-                    <Button onClick={() => setIsCreateWorkflowDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Template
-                    </Button>
-                  </Card>
-                )}
-              </div>
-            )}
-          </div>
+          <WorkflowManagementSection />
         </TabsContent>
       </Tabs>
     </div>
