@@ -19,6 +19,7 @@ import {
   Activity
 } from "lucide-react";
 import SystemHealthMonitor from "@/components/SystemHealthMonitor";
+import PayrollCalendar from "@/components/PayrollCalendar";
 import { useState, useEffect } from "react";
 import { useRolePermissionsManagement } from "@/hooks/useRolePermissions";
 import { useToast } from "@/hooks/use-toast";
@@ -62,12 +63,13 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="ai">AI Settings</TabsTrigger>
+          <TabsTrigger value="payroll-calendar">Payroll Calendar</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
           <TabsTrigger value="permissions">Role Permissions</TabsTrigger>
         </TabsList>
@@ -573,6 +575,10 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="payroll-calendar" className="space-y-6">
+          <PayrollCalendar districtId={1} />
         </TabsContent>
       </Tabs>
     </div>

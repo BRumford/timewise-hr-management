@@ -34,9 +34,12 @@ import * as schema from '@shared/schema';
 import { 
   insertDropdownOptionSchema,
   insertSignatureRequestSchema,
-  insertSignatureTemplateSchema 
+  insertSignatureTemplateSchema,
+  payrollCalendarEvents,
+  payrollReminders,
+  insertPayrollCalendarEventSchema
 } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import { generateOnboardingChecklist } from './openai';
 import districtRoutes from './districtRoutes';
 import { tenantMiddleware, requireDistrict, withDistrictFilter } from './tenantMiddleware';
@@ -5990,6 +5993,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error generating pay schedule:', error);
       res.status(500).json({ message: "Failed to generate pay schedule" });
+    }
+  });
+
+  // Payroll Calendar API Routes
+  app.get('/api/payroll-calendar-events/:districtId', isAuthenticated, async (req, res) => {
+    try {
+      const districtId = parseInt(req.params.districtId);
+      const events = await db
+        .select()
+        .from(payrollCalendarEvents)
+        .where(eq(payrollCalendarEvents.districtId, districtId))
+        .orderBy(asc(payrollCalendarEvents.eventDate));
+
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching payroll calendar events:', error);
+      res.status(500).json({ message: 'Failed to fetch payroll calendar events' });
+    }
+  });
+
+  app.post('/api/payroll-calendar-events', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const eventData = insertPayrollCalendarEventSchema.parse({
+        ...req.body,
+        createdBy: user.id
+      });
+
+      const [newEvent] = await db
+        .insert(payrollCalendarEvents)
+        .values(eventData)
+        .returning();
+
+      res.status(201).json(newEvent);
+    } catch (error) {
+      console.error('Error creating payroll calendar event:', error);
+      res.status(500).json({ message: 'Failed to create payroll calendar event' });
+    }
+  });
+
+  app.put('/api/payroll-calendar-events/:id', isAuthenticated, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const updateData = req.body;
+
+      const [updatedEvent] = await db
+        .update(payrollCalendarEvents)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(payrollCalendarEvents.id, eventId))
+        .returning();
+
+      if (!updatedEvent) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+
+      res.json(updatedEvent);
+    } catch (error) {
+      console.error('Error updating payroll calendar event:', error);
+      res.status(500).json({ message: 'Failed to update payroll calendar event' });
+    }
+  });
+
+  app.delete('/api/payroll-calendar-events/:id', isAuthenticated, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+
+      const deletedEvent = await db
+        .delete(payrollCalendarEvents)
+        .where(eq(payrollCalendarEvents.id, eventId))
+        .returning();
+
+      if (deletedEvent.length === 0) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+
+      res.json({ message: 'Event deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting payroll calendar event:', error);
+      res.status(500).json({ message: 'Failed to delete payroll calendar event' });
     }
   });
 

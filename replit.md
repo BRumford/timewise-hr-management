@@ -1,138 +1,49 @@
 # School District HR Management System
 
 ## Overview
-This is "Timewise K-12" - a comprehensive multi-tenant B2B SaaS HR and payroll management platform designed specifically for school districts. The application features a clean user onboarding flow with login screen, new user creation, and streamlined district setup functionality. It provides complete data isolation between districts and subscription-based billing tiers. The system automates document processing, employee onboarding, payroll management, leave tracking, and compliance monitoring using AI-powered features. Built as a full-stack web application with React frontend and Express backend, the platform reduces manual HR workload, ensures compliance, and improves efficiency for school district HR departments.
+"Timewise K-12" is a comprehensive multi-tenant B2B SaaS HR and payroll management platform designed specifically for school districts. It offers a clean user onboarding flow, complete data isolation between districts, and subscription-based billing tiers. The system automates document processing, employee onboarding, payroll, leave tracking, and compliance monitoring using AI. Built as a full-stack web application with React and Express, it aims to reduce manual HR workload, ensure compliance, and improve efficiency for school district HR departments.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
-### Frontend Architecture
+### Frontend
 - **Framework**: React 18 with TypeScript
 - **Routing**: Wouter
-- **State Management**: TanStack Query (React Query)
+- **State Management**: TanStack Query
 - **UI Components**: Radix UI primitives with shadcn/ui
 - **Styling**: Tailwind CSS with custom design system and CSS variables for theming
 - **Build Tool**: Vite
 
-### Backend Architecture
+### Backend
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database ORM**: Drizzle ORM
 - **Session Management**: Express sessions with PostgreSQL session store
 
 ### UI/UX Decisions
-- **Dashboard**: Real-time overview of HR metrics, pending actions, and AI-generated insights.
-- **Employee Management**: CRUD operations for employee records.
-- **Leave Management**: Request submission, approval workflows, and calendar integration.
-- **Payroll**: Salary management, deduction tracking, and reporting.
-- **Document Management**: Upload, processing, and compliance tracking.
-- **Onboarding**: Workflow management and progress tracking.
-- **Reports**: Comprehensive analytics and compliance reporting.
-- **Settings**: System configuration and user preferences.
-- **Navigation**: Clean, intuitive navigation with administrative features grouped under a "Settings" dropdown to reduce clutter. High-priority functions like "Onboarding" are easily accessible.
-- **Design Consistency**: Professional paper-like design for timecard systems, consistent form elements, and clear visual indicators for statuses and actions.
-
-### Recent Changes (January 2025)
-- **Branding Update**: Complete rebrand to "Timewise K-12" with tagline "Complete All-In-System for HR and Payroll"
-- **Clean Login Interface**: Implemented login screen without sidebar navigation, featuring Sign In and Create Account tabs
-- **Streamlined Onboarding**: Created 3-step district setup process (District Information → Administrator Account → Review & Complete)
-- **Simplified Flow**: Removed billing/subscription selection to focus on core functionality and faster onboarding
-- **Multi-Tenant Foundation**: Confirmed working multi-tenant architecture with complete data isolation between school districts
-- **Authentication & Personalization (January 31, 2025)**: 
-  - Fixed complete authentication flow with proper session management
-  - Resolved registration API integration issues
-  - Implemented dynamic user data display across all interface components
-  - Added working logout functionality with session cleanup
-  - Replaced all hardcoded demo content with real user registration data
-  - Enhanced header and sidebar to show actual administrator names and roles
-- **Personnel Action Forms (PAF) System (August 1, 2025)**:
-  - Successfully integrated user's actual Personnel Action Form PDF with "Load Standard Template" feature
-  - Fixed authentication middleware across PAF routes with proper role-based access controls
-  - Resolved PAF file serving issues by implementing static file serving through attached_assets directory
-  - Confirmed PDF viewing functionality - templates now open correctly in new browser tabs
-  - **Online PAF Form System**: Pivoted from fillable PDF generation to comprehensive online form interface
-    - Created user-friendly web-based PAF form with all sections from original PDF (similar to timecard page)
-    - Implemented smart conditional fields that show/hide based on PAF type and position selections
-    - Added professional form layout using cards with proper validation and error handling
-    - Integrated with existing approval workflow system and workflow management features
-    - Added "Create New PAF" button to submissions tab for easy access to online form
-    - Backend API endpoint processes form submissions and creates draft PAF entries
-    - Maintains compatibility with existing approval workflows, templates, and management features
-  - **PAF Workflow Management Enhancement (August 1, 2025)**:
-    - Made Jurisdiction Box optional field with proper "(Optional)" labeling
-    - Made Subject Area optional field with clear "(Optional)" labeling
-    - Implemented Request Corrections and Deny buttons that only appear after PAF submission
-    - Limited workflow controls to Budget/Payroll/Finance departments with proper role-based access
-    - Enhanced database schema with correction/denial workflow fields (correction_requested, correction_reason, etc.)
-    - Added comprehensive API endpoints for correction requests and denials with proper authentication
-    - Fixed uncontrolled input warnings by providing proper default values for all form fields
-    - Confirmed creator access control - only form creators can complete/edit their submissions
-    - Tested full workflow: form creation → submission → correction/denial functionality - all working correctly
-    - **PAF Interface Consolidation (August 1, 2025)**: Successfully consolidated PAF functionality into single page
-      - Combined PAF creation and management into one unified interface
-      - Added "Create New PAF" modal dialog within PAF Management page
-      - Removed separate New PAF page and navigation item to eliminate confusion
-      - Maintained all form validation, conditional fields, and workflow functionality
-      - Preserved optional fields (Jurisdiction Box and Subject Area) with proper labeling
-      - Streamlined user experience with single page for all PAF operations
-- **System-Wide Employee Data Synchronization (August 2, 2025)**:
-  - Implemented comprehensive system-wide synchronization for all employee data updates
-  - Created automated cascade updates across all related tables (timecards, leave requests, payroll, documents, onboarding, substitute assignments)
-  - Added real-time change detection and audit trail system with detailed metadata tracking
-  - Enhanced employee update mutations with sync status feedback and enhanced user notifications
-  - Created sync status endpoint (/api/employees/:id/sync-status) for monitoring synchronization coverage and audit logs
-  - Added comprehensive error handling and logging for failed synchronization attempts
-  - Ensured data consistency across entire HR management system when employee information changes
-- **Automated Timecard Generation System (August 2, 2025)**:
-  - Implemented complete automated monthly timecard generation with configurable pay dates for districts and system owners
-  - Added comprehensive database schema (payDateConfigurations, timecardGenerationJobs, timecardGenerationTemplates tables)
-  - Created timecardAutomationService.ts with full backend automation logic for bulk timecard creation
-  - Built comprehensive frontend interface (timecard-automation.tsx) with pay date configuration, generation templates, and job history
-  - Added API endpoints for pay date management, template configuration, single/bulk timecard generation, and status monitoring
-  - Implemented generation job tracking with detailed processing logs, error handling, and audit trails
-  - Created user-friendly automation interface with overview dashboard, configuration management, and generation history
-  - Added role-based access controls limiting automation features to HR administrators and system owners
-  - Integrated timecard automation into main navigation with dedicated menu item for streamlined access
-  - **Full Integration with Existing Timecard System**: Automated generation creates timecards that appear seamlessly in both Monthly Timecard and Substitute Time Card pages with proper status tracking and approval workflows
-    - **Complete PDF Form Replication (August 1, 2025)**: Rebuilt PAF form to mirror actual PDF structure exactly
-      - Recreated all 6 sections matching original PDF layout: PAF Type header, Position Information, Employee Information/Status, Work Shift Information, Budget Code Information, and Reason/Justification
-      - Added FTE field to Section 4 Work Shift Information as requested by user
-      - Expanded Section 5 Budget Code Information from 1 to 6 budget code lines for multiple funding sources
-      - Implemented professional paper-like form design with complete weekly schedule grid
-      - Maintained integration with existing workflow system and approval processes
-    - **Workflow Management System Integration (August 1, 2025)**: Restored comprehensive workflow management functionality
-      - Re-integrated workflow template selection in PAF form creation with dropdown showing available approval workflows
-      - Added workflow status column to submissions table showing current step progress (e.g., "1/3", "2/3")
-      - Implemented workflow management dialog with visual step tracking and status indicators
-      - Added Submit, View Workflow, Approve, Request Corrections, and Deny buttons with proper role-based access
-      - Enhanced workflow step visualization with color-coded status badges and progress tracking
-      - Integrated existing backend workflow APIs for seamless approval process management
+- **Dashboard**: Real-time overview of HR metrics, pending actions, and AI insights.
+- **Navigation**: Clean, intuitive navigation with administrative features grouped under a "Settings" dropdown. High-priority functions like "Onboarding" are easily accessible.
+- **Design Consistency**: Professional paper-like design for timecard systems, consistent form elements, and clear visual indicators.
+- **Login Interface**: Clean login screen without sidebar navigation, featuring Sign In and Create Account tabs.
+- **District Setup**: Streamlined 3-step district setup process (District Information → Administrator Account → Review & Complete).
+- **Consolidated Interfaces**: Personnel Action Forms (PAF) functionality is consolidated into a single page with a "Create New PAF" modal. Automated Timecard Generation and Payroll Calendar systems are integrated with user-friendly interfaces.
 
 ### Technical Implementations & Feature Specifications
 - **Database Schema**: Comprehensive schema including Users (role-based access), Employees, Leave Management, Payroll, Documents, Onboarding, Substitute Assignments, and Activity Logs.
-- **AI-Powered Features**:
-    - **Document Processing**: Automated analysis of HR documents.
-    - **Compliance Monitoring**: Real-time tracking of document expiration and regulatory requirements.
-    - **Onboarding Automation**: Intelligent checklist generation.
-    - **Payroll Analysis**: Anomaly detection.
-    - **Substitute Recommendations**: AI-driven matching of substitute teachers.
-- **Authentication**: Session-based authentication with role-based access control (HR, Admin, Employee, Secretary). Includes individual employee login, password reset, and account lockout.
-- **E-Signature System**: Integrated for onboarding paperwork and extra pay activities.
-- **Workflow Automation**: Automated onboarding system with one-click workflow creation and personalized welcome letter generation.
-- **Customization**:
-    - **Dynamic Custom Fields**: For extra pay activities.
-    - **Customizable Field Labels**: Allows districts to personalize field names across the system (Employee, Timecard, Leave, Payroll, Onboarding).
-    - **Dropdown Options Management**: Customizable dropdowns for consistent data entry (e.g., Code, Funding, Site, Addon).
-- **Timecard Management**: Comprehensive time tracking with multi-step approval workflows (Secretary → Employee → Secretary → Admin → Payroll), custom timecard templates, and locking mechanisms. Includes monthly and substitute timecard types with payroll processing sections and export functionality.
-- **Payroll Processing**: Automated tax calculations, employee benefit elections, and batch processing. Features comprehensive reporting (Payroll Summary, Tax Liabilities, Benefits).
+- **AI-Powered Features**: Automated analysis for HR documents, real-time compliance monitoring, intelligent checklist generation for onboarding, payroll anomaly detection, and AI-driven substitute teacher matching.
+- **Authentication**: Session-based with role-based access control (HR, Admin, Employee, Secretary), including individual employee login, password reset, and account lockout.
+- **Multi-Tenancy**: Complete data isolation between school districts.
+- **E-Signature System**: Integrated for onboarding and extra pay activities.
+- **Workflow Automation**: Automated onboarding with one-click workflow creation and personalized welcome letter generation. Comprehensive workflow management for PAFs with visual step tracking and role-based access for approvals, corrections, and denials.
+- **Customization**: Dynamic custom fields, customizable field labels across modules, and manageable dropdown options.
+- **Timecard Management**: Comprehensive tracking with multi-step approval workflows, custom templates, locking mechanisms, and automated monthly generation with configurable pay dates. Includes monthly and substitute timecard types with payroll processing sections and export functionality.
+- **Payroll Processing**: Automated tax calculations, employee benefit elections, batch processing, and comprehensive reporting. Integrated payroll calendar for district-specific scheduling and reminders with automated notifications.
 - **Compliance Dashboard**: Tracks FERPA, HIPAA, and SOX compliance, with monitoring for backups, encryption, security audits, and disaster recovery.
 - **Security Infrastructure**: Enterprise-grade security with real-time audit logging, threat detection, MFA support, secure file uploads, data encryption (AES-256), and security settings management.
-- **System Monitoring**: Comprehensive system monitoring and error alerting infrastructure with email notifications, health checks, metrics, and data retention monitoring.
-- **Support System**: Comprehensive support documentation and ticket management system.
-- **Employee Management**: Includes individual employee access management, archiving, and retiree management.
-- **Leave Management Enhancements**: Includes detailed Workers Compensation and Medical Leave tracking.
-- **Reporting**: Dynamic date range selection for custom reporting periods across all modules.
+- **System Monitoring**: Comprehensive system monitoring and error alerting infrastructure.
+- **Employee Data Synchronization**: System-wide synchronization for all employee data updates with automated cascade updates and audit trail.
+- **Reporting**: Dynamic date range selection for custom reporting.
 
 ## External Dependencies
 - **Database Provider**: Neon serverless PostgreSQL
@@ -141,6 +52,6 @@ Preferred communication style: Simple, everyday language.
 - **Styling**: Tailwind CSS
 - **Date Handling**: date-fns
 - **Form Management**: React Hook Form with Zod validation
-- **Email Service**: SendGrid (for email alerts and notifications)
-- **Image Uploads**: Multer middleware (for file uploads)
-- **Security Enhancements**: Helmet (for HTTP headers), CORS, bcrypt (for password hashing)
+- **Email Service**: SendGrid
+- **Image Uploads**: Multer
+- **Security Enhancements**: Helmet, CORS, bcrypt

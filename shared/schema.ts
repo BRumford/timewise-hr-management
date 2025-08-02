@@ -2332,4 +2332,79 @@ export type InsertPafTemplate = z.infer<typeof insertPafTemplateSchema>;
 export type InsertPafSubmission = z.infer<typeof insertPafSubmissionSchema>;
 export type InsertPafApprovalWorkflow = z.infer<typeof insertPafApprovalWorkflowSchema>;
 
+// Payroll Calendar Events - for district-specific payroll scheduling and reminders
+export const payrollCalendarEvents = pgTable("payroll_calendar_events", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  eventType: varchar("event_type").notNull(), // 'payroll_submission', 'pay_date', 'deadline', 'reminder', 'meeting'
+  eventDate: date("event_date").notNull(),
+  eventTime: varchar("event_time"), // Optional time (HH:MM format)
+  isRecurring: boolean("is_recurring").default(false),
+  recurrenceType: varchar("recurrence_type"), // 'monthly', 'biweekly', 'custom'
+  recurrenceInterval: integer("recurrence_interval"), // For custom intervals
+  endRecurrence: date("end_recurrence"), // When recurring events should stop
+  reminderEnabled: boolean("reminder_enabled").default(true),
+  reminderDaysBefore: integer("reminder_days_before").default(3), // Days before event to send reminder
+  departments: jsonb("departments"), // Array of departments to notify ['hr', 'payroll', 'finance', 'all']
+  priority: varchar("priority").default("medium"), // 'low', 'medium', 'high', 'critical'
+  status: varchar("status").default("active"), // 'active', 'completed', 'cancelled'
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payroll Reminder Notifications - tracks sent reminders
+export const payrollReminders = pgTable("payroll_reminders", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").notNull().references(() => districts.id),
+  calendarEventId: integer("calendar_event_id").notNull().references(() => payrollCalendarEvents.id),
+  recipientUserId: varchar("recipient_user_id").notNull(),
+  recipientEmail: varchar("recipient_email"),
+  reminderType: varchar("reminder_type").notNull(), // 'email', 'dashboard', 'both'
+  sentAt: timestamp("sent_at"),
+  status: varchar("status").default("pending"), // 'pending', 'sent', 'failed'
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Payroll Calendar Relations
+export const payrollCalendarEventsRelations = relations(payrollCalendarEvents, ({ one, many }) => ({
+  district: one(districts, {
+    fields: [payrollCalendarEvents.districtId],
+    references: [districts.id],
+  }),
+  reminders: many(payrollReminders),
+}));
+
+export const payrollRemindersRelations = relations(payrollReminders, ({ one }) => ({
+  district: one(districts, {
+    fields: [payrollReminders.districtId],
+    references: [districts.id],
+  }),
+  calendarEvent: one(payrollCalendarEvents, {
+    fields: [payrollReminders.calendarEventId],
+    references: [payrollCalendarEvents.id],
+  }),
+}));
+
+// Payroll Calendar Insert schemas
+export const insertPayrollCalendarEventSchema = createInsertSchema(payrollCalendarEvents).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export const insertPayrollReminderSchema = createInsertSchema(payrollReminders).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+// Payroll Calendar Select types
+export type PayrollCalendarEvent = typeof payrollCalendarEvents.$inferSelect;
+export type PayrollReminder = typeof payrollReminders.$inferSelect;
+export type InsertPayrollCalendarEvent = z.infer<typeof insertPayrollCalendarEventSchema>;
+export type InsertPayrollReminder = z.infer<typeof insertPayrollReminderSchema>;
+
 
