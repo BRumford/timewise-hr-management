@@ -46,7 +46,10 @@ export const PERMISSIONS = {
   // Data security
   ENCRYPT_DATA: 'encrypt_data',
   EXPORT_DATA: 'export_data',
-  ARCHIVE_DATA: 'archive_data'
+  ARCHIVE_DATA: 'archive_data',
+  
+  // AI automation system
+  AI_AUTOMATION: 'ai_automation'
 };
 
 // Role permission mappings
@@ -59,12 +62,13 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.UPLOAD_DOCUMENTS
   ],
   admin: [
-    // All employee permissions plus admin-specific
+    // All employee permissions plus admin-specific (excluding system owner only permissions)
     ...Object.values(PERMISSIONS).filter(p => 
-      !p.includes('ENCRYPT_DATA') && !p.includes('SYSTEM_SETTINGS')
+      !p.includes('ENCRYPT_DATA') && !p.includes('SYSTEM_SETTINGS') && !p.includes('ai_automation')
     )
   ],
-  hr: Object.values(PERMISSIONS) // HR has all permissions
+  hr: Object.values(PERMISSIONS).filter(p => !p.includes('ai_automation')), // HR has all permissions except AI automation
+  system_owner: Object.values(PERMISSIONS) // System owners have all permissions including AI automation
 };
 
 // Enhanced authentication middleware

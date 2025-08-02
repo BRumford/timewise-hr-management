@@ -63,7 +63,7 @@ const mainMenuItems = [
   { path: "/letters", icon: Mail, label: "Letters", roles: ["hr", "payroll"] },
   { path: "/paf-management", icon: ClipboardList, label: "Personnel Action Forms", roles: ["hr", "payroll", "admin"] },
   { path: "/timecard-automation", icon: Clock, label: "Timecard Automation", roles: ["hr", "admin"] },
-  { path: "/ai-dashboard", icon: Bot, label: "AI Automation", roles: ["hr", "payroll", "admin"] },
+  { path: "/ai-dashboard", icon: Bot, label: "AI Automation", roles: ["system_owner"], systemOwnerOnly: true },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["hr", "payroll"] },
 ];
 
@@ -116,6 +116,14 @@ export default function Sidebar() {
 
   // Filter main menu items based on user role and permissions
   const visibleMainMenuItems = mainMenuItems.filter(item => {
+    // Special handling for system owner only items (AI automation)
+    if (item.systemOwnerOnly) {
+      // For demo user, only show in HR role. For others, require system owner status
+      if (user?.id === 'demo_user') {
+        return user?.role === 'hr' || user?.role === 'system_owner';
+      }
+      return user?.isSystemOwner || user?.role === 'system_owner';
+    }
     return hasAccess(item.path);
   }).map(item => {
     // Customize the time-cards label based on user role

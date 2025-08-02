@@ -209,6 +209,37 @@ const requireRole = (allowedRoles: string[]) => {
   };
 };
 
+// Special middleware for system owner only access (AI automation)
+const requireSystemOwner = (req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user;
+  
+  if (!user) {
+    return res.status(401).json({ 
+      message: 'Authentication required',
+      code: 'NOT_AUTHENTICATED' 
+    });
+  }
+
+  // Check if user is system owner or has AI automation permission
+  // For demo purposes, allow demo_user only when in hr role, otherwise require system_owner
+  if (user.id === 'demo_user') {
+    // Demo user can access AI features only in HR role for demonstration
+    if (user.role !== 'hr' && user.role !== 'system_owner') {
+      return res.status(403).json({ 
+        message: 'AI automation access restricted - HR role required for demo',
+        code: 'DEMO_HR_ONLY' 
+      });
+    }
+  } else if (!user.isSystemOwner && user.role !== 'system_owner') {
+    return res.status(403).json({ 
+      message: 'System owner access required',
+      code: 'SYSTEM_OWNER_ONLY' 
+    });
+  }
+
+  next();
+};
+
 // Middleware to check if user can only access their own employee record
 const requireSelfOrAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -6271,8 +6302,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Automation Routes
-  app.post('/api/ai/enhance-form', isAuthenticated, async (req, res) => {
+  // AI Automation Routes - Restricted to System Owners Only
+  app.post('/api/ai/enhance-form', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const { formType, employeeData, formData } = req.body;
       const user = (req as any).user;
@@ -6294,7 +6325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/automate-workflow', isAuthenticated, async (req, res) => {
+  app.post('/api/ai/automate-workflow', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const { documentType, formData } = req.body;
       const user = (req as any).user;
@@ -6314,7 +6345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/process-document', isAuthenticated, async (req, res) => {
+  app.post('/api/ai/process-document', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const { documentText, documentType } = req.body;
       const user = (req as any).user;
@@ -6334,7 +6365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/automate-onboarding', isAuthenticated, async (req, res) => {
+  app.post('/api/ai/automate-onboarding', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const { employeeType, department } = req.body;
       const user = (req as any).user;
@@ -6352,7 +6383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/analyze-payroll', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+  app.post('/api/ai/analyze-payroll', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const { payrollData } = req.body;
       const user = (req as any).user;
@@ -6370,7 +6401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/assign-substitute', isAuthenticated, async (req, res) => {
+  app.post('/api/ai/assign-substitute', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const { leaveRequest, availableSubstitutes } = req.body;
       const user = (req as any).user;
@@ -6392,7 +6423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/optimize-schedule', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+  app.post('/api/ai/optimize-schedule', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const { scheduleData, constraints, preferences } = req.body;
       const user = (req as any).user;
@@ -6415,7 +6446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/ai/status', isAuthenticated, async (req, res) => {
+  app.get('/api/ai/status', isAuthenticated, requireSystemOwner, async (req, res) => {
     try {
       const status = await aiAutomationService.getAISystemStatus();
       res.json(status);
