@@ -239,7 +239,7 @@ export class TimecardAutomationService {
               payPeriodStart,
               payPeriodEnd,
               status: 'draft',
-              entries: [],
+              entries: {} as any,
               customFieldsData: template.defaultFieldValues || {},
               submittedBy: 'system_automated'
             })
