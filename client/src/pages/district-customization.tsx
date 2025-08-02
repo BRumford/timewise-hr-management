@@ -274,7 +274,21 @@ export default function DistrictCustomization() {
                     </div>
                   </div>
                   <Button 
-                    onClick={() => setIsCreateDialogOpen(true)}
+                    onClick={() => {
+                      setEditingField({
+                        fieldName: '',
+                        displayLabel: '',
+                        fieldType: 'text',
+                        isRequired: false,
+                        isVisible: true,
+                        isEditable: true,
+                        category: categoryKey,
+                        section: 'main',
+                        displayOrder: (categoryFields?.length || 0) + 1,
+                        districtId: districtId
+                      } as CustomField);
+                      setIsCreateDialogOpen(true);
+                    }}
                     className="flex items-center gap-2"
                   >
                     <Plus className="h-4 w-4" />
