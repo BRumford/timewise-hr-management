@@ -332,14 +332,23 @@ export class TimecardAutomationService {
     count: number;
     employeeTypes: string[];
   }> {
-    const employeesSubquery = db
-      .select({ id: employees.id, employeeType: employees.employeeType })
-      .from(employees)
-      .where(and(
-        eq(employees.districtId, districtId),
-        eq(employees.status, 'active'),
-        employeeType ? eq(employees.employeeType, employeeType) : undefined
-      ).filter(Boolean));
+    // Build conditions array and filter out undefined values
+    const employeeConditions = [
+      eq(employees.districtId, districtId),
+      eq(employees.status, 'active')
+    ];
+    if (employeeType) {
+      employeeConditions.push(eq(employees.employeeType, employeeType));
+    }
+
+    const timecardConditions = [
+      eq(monthlyTimecards.month, month),
+      eq(monthlyTimecards.year, year),
+      eq(employees.districtId, districtId)
+    ];
+    if (employeeType) {
+      timecardConditions.push(eq(employees.employeeType, employeeType));
+    }
 
     const existingTimecards = await db
       .select({
@@ -348,12 +357,7 @@ export class TimecardAutomationService {
       })
       .from(monthlyTimecards)
       .innerJoin(employees, eq(employees.id, monthlyTimecards.employeeId))
-      .where(and(
-        eq(monthlyTimecards.month, month),
-        eq(monthlyTimecards.year, year),
-        eq(employees.districtId, districtId),
-        employeeType ? eq(employees.employeeType, employeeType) : undefined
-      ).filter(Boolean));
+      .where(and(...timecardConditions));
 
     const employeeTypes = await db
       .selectDistinct({ employeeType: employees.employeeType })
