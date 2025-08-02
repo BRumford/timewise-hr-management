@@ -37,7 +37,10 @@ import {
   insertSignatureTemplateSchema,
   payrollCalendarEvents,
   payrollReminders,
-  insertPayrollCalendarEventSchema
+  insertPayrollCalendarEventSchema,
+  customFieldLabels,
+  districtFormConfigurations,
+  globalFieldTemplates
 } from '@shared/schema';
 import { eq, and, desc, asc } from 'drizzle-orm';
 import { generateOnboardingChecklist } from './openai';
