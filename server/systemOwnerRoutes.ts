@@ -100,6 +100,17 @@ export function registerSystemOwnerRoutes(app: Express) {
     }
   });
 
+  // System owner status check
+  app.get('/api/system-owner/status', (req, res) => {
+    const session = req.session as any;
+    const isSystemOwner = !!(session.systemOwner && session.systemOwner.isSystemOwner);
+    
+    res.json({ 
+      isSystemOwner,
+      user: isSystemOwner ? session.systemOwner : null
+    });
+  });
+
   // Middleware to check system owner authentication
   const requireSystemOwner = (req: SystemOwnerRequest, res: Response, next: NextFunction) => {
     const session = req.session as any;
@@ -137,6 +148,46 @@ export function registerSystemOwnerRoutes(app: Express) {
     } catch (error) {
       console.error('Error fetching district:', error);
       res.status(500).json({ message: "Failed to fetch district" });
+    }
+  });
+
+  // Create new district (system owner only)
+  app.post('/api/system-owner/districts', requireSystemOwner, async (req: Request, res: Response) => {
+    const systemOwnerReq = req as SystemOwnerRequest;
+    try {
+      const { name, contactEmail, contactPhone, address, subscriptionTier, maxEmployees, maxAdmins } = req.body;
+      
+      if (!name || !contactEmail) {
+        return res.status(400).json({ message: "District name and contact email are required" });
+      }
+
+      // Create the district
+      const district = await storage.createDistrict({
+        name,
+        contactEmail,
+        contactPhone,
+        address,
+        subscriptionTier,
+        maxEmployees,
+        maxAdmins,
+        subscriptionStatus: 'trial',
+        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      });
+
+      // Log district creation
+      await storage.logSystemOwnerAccess({
+        systemOwnerId: systemOwnerReq.systemOwner.id,
+        districtId: district.id,
+        action: 'create_district',
+        details: { districtName: name, contactEmail },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      res.status(201).json(district);
+    } catch (error) {
+      console.error('Error creating district:', error);
+      res.status(500).json({ message: "Failed to create district" });
     }
   });
 

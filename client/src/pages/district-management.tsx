@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,12 @@ import {
   BarChart,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Shield,
+  Lock
 } from "lucide-react";
 import { z } from "zod";
+import { useLocation } from "wouter";
 
 const createDistrictSchema = z.object({
   name: z.string().min(1, "District name is required"),
@@ -37,22 +40,79 @@ const createDistrictSchema = z.object({
 
 type CreateDistrictForm = z.infer<typeof createDistrictSchema>;
 
+// System Owner Access Control Component
+function SystemOwnerGuard({ children }: { children: React.ReactNode }) {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const { data: systemOwnerStatus, isLoading: statusLoading, error } = useQuery({
+    queryKey: ["/api/system-owner/status"],
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!statusLoading && (error || !systemOwnerStatus?.isSystemOwner)) {
+      toast({
+        title: "Access Denied",
+        description: "District Management is restricted to system owners only.",
+        variant: "destructive",
+      });
+      setLocation("/");
+    }
+  }, [systemOwnerStatus, statusLoading, error, setLocation, toast]);
+
+  if (statusLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600">Verifying access permissions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !systemOwnerStatus?.isSystemOwner) {
+    return (
+      <Card className="max-w-md mx-auto mt-8">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+            <Lock className="h-8 w-8 text-red-600" />
+          </div>
+          <CardTitle className="text-red-600">Access Restricted</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <p className="text-gray-600">
+            District Management is only accessible to system owners. 
+            Individual school districts cannot access this page.
+          </p>
+          <Button onClick={() => setLocation("/")} variant="outline" className="w-full">
+            Return to Dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 export default function DistrictManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const { data: districts, isLoading } = useQuery({
-    queryKey: ["/api/districts"],
+    queryKey: ["/api/system-owner/districts"],
   });
 
   const createDistrictMutation = useMutation({
     mutationFn: async (data: CreateDistrictForm) => {
-      return await apiRequest("/api/districts", "POST", data);
+      return await apiRequest("/api/system-owner/districts", "POST", data);
     },
     onSuccess: () => {
       toast({ title: "District created successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/districts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/system-owner/districts"] });
       setShowCreateForm(false);
     },
     onError: (error) => {
@@ -106,14 +166,31 @@ export default function DistrictManagement() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">District Management</h1>
-        <Button onClick={() => setShowCreateForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add District
-        </Button>
-      </div>
+    <SystemOwnerGuard>
+      <div className="container mx-auto py-6 space-y-6">
+        {/* System Owner Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-lg mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">System Owner Dashboard</h1>
+              <p className="text-blue-100 text-sm">Master control panel for all school districts</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold">District Management</h2>
+            <p className="text-gray-600 mt-1">Manage school districts and their configurations - System Owner Access Only</p>
+          </div>
+          <Button onClick={() => setShowCreateForm(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add District
+          </Button>
+        </div>
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -368,6 +445,7 @@ export default function DistrictManagement() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </SystemOwnerGuard>
   );
 }
