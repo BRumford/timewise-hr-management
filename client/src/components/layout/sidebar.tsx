@@ -28,7 +28,8 @@ import {
   FileSpreadsheet,
   Building2,
   ClipboardList,
-  Palette
+  Palette,
+  Bot
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePermissions } from "@/hooks/useRolePermissions";
@@ -62,6 +63,7 @@ const mainMenuItems = [
   { path: "/letters", icon: Mail, label: "Letters", roles: ["hr", "payroll"] },
   { path: "/paf-management", icon: ClipboardList, label: "Personnel Action Forms", roles: ["hr", "payroll", "admin"] },
   { path: "/timecard-automation", icon: Clock, label: "Timecard Automation", roles: ["hr", "admin"] },
+  { path: "/ai-dashboard", icon: Bot, label: "AI Automation", roles: ["hr", "payroll", "admin"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["hr", "payroll"] },
 ];
 

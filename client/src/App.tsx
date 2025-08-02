@@ -45,6 +45,7 @@ import PafManagement from "@/pages/paf-management";
 import SystemOwnerPafOverview from "@/pages/system-owner-paf-overview";
 import TimecardAutomation from "@/pages/timecard-automation";
 import PayrollCalendar from "@/pages/payroll-calendar";
+import AIDashboard from "@/pages/ai-dashboard";
 
 import DistrictSetup from "@/pages/district-setup";
 import Sidebar from "@/components/layout/sidebar";
@@ -104,6 +105,7 @@ function Router() {
                 <Route path="/employee-access-management" component={EmployeeAccessManagement} />
                 <Route path="/district-management" component={DistrictManagement} />
                 <Route path="/data-isolation-demo" component={DataIsolationDemo} />
+                <Route path="/ai-dashboard" component={AIDashboard} />
                 <Route component={NotFound} />
               </Switch>
             </main>

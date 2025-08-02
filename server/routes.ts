@@ -52,6 +52,7 @@ import { registerMultiTenantRoutes } from './multiTenantRoutes';
 import { registerSystemOwnerRoutes } from './systemOwnerRoutes';
 import { registerPafRoutes } from './pafRoutes';
 import { timecardAutomationService } from './timecardAutomationService';
+import { aiAutomationService } from './aiAutomationService';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {
@@ -6267,6 +6268,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting payroll calendar event:', error);
       res.status(500).json({ message: 'Failed to delete payroll calendar event' });
+    }
+  });
+
+  // AI Automation Routes
+  app.post('/api/ai/enhance-form', isAuthenticated, async (req, res) => {
+    try {
+      const { formType, employeeData, formData } = req.body;
+      const user = (req as any).user;
+      
+      const context = {
+        userId: user.id,
+        districtId: user.districtId || 1,
+        formType,
+        employeeData,
+        formData,
+        districtPolicies: {} // TODO: Fetch from district settings
+      };
+      
+      const result = await aiAutomationService.enhanceFormExperience(context);
+      res.json(result);
+    } catch (error) {
+      console.error('AI form enhancement error:', error);
+      res.status(500).json({ message: 'AI form enhancement failed' });
+    }
+  });
+
+  app.post('/api/ai/automate-workflow', isAuthenticated, async (req, res) => {
+    try {
+      const { documentType, formData } = req.body;
+      const user = (req as any).user;
+      
+      const context = {
+        userId: user.id,
+        districtId: user.districtId || 1,
+        documentType,
+        formData
+      };
+      
+      const result = await aiAutomationService.automateWorkflowRouting(context);
+      res.json(result);
+    } catch (error) {
+      console.error('AI workflow automation error:', error);
+      res.status(500).json({ message: 'Workflow automation failed' });
+    }
+  });
+
+  app.post('/api/ai/process-document', isAuthenticated, async (req, res) => {
+    try {
+      const { documentText, documentType } = req.body;
+      const user = (req as any).user;
+      
+      const context = {
+        userId: user.id,
+        districtId: user.districtId || 1,
+        documentType,
+        districtPolicies: {} // TODO: Fetch from district settings
+      };
+      
+      const result = await aiAutomationService.processDocumentWithAI(documentText, documentType, context);
+      res.json(result);
+    } catch (error) {
+      console.error('AI document processing error:', error);
+      res.status(500).json({ message: 'Document processing failed' });
+    }
+  });
+
+  app.post('/api/ai/automate-onboarding', isAuthenticated, async (req, res) => {
+    try {
+      const { employeeType, department } = req.body;
+      const user = (req as any).user;
+      
+      const context = {
+        userId: user.id,
+        districtId: user.districtId || 1
+      };
+      
+      const result = await aiAutomationService.automateOnboarding(employeeType, department, context);
+      res.json(result);
+    } catch (error) {
+      console.error('AI onboarding automation error:', error);
+      res.status(500).json({ message: 'Onboarding automation failed' });
+    }
+  });
+
+  app.post('/api/ai/analyze-payroll', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { payrollData } = req.body;
+      const user = (req as any).user;
+      
+      const context = {
+        userId: user.id,
+        districtId: user.districtId || 1
+      };
+      
+      const result = await aiAutomationService.automatePayrollAnalysis(payrollData, context);
+      res.json(result);
+    } catch (error) {
+      console.error('AI payroll analysis error:', error);
+      res.status(500).json({ message: 'Payroll analysis failed' });
+    }
+  });
+
+  app.post('/api/ai/assign-substitute', isAuthenticated, async (req, res) => {
+    try {
+      const { leaveRequest, availableSubstitutes } = req.body;
+      const user = (req as any).user;
+      
+      const context = {
+        userId: user.id,
+        districtId: user.districtId || 1
+      };
+      
+      const result = await aiAutomationService.automateSubstituteAssignment(
+        leaveRequest, 
+        availableSubstitutes, 
+        context
+      );
+      res.json(result);
+    } catch (error) {
+      console.error('AI substitute assignment error:', error);
+      res.status(500).json({ message: 'Substitute assignment failed' });
+    }
+  });
+
+  app.post('/api/ai/optimize-schedule', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { scheduleData, constraints, preferences } = req.body;
+      const user = (req as any).user;
+      
+      const context = {
+        userId: user.id,
+        districtId: user.districtId || 1
+      };
+      
+      const result = await aiAutomationService.optimizeSchedules(
+        scheduleData, 
+        constraints, 
+        preferences, 
+        context
+      );
+      res.json(result);
+    } catch (error) {
+      console.error('AI schedule optimization error:', error);
+      res.status(500).json({ message: 'Schedule optimization failed' });
+    }
+  });
+
+  app.get('/api/ai/status', isAuthenticated, async (req, res) => {
+    try {
+      const status = await aiAutomationService.getAISystemStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('AI system status error:', error);
+      res.status(500).json({ message: 'Failed to get AI system status' });
     }
   });
 
