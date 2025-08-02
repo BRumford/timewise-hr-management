@@ -39,6 +39,7 @@ Preferred communication style: Simple, everyday language.
 - **Customization**: Dynamic custom fields, customizable field labels across modules, and manageable dropdown options.
 - **Timecard Management**: Comprehensive tracking with multi-step approval workflows, custom templates, locking mechanisms, and automated monthly generation with configurable pay dates. Includes monthly and substitute timecard types with payroll processing sections and export functionality.
 - **Payroll Processing**: Automated tax calculations, employee benefit elections, batch processing, and comprehensive reporting. Integrated payroll calendar for district-specific scheduling and reminders with automated notifications.
+- **Google Calendar-Style Payroll Calendar**: Dedicated payroll calendar page with interactive monthly grid view, event creation/editing, color-coded priority levels, event type filtering, and comprehensive event management for payroll scheduling and deadline tracking.
 - **Compliance Dashboard**: Tracks FERPA, HIPAA, and SOX compliance, with monitoring for backups, encryption, security audits, and disaster recovery.
 - **Security Infrastructure**: Enterprise-grade security with real-time audit logging, threat detection, MFA support, secure file uploads, data encryption (AES-256), and security settings management.
 - **System Monitoring**: Comprehensive system monitoring and error alerting infrastructure.
