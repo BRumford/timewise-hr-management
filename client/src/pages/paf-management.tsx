@@ -13,7 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, CheckCircle, Clock, FileText, User, Search, Send, Eye, Plus, Building, Calendar, Settings, ArrowRight, XCircle, RotateCcw, Workflow, Edit, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, FileText, User, Search, Send, Eye, Plus, Building, Calendar, Settings, ArrowRight, XCircle, RotateCcw, Workflow, Edit, Trash2, History } from "lucide-react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -1648,6 +1649,15 @@ export default function PafManagement() {
                             <Eye className="h-3 w-3 mr-1" />
                             View
                           </Button>
+                          <Link href={`/paf/${submission.id}/timeline`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                            >
+                              <History className="h-3 w-3 mr-1" />
+                              Timeline
+                            </Button>
+                          </Link>
                           {submission.status !== "draft" && (
                             <Button
                               size="sm"
