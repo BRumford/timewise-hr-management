@@ -24,8 +24,8 @@ const payDateConfigSchema = z.object({
   configurationName: z.string().min(1, "Configuration name is required"),
   payScheduleType: z.string().min(1, "Pay schedule type is required"),
   employeeTypes: z.array(z.string()).min(1, "At least one employee type is required"),
-  fiscalYearStart: z.string().min(1, "Fiscal year start is required"),
-  fiscalYearEnd: z.string().min(1, "Fiscal year end is required"),
+  fiscalYearStart: z.string().min(1, "Monthly start date is required"),
+  fiscalYearEnd: z.string().min(1, "Monthly end date is required"),
   payDates: z.array(z.object({
     date: z.string(),
     payPeriodStart: z.string(),
@@ -318,7 +318,7 @@ export default function TimecardAutomation() {
                       name="fiscalYearStart"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Fiscal Year Start</FormLabel>
+                          <FormLabel>Monthly Start Date</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -332,7 +332,7 @@ export default function TimecardAutomation() {
                       name="fiscalYearEnd"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Fiscal Year End</FormLabel>
+                          <FormLabel>Monthly End Date</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -597,7 +597,7 @@ export default function TimecardAutomation() {
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="font-medium">Fiscal Year:</span> {config.fiscalYearStart} to {config.fiscalYearEnd}
+                          <span className="font-medium">Period:</span> {config.fiscalYearStart} to {config.fiscalYearEnd}
                         </div>
                         <div>
                           <span className="font-medium">Employee Types:</span> {config.employeeTypes?.join(', ') || 'All'}
