@@ -43,6 +43,7 @@ import WorkflowManagement from "@/pages/workflow-management";
 import PafManagement from "@/pages/paf-management";
 import SystemOwnerPafOverview from "@/pages/system-owner-paf-overview";
 import TimecardAutomation from "@/pages/timecard-automation";
+import PayrollCalendar from "@/pages/payroll-calendar";
 
 import DistrictSetup from "@/pages/district-setup";
 import Sidebar from "@/components/layout/sidebar";
@@ -88,6 +89,7 @@ function Router() {
                 <Route path="/letters" component={Letters} />
                 <Route path="/reports" component={Reports} />
                 <Route path="/settings" component={Settings} />
+                <Route path="/payroll-calendar" component={PayrollCalendar} />
                 <Route path="/field-labels" component={FieldLabels} />
                 <Route path="/retirees" component={Retirees} />
                 <Route path="/archived-employees" component={ArchivedEmployees} />

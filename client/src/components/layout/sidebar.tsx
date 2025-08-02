@@ -54,6 +54,7 @@ const mainMenuItems = [
   { path: "/monthly-timecard", icon: Calendar, label: "Monthly Timecard", roles: ["hr", "payroll"] },
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards", roles: ["hr", "payroll"] },
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["hr", "payroll"] },
+  { path: "/payroll-calendar", icon: Calendar, label: "Payroll Calendar", roles: ["hr", "payroll"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["hr", "payroll"] },
 
   // Shared features (HR and Payroll have full access)
