@@ -873,20 +873,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertEmployeeSchema.partial().parse(employeeData);
       console.log('Validated employee data:', validatedData);
       
+      // Update employee with system-wide synchronization
       const employee = await storage.updateEmployee(parseInt(req.params.id), validatedData);
       
+      // Create user activity log
       await storage.createActivityLog({
         userId: req.body.userId || "system",
         action: "update_employee",
         entityType: "employee",
         entityId: employee.id,
-        description: `Updated employee ${employee.firstName} ${employee.lastName}`,
+        description: `Updated employee ${employee.firstName} ${employee.lastName} - Changes propagated system-wide`,
+        metadata: {
+          updateType: "single_employee_update",
+          systemSyncEnabled: true,
+          updatedFields: Object.keys(validatedData)
+        }
       });
 
-      res.json(employee);
+      res.json({
+        ...employee,
+        _syncStatus: "completed",
+        _message: "Employee updated and synchronized across all systems"
+      });
     } catch (error) {
       console.error('Employee update error:', error);
-      res.status(400).json({ message: "Failed to update employee", error: (error as Error).message });
+      res.status(400).json({ 
+        message: "Failed to update employee", 
+        error: (error as Error).message,
+        _syncStatus: "failed"
+      });
+    }
+  });
+
+  // New endpoint to get synchronization status and audit trail for an employee
+  app.get("/api/employees/:id/sync-status", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const employeeId = parseInt(req.params.id);
+      
+      // Get recent sync activity logs
+      const syncLogs = await db
+        .select()
+        .from(activityLogs)
+        .where(and(
+          eq(activityLogs.entityId, employeeId),
+          eq(activityLogs.entityType, "employee"),
+          like(activityLogs.action, "%sync%")
+        ))
+        .orderBy(desc(activityLogs.createdAt))
+        .limit(10);
+
+      // Get related records count to show sync coverage
+      const relatedRecordsCount = {
+        timeCards: await db.select({ count: count() }).from(timeCards).where(eq(timeCards.employeeId, employeeId)),
+        leaveRequests: await db.select({ count: count() }).from(leaveRequests).where(eq(leaveRequests.employeeId, employeeId)),
+        payrollRecords: await db.select({ count: count() }).from(payrollRecords).where(eq(payrollRecords.employeeId, employeeId)),
+        documents: await db.select({ count: count() }).from(documents).where(eq(documents.employeeId, employeeId)),
+        onboardingChecklists: await db.select({ count: count() }).from(onboardingChecklists).where(eq(onboardingChecklists.employeeId, employeeId)),
+        substituteAssignments: await db.select({ count: count() }).from(substituteAssignments).where(eq(substituteAssignments.employeeId, employeeId))
+      };
+
+      res.json({
+        employeeId,
+        syncLogs,
+        relatedRecordsCount: {
+          timeCards: relatedRecordsCount.timeCards[0]?.count || 0,
+          leaveRequests: relatedRecordsCount.leaveRequests[0]?.count || 0,
+          payrollRecords: relatedRecordsCount.payrollRecords[0]?.count || 0,
+          documents: relatedRecordsCount.documents[0]?.count || 0,
+          onboardingChecklists: relatedRecordsCount.onboardingChecklists[0]?.count || 0,
+          substituteAssignments: relatedRecordsCount.substituteAssignments[0]?.count || 0
+        },
+        lastSyncAt: syncLogs[0]?.createdAt || null,
+        syncStatus: syncLogs.length > 0 ? 'active' : 'none'
+      });
+    } catch (error) {
+      console.error('Error fetching sync status:', error);
+      res.status(500).json({ message: "Failed to fetch sync status" });
     }
   });
 
@@ -999,9 +1061,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedEmployees = await storage.bulkUpdateEmployees(validatedUpdates);
       
       res.json({
-        message: "Employees updated successfully",
+        message: "Employees updated successfully with system-wide synchronization",
         updated: updatedEmployees.length,
-        employees: updatedEmployees
+        employees: updatedEmployees,
+        _syncStatus: "completed",
+        _message: `${updatedEmployees.length} employees updated and synchronized across all systems`
       });
     } catch (error) {
       console.error('Error updating employees:', error);

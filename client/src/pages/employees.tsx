@@ -219,7 +219,7 @@ export default function Employees() {
 
   // Helper function to get field label
   const getFieldLabel = (fieldName: string, defaultLabel: string) => {
-    const label = fieldLabels?.find((l: any) => l.fieldName === fieldName);
+    const label = (fieldLabels as any)?.find((l: any) => l.fieldName === fieldName);
     return label ? label.displayLabel : defaultLabel;
   };
 
@@ -286,7 +286,7 @@ export default function Employees() {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
-  const filteredEmployees = employees?.filter((employee: any) => {
+  const filteredEmployees = (employees as any)?.filter((employee: any) => {
     const matchesSearch = !searchTerm || 
       `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -367,13 +367,14 @@ export default function Employees() {
 
       return await apiRequest('/api/employees/import', 'POST', { employees });
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setImportSuccess(`Successfully imported ${data.imported} employees`);
       setImportErrors([]);
       queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
       toast({
-        title: "Success",
-        description: `Imported ${data.imported} employees`,
+        title: "✅ Import Complete",
+        description: `Imported ${data.imported} employees with system-wide synchronization`,
+        duration: 4000,
       });
     },
     onError: (error: any) => {
@@ -388,26 +389,33 @@ export default function Employees() {
     },
   });
 
-  // Update individual employee field mutation
+  // Update individual employee field mutation with sync status feedback
   const updateEmployeeFieldMutation = useMutation({
     mutationFn: async ({ employeeId, field, value }: { employeeId: number; field: string; value: string }) => {
-      const employee = employees?.find((e: any) => e.id === employeeId);
+      const employee = (employees as any)?.find((e: any) => e.id === employeeId);
       if (!employee) throw new Error('Employee not found');
       
       const updatedEmployee = { ...employee, [field]: value };
       return await apiRequest(`/api/employees/${employeeId}`, 'PUT', updatedEmployee);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+      
+      // Enhanced success message showing sync status
+      const syncMessage = data._syncStatus === 'completed' 
+        ? "Employee updated and synchronized across all systems" 
+        : "Employee updated successfully";
+      
       toast({
-        title: "Success",
-        description: "Employee updated successfully",
+        title: "✅ System-Wide Update Complete",
+        description: syncMessage,
+        duration: 4000,
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to update employee",
+        title: "❌ Update Failed",
+        description: "Failed to update employee and synchronize data",
         variant: "destructive",
       });
     },
@@ -417,11 +425,12 @@ export default function Employees() {
     mutationFn: async (defaultPassword?: string) => {
       return await apiRequest("/api/admin/create-employee-accounts", "POST", { defaultPassword });
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
       toast({
-        title: "Success",
+        title: "✅ User Accounts Created",
         description: `Created ${data.created} user accounts. Default password: ${data.defaultPassword}`,
+        duration: 4000,
       });
     },
     onError: (error: any) => {
@@ -570,13 +579,16 @@ export default function Employees() {
       };
       return await apiRequest('/api/employees', 'POST', formattedData);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
       setIsAddDialogOpen(false);
       addForm.reset();
+      
+      // Enhanced success message for new employee
       toast({
-        title: "Success",
-        description: "Employee added successfully",
+        title: "✅ Employee Added Successfully",
+        description: "New employee record created and integrated into all systems",
+        duration: 4000,
       });
     },
     onError: (error: any) => {

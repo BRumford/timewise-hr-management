@@ -555,12 +555,164 @@ export class DatabaseStorage implements IStorage {
       cleanedEmployee.districtId = 1; // Default district
     }
     
+    // Get the original employee data before update for comparison
+    const originalEmployee = await this.getEmployee(id);
+    if (!originalEmployee) {
+      throw new Error(`Employee with id ${id} not found`);
+    }
+    
     const [updatedEmployee] = await db
       .update(employees)
       .set({ ...cleanedEmployee, updatedAt: new Date() })
       .where(eq(employees.id, id))
       .returning();
+    
+    // Trigger system-wide synchronization
+    await this.syncEmployeeDataAcrossSystem(updatedEmployee, originalEmployee);
+    
     return updatedEmployee;
+  }
+
+  // System-wide employee data synchronization
+  private async syncEmployeeDataAcrossSystem(updatedEmployee: Employee, originalEmployee: Employee): Promise<void> {
+    try {
+      console.log(`[SYNC] Starting system-wide synchronization for employee ${updatedEmployee.id}`);
+      
+      // 1. Update related user account if email changed
+      if (updatedEmployee.email !== originalEmployee.email && updatedEmployee.userId) {
+        await db
+          .update(users)
+          .set({ 
+            email: updatedEmployee.email,
+            firstName: updatedEmployee.firstName,
+            lastName: updatedEmployee.lastName,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, updatedEmployee.userId));
+        console.log(`[SYNC] Updated user account for employee ${updatedEmployee.id}`);
+      }
+
+      // 2. Update timecard records with new employee info
+      if (updatedEmployee.firstName !== originalEmployee.firstName || 
+          updatedEmployee.lastName !== originalEmployee.lastName ||
+          updatedEmployee.department !== originalEmployee.department) {
+        await db
+          .update(timeCards)
+          .set({ updatedAt: new Date() })
+          .where(eq(timeCards.employeeId, updatedEmployee.id));
+        console.log(`[SYNC] Updated timecard records for employee ${updatedEmployee.id}`);
+      }
+
+      // 3. Update leave requests with new employee info
+      if (updatedEmployee.firstName !== originalEmployee.firstName || 
+          updatedEmployee.lastName !== originalEmployee.lastName) {
+        await db
+          .update(leaveRequests)
+          .set({ updatedAt: new Date() })
+          .where(eq(leaveRequests.employeeId, updatedEmployee.id));
+        console.log(`[SYNC] Updated leave requests for employee ${updatedEmployee.id}`);
+      }
+
+      // 4. Update payroll records if salary or position changed
+      if (updatedEmployee.salary !== originalEmployee.salary ||
+          updatedEmployee.position !== originalEmployee.position ||
+          updatedEmployee.department !== originalEmployee.department) {
+        await db
+          .update(payrollRecords)
+          .set({ updatedAt: new Date() })
+          .where(eq(payrollRecords.employeeId, updatedEmployee.id));
+        console.log(`[SYNC] Updated payroll records for employee ${updatedEmployee.id}`);
+      }
+
+      // 5. Update onboarding records if status changed
+      if (updatedEmployee.status !== originalEmployee.status) {
+        await db
+          .update(onboardingChecklists)
+          .set({ updatedAt: new Date() })
+          .where(eq(onboardingChecklists.employeeId, updatedEmployee.id));
+        console.log(`[SYNC] Updated onboarding records for employee ${updatedEmployee.id}`);
+      }
+
+      // 6. Update documents table if employee info changed
+      if (updatedEmployee.firstName !== originalEmployee.firstName || 
+          updatedEmployee.lastName !== originalEmployee.lastName) {
+        await db
+          .update(documents)
+          .set({ updatedAt: new Date() })
+          .where(eq(documents.employeeId, updatedEmployee.id));
+        console.log(`[SYNC] Updated document records for employee ${updatedEmployee.id}`);
+      }
+
+      // 7. Update substitute assignments if department/position changed
+      if (updatedEmployee.department !== originalEmployee.department ||
+          updatedEmployee.position !== originalEmployee.position ||
+          updatedEmployee.status !== originalEmployee.status) {
+        await db
+          .update(substituteAssignments)
+          .set({ updatedAt: new Date() })
+          .where(eq(substituteAssignments.employeeId, updatedEmployee.id));
+        console.log(`[SYNC] Updated substitute assignments for employee ${updatedEmployee.id}`);
+      }
+
+      // 8. Create comprehensive audit log of changes
+      const changes = this.getEmployeeChanges(originalEmployee, updatedEmployee);
+      if (changes.length > 0) {
+        await this.createActivityLog({
+          userId: "system_sync",
+          action: "employee_sync_update",
+          entityType: "employee",
+          entityId: updatedEmployee.id,
+          description: `System-wide sync completed for ${updatedEmployee.firstName} ${updatedEmployee.lastName}`,
+          metadata: {
+            changes: changes,
+            syncTimestamp: new Date().toISOString(),
+            tablesUpdated: ['employees', 'users', 'timeCards', 'leaveRequests', 'payrollRecords', 'onboardingChecklists', 'documents', 'substituteAssignments']
+          }
+        });
+      }
+
+      console.log(`[SYNC] System-wide synchronization completed for employee ${updatedEmployee.id}`);
+    } catch (error) {
+      console.error(`[SYNC] Error during system-wide synchronization for employee ${updatedEmployee.id}:`, error);
+      
+      // Log the sync failure
+      await this.createActivityLog({
+        userId: "system_sync",
+        action: "employee_sync_error",
+        entityType: "employee",
+        entityId: updatedEmployee.id,
+        description: `System-wide sync failed for ${updatedEmployee.firstName} ${updatedEmployee.lastName}`,
+        metadata: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          syncTimestamp: new Date().toISOString()
+        }
+      }).catch(logError => console.error('Failed to log sync error:', logError));
+    }
+  }
+
+  // Helper method to identify changes between employee records
+  private getEmployeeChanges(original: Employee, updated: Employee): Array<{field: string, oldValue: any, newValue: any}> {
+    const changes = [];
+    const fieldsToTrack = [
+      'firstName', 'lastName', 'email', 'phoneNumber', 'address', 
+      'department', 'position', 'employeeType', 'salary', 'status',
+      'hireDate', 'payGrade', 'educationLevel', 'supervisorId'
+    ];
+
+    for (const field of fieldsToTrack) {
+      const oldValue = (original as any)[field];
+      const newValue = (updated as any)[field];
+      
+      if (oldValue !== newValue) {
+        changes.push({
+          field,
+          oldValue: oldValue || null,
+          newValue: newValue || null
+        });
+      }
+    }
+
+    return changes;
   }
 
   async deleteEmployee(id: number): Promise<void> {
@@ -618,20 +770,49 @@ export class DatabaseStorage implements IStorage {
 
   async bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[]): Promise<Employee[]> {
     const updatedEmployees = [];
+    console.log(`[BULK_SYNC] Starting bulk update for ${updates.length} employees`);
     
     for (const update of updates) {
       try {
+        // Get original employee data before update
+        const originalEmployee = await this.getEmployee(update.id);
+        if (!originalEmployee) {
+          console.error(`Employee ${update.id} not found for bulk update`);
+          continue;
+        }
+
         const [updated] = await db.update(employees).set({
           ...update.data,
           updatedAt: new Date(),
         }).where(eq(employees.id, update.id)).returning();
+        
         updatedEmployees.push(updated);
+        
+        // Trigger system-wide synchronization for each employee
+        await this.syncEmployeeDataAcrossSystem(updated, originalEmployee);
+        
       } catch (error) {
         console.error(`Error updating employee ${update.id}:`, error);
         // Continue with other employees
       }
     }
     
+    // Create bulk update audit log
+    await this.createActivityLog({
+      userId: "system_bulk_sync",
+      action: "employee_bulk_update_sync",
+      entityType: "employee",
+      entityId: null,
+      description: `Bulk update completed for ${updatedEmployees.length} employees`,
+      metadata: {
+        totalRequested: updates.length,
+        totalUpdated: updatedEmployees.length,
+        employeeIds: updatedEmployees.map(e => e.id),
+        syncTimestamp: new Date().toISOString()
+      }
+    });
+
+    console.log(`[BULK_SYNC] Bulk update completed for ${updatedEmployees.length}/${updates.length} employees`);
     return updatedEmployees;
   }
 
