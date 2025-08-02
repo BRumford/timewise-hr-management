@@ -805,6 +805,66 @@ export const timecardTemplateFields = pgTable("timecard_template_fields", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Pay Date Configurations - for districts to set up specific pay dates and schedules
+export const payDateConfigurations = pgTable("pay_date_configurations", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
+  configurationName: varchar("configuration_name", { length: 150 }).notNull(),
+  payScheduleType: varchar("pay_schedule_type", { length: 30 }).notNull(), // monthly, bi-weekly, weekly, semi-monthly
+  employeeTypes: jsonb("employee_types").default([]), // ['certificated', 'classified', 'substitute']
+  payDates: jsonb("pay_dates").notNull(), // Array of specific pay dates for the year
+  fiscalYearStart: date("fiscal_year_start").notNull(),
+  fiscalYearEnd: date("fiscal_year_end").notNull(),
+  timecardGenerationSettings: jsonb("timecard_generation_settings").default({}), // Auto-generation rules and timing
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false),
+  createdBy: varchar("created_by").notNull(),
+  lastModifiedBy: varchar("last_modified_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Automated Timecard Generation Jobs - tracks automated generation of timecards
+export const timecardGenerationJobs = pgTable("timecard_generation_jobs", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
+  payDateConfigurationId: integer("pay_date_configuration_id").references(() => payDateConfigurations.id).notNull(),
+  jobType: varchar("job_type", { length: 30 }).notNull(), // monthly_timecards, substitute_timecards, pay_period_setup
+  targetMonth: integer("target_month").notNull(),
+  targetYear: integer("target_year").notNull(),
+  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, running, completed, failed, cancelled
+  employeeCount: integer("employee_count").default(0),
+  timecardsGenerated: integer("timecards_generated").default(0),
+  errorCount: integer("error_count").default(0),
+  processingLog: jsonb("processing_log").default([]), // Detailed processing information
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  errorDetails: text("error_details"),
+  scheduledFor: timestamp("scheduled_for"), // When the job should run
+  triggeredBy: varchar("triggered_by").notNull(), // User who triggered the generation
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Timecard Generation Templates - defines how timecards should be auto-generated
+export const timecardGenerationTemplates = pgTable("timecard_generation_templates", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
+  templateName: varchar("template_name", { length: 150 }).notNull(),
+  employeeType: varchar("employee_type", { length: 50 }).notNull(), // certificated, classified, substitute
+  timecardTemplateId: integer("timecard_template_id").references(() => timecardTemplates.id).notNull(),
+  autoGenerationEnabled: boolean("auto_generation_enabled").default(true),
+  generationRules: jsonb("generation_rules").default({}), // Rules for when and how to generate
+  defaultFieldValues: jsonb("default_field_values").default({}), // Pre-fill values for generated timecards
+  generateDaysInAdvance: integer("generate_days_in_advance").default(30), // How many days before pay period to generate
+  notificationSettings: jsonb("notification_settings").default({}), // Email/alert settings
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").notNull(),
+  lastModifiedBy: varchar("last_modified_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Custom workflows for districts - managed by system owner
 export const districtWorkflows = pgTable("district_workflows", {
   id: serial("id").primaryKey(),
@@ -1353,6 +1413,13 @@ export type InsertArchivedEmployee = z.infer<typeof insertArchivedEmployeeSchema
 export type ArchivedEmployee = typeof archivedEmployees.$inferSelect;
 export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
 export type PersonnelFile = typeof personnelFiles.$inferSelect;
+
+export type PayDateConfiguration = typeof payDateConfigurations.$inferSelect;
+export type InsertPayDateConfiguration = typeof payDateConfigurations.$inferInsert;
+export type TimecardGenerationJob = typeof timecardGenerationJobs.$inferSelect;
+export type InsertTimecardGenerationJob = typeof timecardGenerationJobs.$inferInsert;
+export type TimecardGenerationTemplate = typeof timecardGenerationTemplates.$inferSelect;
+export type InsertTimecardGenerationTemplate = typeof timecardGenerationTemplates.$inferInsert;
 
 // Update the existing audit logs table to match the new security requirements
 export const auditLogs = pgTable("audit_logs", {

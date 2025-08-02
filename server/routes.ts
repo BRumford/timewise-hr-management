@@ -45,6 +45,7 @@ import { getDistrictAuth } from './districtAuth';
 import { registerMultiTenantRoutes } from './multiTenantRoutes';
 import { registerSystemOwnerRoutes } from './systemOwnerRoutes';
 import { registerPafRoutes } from './pafRoutes';
+import { timecardAutomationService } from './timecardAutomationService';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {
@@ -5726,6 +5727,271 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register PAF routes
   registerPafRoutes(app);
+
+  // Timecard Automation Routes
+  
+  // Pay Date Configuration Management
+  app.get("/api/pay-date-configurations", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const districtId = 1; // Current district context
+      const configurations = await timecardAutomationService.getPayDateConfigurations(districtId);
+      res.json(configurations);
+    } catch (error) {
+      console.error('Error fetching pay date configurations:', error);
+      res.status(500).json({ message: "Failed to fetch pay date configurations" });
+    }
+  });
+
+  app.post("/api/pay-date-configurations", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const configData = req.body;
+      configData.districtId = 1; // Current district context
+      configData.createdBy = req.user?.id || 'system';
+      
+      const configuration = await timecardAutomationService.createPayDateConfiguration(configData);
+      
+      await storage.createActivityLog({
+        userId: req.user?.id || "system",
+        action: "create_pay_date_configuration",
+        entityType: "pay_date_configuration",
+        entityId: configuration.id,
+        description: `Created pay date configuration: ${configuration.configurationName}`,
+      });
+
+      res.status(201).json(configuration);
+    } catch (error) {
+      console.error('Error creating pay date configuration:', error);
+      res.status(400).json({ message: "Failed to create pay date configuration" });
+    }
+  });
+
+  app.put("/api/pay-date-configurations/:id", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      updates.lastModifiedBy = req.user?.id || 'system';
+      
+      const configuration = await timecardAutomationService.updatePayDateConfiguration(id, updates);
+      
+      await storage.createActivityLog({
+        userId: req.user?.id || "system",
+        action: "update_pay_date_configuration",
+        entityType: "pay_date_configuration",
+        entityId: configuration.id,
+        description: `Updated pay date configuration: ${configuration.configurationName}`,
+      });
+
+      res.json(configuration);
+    } catch (error) {
+      console.error('Error updating pay date configuration:', error);
+      res.status(400).json({ message: "Failed to update pay date configuration" });
+    }
+  });
+
+  app.delete("/api/pay-date-configurations/:id", requireRole(['admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await timecardAutomationService.deletePayDateConfiguration(id);
+      
+      await storage.createActivityLog({
+        userId: req.user?.id || "system",
+        action: "delete_pay_date_configuration",
+        entityType: "pay_date_configuration",
+        entityId: id,
+        description: `Deleted pay date configuration`,
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting pay date configuration:', error);
+      res.status(500).json({ message: "Failed to delete pay date configuration" });
+    }
+  });
+
+  // Timecard Generation Templates
+  app.get("/api/timecard-generation-templates", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const districtId = 1; // Current district context
+      const templates = await timecardAutomationService.getGenerationTemplates(districtId);
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching generation templates:', error);
+      res.status(500).json({ message: "Failed to fetch generation templates" });
+    }
+  });
+
+  app.post("/api/timecard-generation-templates", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const templateData = req.body;
+      templateData.districtId = 1; // Current district context
+      templateData.createdBy = req.user?.id || 'system';
+      
+      const template = await timecardAutomationService.createGenerationTemplate(templateData);
+      
+      await storage.createActivityLog({
+        userId: req.user?.id || "system",
+        action: "create_generation_template",
+        entityType: "generation_template",
+        entityId: template.id,
+        description: `Created timecard generation template: ${template.templateName}`,
+      });
+
+      res.status(201).json(template);
+    } catch (error) {
+      console.error('Error creating generation template:', error);
+      res.status(400).json({ message: "Failed to create generation template" });
+    }
+  });
+
+  // Automated Timecard Generation
+  app.post("/api/generate-monthly-timecards", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { month, year, employeeTypes } = req.body;
+      const districtId = 1; // Current district context
+      const triggeredBy = req.user?.id || 'system';
+
+      // Check if timecards already exist
+      const existingCheck = await timecardAutomationService.checkTimecardsExist(districtId, month, year);
+      
+      if (existingCheck.exists) {
+        return res.status(400).json({ 
+          message: `Timecards already exist for ${month}/${year}`, 
+          existingCount: existingCheck.count,
+          details: existingCheck
+        });
+      }
+
+      const result = await timecardAutomationService.generateMonthlyTimecards(
+        districtId, 
+        month, 
+        year, 
+        triggeredBy,
+        employeeTypes
+      );
+
+      await storage.createActivityLog({
+        userId: triggeredBy,
+        action: "generate_monthly_timecards",
+        entityType: "timecard_generation",
+        entityId: null,
+        description: `Generated ${result.timecardsGenerated} monthly timecards for ${month}/${year}`,
+        metadata: {
+          month,
+          year,
+          employeeTypes,
+          result
+        }
+      });
+
+      res.json({
+        message: "Monthly timecards generation completed",
+        ...result
+      });
+    } catch (error) {
+      console.error('Error generating monthly timecards:', error);
+      res.status(500).json({ message: "Failed to generate monthly timecards", error: (error as Error).message });
+    }
+  });
+
+  // Bulk generation for multiple months
+  app.post("/api/generate-bulk-timecards", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const { startMonth, startYear, endMonth, endYear, employeeTypes } = req.body;
+      const districtId = 1; // Current district context
+      const triggeredBy = req.user?.id || 'system';
+
+      const results = await timecardAutomationService.bulkGenerateTimecards(
+        districtId,
+        startMonth,
+        startYear,
+        endMonth,
+        endYear,
+        triggeredBy,
+        employeeTypes
+      );
+
+      const totalGenerated = results.reduce((sum, r) => sum + r.timecardsGenerated, 0);
+      const totalErrors = results.reduce((sum, r) => sum + r.errorCount, 0);
+
+      await storage.createActivityLog({
+        userId: triggeredBy,
+        action: "generate_bulk_timecards",
+        entityType: "timecard_generation",
+        entityId: null,
+        description: `Bulk generated ${totalGenerated} timecards from ${startMonth}/${startYear} to ${endMonth}/${endYear}`,
+        metadata: {
+          startMonth,
+          startYear,
+          endMonth,
+          endYear,
+          employeeTypes,
+          totalGenerated,
+          totalErrors,
+          results
+        }
+      });
+
+      res.json({
+        message: "Bulk timecard generation completed",
+        totalGenerated,
+        totalErrors,
+        results
+      });
+    } catch (error) {
+      console.error('Error generating bulk timecards:', error);
+      res.status(500).json({ message: "Failed to generate bulk timecards", error: (error as Error).message });
+    }
+  });
+
+  // Check timecard existence
+  app.get("/api/timecards-status/:month/:year", requireRole(['admin', 'hr', 'secretary']), async (req, res) => {
+    try {
+      const month = parseInt(req.params.month);
+      const year = parseInt(req.params.year);
+      const { employeeType } = req.query;
+      const districtId = 1; // Current district context
+
+      const status = await timecardAutomationService.checkTimecardsExist(
+        districtId, 
+        month, 
+        year, 
+        employeeType as string
+      );
+
+      res.json(status);
+    } catch (error) {
+      console.error('Error checking timecard status:', error);
+      res.status(500).json({ message: "Failed to check timecard status" });
+    }
+  });
+
+  // Get generation job history
+  app.get("/api/timecard-generation-jobs", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const districtId = 1; // Current district context
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const jobs = await timecardAutomationService.getGenerationJobs(districtId, limit);
+      res.json(jobs);
+    } catch (error) {
+      console.error('Error fetching generation jobs:', error);
+      res.status(500).json({ message: "Failed to fetch generation jobs" });
+    }
+  });
+
+  // Generate pay schedule
+  app.get("/api/pay-schedule/:configId/:year", requireRole(['admin', 'hr']), async (req, res) => {
+    try {
+      const configId = parseInt(req.params.configId);
+      const year = parseInt(req.params.year);
+      
+      const schedule = await timecardAutomationService.generatePaySchedule(configId, year);
+      res.json(schedule);
+    } catch (error) {
+      console.error('Error generating pay schedule:', error);
+      res.status(500).json({ message: "Failed to generate pay schedule" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

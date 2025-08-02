@@ -42,6 +42,7 @@ import SystemOwnerDashboard from "@/pages/system-owner-dashboard";
 import WorkflowManagement from "@/pages/workflow-management";
 import PafManagement from "@/pages/paf-management";
 import SystemOwnerPafOverview from "@/pages/system-owner-paf-overview";
+import TimecardAutomation from "@/pages/timecard-automation";
 
 import DistrictSetup from "@/pages/district-setup";
 import Sidebar from "@/components/layout/sidebar";
@@ -78,6 +79,7 @@ function Router() {
                 <Route path="/monthly-timecard" component={MonthlyTimecard} />
                 <Route path="/substitute-time-cards" component={SubstituteTimeCards} />
                 <Route path="/timecard-templates" component={TimecardTemplates} />
+                <Route path="/timecard-automation" component={TimecardAutomation} />
                 <Route path="/payroll" component={Payroll} />
                 <Route path="/payroll-settings" component={PayrollSettings} />
                 <Route path="/documents" component={Documents} />

@@ -59,6 +59,7 @@ const mainMenuItems = [
   // Shared features (HR and Payroll have full access)
   { path: "/letters", icon: Mail, label: "Letters", roles: ["hr", "payroll"] },
   { path: "/paf-management", icon: ClipboardList, label: "Personnel Action Forms", roles: ["hr", "payroll", "admin"] },
+  { path: "/timecard-automation", icon: Clock, label: "Timecard Automation", roles: ["hr", "admin"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["hr", "payroll"] },
 ];
 
