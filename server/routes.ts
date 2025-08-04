@@ -1020,6 +1020,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Employees must be an array" });
       }
 
+      // Get district context from user session or default to demo district
+      const user = (req as any).user;
+      let districtId = user?.districtId || 1; // Default to district 1 if not specified
+      
+      // For demo users, use district 1
+      if (user?.id === 'demo_user') {
+        districtId = 1;
+      }
+
       // Validate each employee record
       const validatedEmployees = [];
       const errors = [];
@@ -1027,8 +1036,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let i = 0; i < employees.length; i++) {
         const employeeData = employees[i];
         
+        // Add district context to employee data
+        const employeeWithDistrict = {
+          ...employeeData,
+          districtId: districtId,
+        };
+        
         // Validate the data using the import schema that handles string dates
-        const validation = employeeImportSchema.safeParse(employeeData);
+        const validation = employeeImportSchema.safeParse(employeeWithDistrict);
         if (!validation.success) {
           errors.push({
             row: i + 1,
