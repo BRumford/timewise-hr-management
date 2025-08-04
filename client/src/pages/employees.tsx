@@ -337,6 +337,29 @@ export default function Employees() {
       const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
       console.log('CSV headers:', headers);
       
+      // Create a mapping for common header variations
+      const headerMap: { [key: string]: string } = {
+        'Employee Name': 'fullName',
+        'Employee ID': 'employeeId',
+        'employeeId': 'employeeId',
+        'firstName': 'firstName',
+        'lastName': 'lastName',
+        'Phone Number': 'phoneNumber',
+        'phoneNumber': 'phoneNumber',
+        'Hire Date': 'hireDate',
+        'hireDate': 'hireDate',
+        'Employee Type': 'employeeType',
+        'employeeType': 'employeeType',
+        'department': 'department',
+        'position': 'position',
+        'salary': 'salary',
+        'status': 'status',
+        'email': 'email',
+        'address': 'address',
+        'supervisorId': 'supervisorId',
+        'certifications': 'certifications'
+      };
+      
       const employees = lines.slice(1).map((line, index) => {
         const values = line.split(',').map(v => v.replace(/"/g, '').trim());
         const employee: any = {};
@@ -345,50 +368,89 @@ export default function Employees() {
         
         headers.forEach((header, headerIndex) => {
           const value = values[headerIndex];
+          const mappedHeader = headerMap[header] || header;
+          
           if (value && value !== '' && value !== 'undefined') {
-            switch (header) {
+            switch (mappedHeader) {
+              case 'fullName':
+                // Split full name into firstName and lastName
+                const nameParts = value.split(' ');
+                employee.firstName = nameParts[0] || '';
+                employee.lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
+                break;
               case 'hireDate':
                 // Keep as string for server-side date parsing
-                employee[header] = value;
+                employee[mappedHeader] = value;
                 break;
               case 'salary':
                 // Convert to string as database expects decimal as string
                 const numValue = parseFloat(value);
                 if (!isNaN(numValue)) {
-                  employee[header] = numValue.toString();
+                  employee[mappedHeader] = numValue.toString();
                 }
                 break;
               case 'supervisorId':
                 const intValue = parseInt(value);
                 if (!isNaN(intValue)) {
-                  employee[header] = intValue;
+                  employee[mappedHeader] = intValue;
                 }
                 break;
               case 'certifications':
                 // Handle array fields
-                employee[header] = value.split(';').filter(cert => cert.trim());
+                employee[mappedHeader] = value.split(';').filter(cert => cert.trim());
+                break;
+              case 'employeeType':
+                // Normalize employee type values
+                const typeMap: { [key: string]: string } = {
+                  'Teacher': 'teacher',
+                  'Support Staff': 'support_staff',
+                  'Substitute': 'substitute',
+                  'Administrator': 'administrator',
+                  'teacher': 'teacher',
+                  'support_staff': 'support_staff',
+                  'substitute': 'substitute',
+                  'administrator': 'administrator'
+                };
+                employee[mappedHeader] = typeMap[value] || value.toLowerCase();
                 break;
               default:
-                employee[header] = value;
+                employee[mappedHeader] = value;
             }
           }
         });
+        
+        // Set defaults for missing required fields
+        if (!employee.department) {
+          // Try to infer department from employee type
+          const deptMap: { [key: string]: string } = {
+            'teacher': 'Academic',
+            'support_staff': 'Support Services',
+            'substitute': 'Academic',
+            'administrator': 'Administration'
+          };
+          employee.department = deptMap[employee.employeeType] || 'General';
+        }
+        
+        if (!employee.position) {
+          // Use employee type as position if not provided
+          const posMap: { [key: string]: string } = {
+            'teacher': 'Teacher',
+            'support_staff': 'Support Staff',
+            'substitute': 'Substitute Teacher',
+            'administrator': 'Administrator'
+          };
+          employee.position = posMap[employee.employeeType] || 'Staff Member';
+        }
         
         // Ensure minimum required fields are present
         if (!employee.employeeId) {
           throw new Error(`Row ${index + 2}: Employee ID is required`);
         }
         if (!employee.firstName) {
-          throw new Error(`Row ${index + 2}: First name is required`);
+          throw new Error(`Row ${index + 2}: First name is required (or full name)`);
         }
         if (!employee.lastName) {
-          throw new Error(`Row ${index + 2}: Last name is required`);
-        }
-        if (!employee.department) {
-          throw new Error(`Row ${index + 2}: Department is required`);
-        }
-        if (!employee.position) {
-          throw new Error(`Row ${index + 2}: Position is required`);
+          throw new Error(`Row ${index + 2}: Last name is required (or full name)`);
         }
         if (!employee.employeeType) {
           throw new Error(`Row ${index + 2}: Employee type is required`);
