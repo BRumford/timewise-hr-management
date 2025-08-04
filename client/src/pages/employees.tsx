@@ -327,16 +327,25 @@ export default function Employees() {
 
   const importEmployeesMutation = useMutation({
     mutationFn: async (csvData: string) => {
-      const lines = csvData.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      console.log('Raw CSV data:', csvData);
       
-      const employees = lines.slice(1).map(line => {
+      const lines = csvData.split('\n').filter(line => line.trim());
+      if (lines.length < 2) {
+        throw new Error('CSV file must contain at least a header row and one data row');
+      }
+      
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      console.log('CSV headers:', headers);
+      
+      const employees = lines.slice(1).map((line, index) => {
         const values = line.split(',').map(v => v.replace(/"/g, '').trim());
         const employee: any = {};
         
-        headers.forEach((header, index) => {
-          const value = values[index];
-          if (value && value !== '') {
+        console.log(`Row ${index + 1} values:`, values);
+        
+        headers.forEach((header, headerIndex) => {
+          const value = values[headerIndex];
+          if (value && value !== '' && value !== 'undefined') {
             switch (header) {
               case 'hireDate':
                 // Keep as string for server-side date parsing
@@ -344,10 +353,16 @@ export default function Employees() {
                 break;
               case 'salary':
                 // Convert to string as database expects decimal as string
-                employee[header] = parseFloat(value).toString();
+                const numValue = parseFloat(value);
+                if (!isNaN(numValue)) {
+                  employee[header] = numValue.toString();
+                }
                 break;
               case 'supervisorId':
-                employee[header] = parseInt(value) || null;
+                const intValue = parseInt(value);
+                if (!isNaN(intValue)) {
+                  employee[header] = intValue;
+                }
                 break;
               case 'certifications':
                 // Handle array fields
@@ -359,15 +374,34 @@ export default function Employees() {
           }
         });
         
-        // Set required fields with defaults - server will handle userId if not provided
-        if (!employee.userId && employee.employeeId) {
-          employee.userId = `user_${employee.employeeId}`;
+        // Ensure minimum required fields are present
+        if (!employee.employeeId) {
+          throw new Error(`Row ${index + 2}: Employee ID is required`);
         }
+        if (!employee.firstName) {
+          throw new Error(`Row ${index + 2}: First name is required`);
+        }
+        if (!employee.lastName) {
+          throw new Error(`Row ${index + 2}: Last name is required`);
+        }
+        if (!employee.department) {
+          throw new Error(`Row ${index + 2}: Department is required`);
+        }
+        if (!employee.position) {
+          throw new Error(`Row ${index + 2}: Position is required`);
+        }
+        if (!employee.employeeType) {
+          throw new Error(`Row ${index + 2}: Employee type is required`);
+        }
+        
+        // Set required fields with defaults
         employee.status = employee.status || 'active';
         
+        console.log(`Processed employee ${index + 1}:`, employee);
         return employee;
       });
 
+      console.log('Final employees array:', employees);
       return await apiRequest('/api/employees/import', 'POST', { employees });
     },
     onSuccess: (data: any) => {
