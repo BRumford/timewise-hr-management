@@ -17,7 +17,6 @@ import Onboarding from "@/pages/onboarding";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import ExtraPayActivities from "@/pages/extra-pay-activities";
-import ExtraPayWorkflow from "@/pages/extra-pay-workflow";
 import Letters from "@/pages/letters";
 import TimecardTemplates from "@/pages/timecard-templates";
 import FieldLabels from "@/pages/field-labels";
@@ -92,7 +91,6 @@ function Router() {
                 <Route path="/documents" component={Documents} />
                 <Route path="/onboarding" component={Onboarding} />
                 <Route path="/extra-pay-activities" component={ExtraPayActivities} />
-                <Route path="/extra-pay-workflow" component={ExtraPayWorkflow} />
                 <Route path="/letters" component={Letters} />
                 <Route path="/reports" component={Reports} />
                 <Route path="/settings" component={Settings} />

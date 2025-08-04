@@ -14,16 +14,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, FileText, Calendar, User, Building, Clock, Edit, Settings, Wrench, Eye, EyeOff, FileSignature } from "lucide-react";
+import { Plus, DollarSign, FileText, Calendar, User, Building, Clock, Edit, Settings, Wrench, Eye, EyeOff, FileSignature, Workflow, Trash2, ArrowRight } from "lucide-react";
 import { SignatureManagement } from "@/components/SignatureManagement";
 import { format } from "date-fns";
 import { 
   insertExtraPayContractSchema, 
   insertExtraPayRequestSchema,
   insertExtraPayCustomFieldSchema,
+  insertExtraPayWorkflowTemplateSchema,
   type ExtraPayContract,
   type ExtraPayRequest,
   type ExtraPayCustomField,
+  type ExtraPayWorkflowTemplate,
   type Employee
 } from "@shared/schema";
 
@@ -37,6 +39,18 @@ export default function ExtraPayActivities() {
   const [isCustomFieldsDialogOpen, setIsCustomFieldsDialogOpen] = useState(false);
   const [editingCustomField, setEditingCustomField] = useState<ExtraPayCustomField | null>(null);
   const [selectedSection, setSelectedSection] = useState("contract");
+  const [isCreateWorkflowDialogOpen, setIsCreateWorkflowDialogOpen] = useState(false);
+  const [workflowFormData, setWorkflowFormData] = useState({
+    name: "",
+    description: "",
+    isDefault: false,
+    steps: [
+      { stepName: "HR Review", roleRequired: "hr", isRequired: true, stepOrder: 1, description: "Initial HR review of extra pay request" },
+      { stepName: "Budget Approval", roleRequired: "finance", isRequired: true, stepOrder: 2, description: "Budget verification and approval" },
+      { stepName: "Administrator Approval", roleRequired: "admin", isRequired: true, stepOrder: 3, description: "Final administrator approval" },
+      { stepName: "E-Signature", roleRequired: "employee", isRequired: true, stepOrder: 4, description: "Employee signature on contract" }
+    ]
+  });
 
   // Queries
   const { data: contracts = [], isLoading: contractsLoading } = useQuery<ExtraPayContract[]>({
@@ -54,6 +68,11 @@ export default function ExtraPayActivities() {
   // Custom fields query
   const { data: customFields = [], isLoading: customFieldsLoading } = useQuery<ExtraPayCustomField[]>({
     queryKey: ['/api/extra-pay/custom-fields'],
+  });
+
+  // Workflow templates query
+  const { data: workflowTemplates = [], isLoading: workflowTemplatesLoading } = useQuery<ExtraPayWorkflowTemplate[]>({
+    queryKey: ['/api/extra-pay/workflow-templates'],
   });
 
   // Filter custom fields by section
@@ -239,6 +258,70 @@ export default function ExtraPayActivities() {
     }
   });
 
+  // Workflow mutations
+  const createWorkflowMutation = useMutation({
+    mutationFn: async (workflowData: any) => {
+      return apiRequest("/api/extra-pay/workflow-templates", "POST", workflowData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Extra pay workflow template created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/extra-pay/workflow-templates"] });
+      setIsCreateWorkflowDialogOpen(false);
+      setWorkflowFormData({
+        name: "",
+        description: "",
+        isDefault: false,
+        steps: [
+          { stepName: "HR Review", roleRequired: "hr", isRequired: true, stepOrder: 1, description: "Initial HR review of extra pay request" },
+          { stepName: "Budget Approval", roleRequired: "finance", isRequired: true, stepOrder: 2, description: "Budget verification and approval" },
+          { stepName: "Administrator Approval", roleRequired: "admin", isRequired: true, stepOrder: 3, description: "Final administrator approval" },
+          { stepName: "E-Signature", roleRequired: "employee", isRequired: true, stepOrder: 4, description: "Employee signature on contract" }
+        ]
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create workflow template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteWorkflowMutation = useMutation({
+    mutationFn: async (workflowId: number) => {
+      return apiRequest(`/api/extra-pay/workflow-templates/${workflowId}`, "DELETE", {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Workflow template deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/extra-pay/workflow-templates"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete workflow template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const initializeCustomFieldsMutation = useMutation({
+    mutationFn: () => apiRequest('/api/extra-pay/custom-fields/initialize', 'POST'),
+    onSuccess: () => {
+      toast({ title: "Default custom fields initialized successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/custom-fields'] });
+    },
+    onError: (error) => {
+      toast({ title: "Error initializing default fields", description: error.message, variant: "destructive" });
+    }
+  });
+
   const onContractSubmit = (data: any) => {
     createContractMutation.mutate(data);
   };
@@ -299,6 +382,60 @@ export default function ExtraPayActivities() {
   const getEmployeeName = (employeeId: number) => {
     const employee = employees.find(e => e.id === employeeId);
     return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
+  };
+
+  // Workflow helper functions
+  const handleAddWorkflowStep = () => {
+    const newStep = {
+      stepName: "",
+      roleRequired: "",
+      isRequired: true,
+      stepOrder: workflowFormData.steps.length + 1,
+      description: ""
+    };
+    setWorkflowFormData({
+      ...workflowFormData,
+      steps: [...workflowFormData.steps, newStep]
+    });
+  };
+
+  const handleRemoveWorkflowStep = (index: number) => {
+    const updatedSteps = workflowFormData.steps.filter((_, i) => i !== index);
+    const reorderedSteps = updatedSteps.map((step, i) => ({
+      ...step,
+      stepOrder: i + 1
+    }));
+    setWorkflowFormData({
+      ...workflowFormData,
+      steps: reorderedSteps
+    });
+  };
+
+  const handleUpdateWorkflowStep = (index: number, field: string, value: any) => {
+    const updatedSteps = [...workflowFormData.steps];
+    updatedSteps[index] = { ...updatedSteps[index], [field]: value };
+    setWorkflowFormData({
+      ...workflowFormData,
+      steps: updatedSteps
+    });
+  };
+
+  const handleCreateWorkflow = () => {
+    if (!workflowFormData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a workflow name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const workflowData = {
+      ...workflowFormData,
+      steps: workflowFormData.steps.filter(step => step.stepName.trim() && step.roleRequired)
+    };
+
+    createWorkflowMutation.mutate(workflowData);
   };
 
   return (
@@ -728,9 +865,13 @@ export default function ExtraPayActivities() {
       </div>
 
       <Tabs defaultValue="contracts" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="contracts">Contracts</TabsTrigger>
           <TabsTrigger value="requests">Payment Requests</TabsTrigger>
+          <TabsTrigger value="workflow">
+            <Workflow className="w-4 h-4 mr-2" />
+            Workflow Management
+          </TabsTrigger>
           <TabsTrigger value="signatures">
             <FileSignature className="w-4 h-4 mr-2" />
             E-Signatures
@@ -953,6 +1094,236 @@ export default function ExtraPayActivities() {
                     })}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="workflow" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium">Workflow Management</h3>
+              <p className="text-sm text-gray-600">Configure approval workflows for extra pay contracts and requests</p>
+            </div>
+            <Dialog open={isCreateWorkflowDialogOpen} onOpenChange={setIsCreateWorkflowDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Workflow Template
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Workflow Template</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Workflow Name</label>
+                      <Input
+                        value={workflowFormData.name}
+                        onChange={(e) => setWorkflowFormData({ ...workflowFormData, name: e.target.value })}
+                        placeholder="e.g., Standard Extra Pay Approval"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-6">
+                      <input
+                        type="checkbox"
+                        checked={workflowFormData.isDefault}
+                        onChange={(e) => setWorkflowFormData({ ...workflowFormData, isDefault: e.target.checked })}
+                        className="rounded border-gray-300"
+                      />
+                      <label className="text-sm font-medium">Set as Default</label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Description</label>
+                    <Textarea
+                      value={workflowFormData.description}
+                      onChange={(e) => setWorkflowFormData({ ...workflowFormData, description: e.target.value })}
+                      placeholder="Describe this workflow template..."
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-md font-medium">Workflow Steps</h4>
+                      <Button type="button" onClick={handleAddWorkflowStep} size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Step
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      {workflowFormData.steps.map((step, index) => (
+                        <Card key={index}>
+                          <CardContent className="pt-4">
+                            <div className="grid grid-cols-12 gap-4 items-start">
+                              <div className="col-span-1 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center font-medium text-sm">
+                                  {step.stepOrder}
+                                </div>
+                              </div>
+                              <div className="col-span-3">
+                                <label className="text-xs font-medium text-gray-600">Step Name</label>
+                                <Input
+                                  value={step.stepName}
+                                  onChange={(e) => handleUpdateWorkflowStep(index, 'stepName', e.target.value)}
+                                  placeholder="e.g., HR Review"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="col-span-2">
+                                <label className="text-xs font-medium text-gray-600">Role Required</label>
+                                <Select 
+                                  value={step.roleRequired} 
+                                  onValueChange={(value) => handleUpdateWorkflowStep(index, 'roleRequired', value)}
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue placeholder="Select role" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="hr">HR</SelectItem>
+                                    <SelectItem value="finance">Finance</SelectItem>
+                                    <SelectItem value="admin">Administrator</SelectItem>
+                                    <SelectItem value="employee">Employee</SelectItem>
+                                    <SelectItem value="secretary">Secretary</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-4">
+                                <label className="text-xs font-medium text-gray-600">Description</label>
+                                <Textarea
+                                  value={step.description}
+                                  onChange={(e) => handleUpdateWorkflowStep(index, 'description', e.target.value)}
+                                  placeholder="Describe this step..."
+                                  className="mt-1"
+                                  rows={2}
+                                />
+                              </div>
+                              <div className="col-span-1">
+                                <label className="text-xs font-medium text-gray-600">Required</label>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={step.isRequired}
+                                    onChange={(e) => handleUpdateWorkflowStep(index, 'isRequired', e.target.checked)}
+                                    className="rounded border-gray-300"
+                                  />
+                                </div>
+                              </div>
+                              <div className="col-span-1 flex justify-end">
+                                <Button
+                                  type="button"
+                                  onClick={() => handleRemoveWorkflowStep(index)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsCreateWorkflowDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="button" onClick={handleCreateWorkflow} disabled={createWorkflowMutation.isPending}>
+                      {createWorkflowMutation.isPending ? "Creating..." : "Create Workflow"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Workflow Templates</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {workflowTemplatesLoading ? (
+                <div className="text-center py-8">Loading workflow templates...</div>
+              ) : workflowTemplates.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No workflow templates found. Create your first workflow template to get started.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {workflowTemplates.map((template) => (
+                    <Card key={template.id} className="border">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <h4 className="font-medium text-lg">{template.name}</h4>
+                              {template.isDefault && (
+                                <Badge className="bg-green-100 text-green-800">Default</Badge>
+                              )}
+                            </div>
+                            {template.description && (
+                              <p className="text-sm text-gray-600">{template.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <span>Steps: {template.steps?.length || 0}</span>
+                              <span>Created: {format(new Date(template.createdAt), 'MMM dd, yyyy')}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteWorkflowMutation.mutate(template.id)}
+                              disabled={deleteWorkflowMutation.isPending}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {template.steps && template.steps.length > 0 && (
+                          <div className="mt-4">
+                            <h5 className="text-sm font-medium mb-3">Workflow Steps:</h5>
+                            <div className="space-y-2">
+                              {template.steps
+                                .sort((a, b) => a.stepOrder - b.stepOrder)
+                                .map((step, index) => (
+                                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <div className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">
+                                      {step.stepOrder}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-sm">{step.stepName}</span>
+                                        <Badge variant="outline" className="text-xs">
+                                          {step.roleRequired}
+                                        </Badge>
+                                        {step.isRequired && (
+                                          <Badge variant="secondary" className="text-xs">Required</Badge>
+                                        )}
+                                      </div>
+                                      {step.description && (
+                                        <p className="text-xs text-gray-600 mt-1">{step.description}</p>
+                                      )}
+                                    </div>
+                                    {index < template.steps.length - 1 && (
+                                      <ArrowRight className="w-4 h-4 text-gray-400" />
+                                    )}
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
