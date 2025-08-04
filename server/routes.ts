@@ -1036,10 +1036,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let i = 0; i < employees.length; i++) {
         const employeeData = employees[i];
         
-        // Add district context to employee data
+        // Add district context and ensure required fields
         const employeeWithDistrict = {
           ...employeeData,
           districtId: districtId,
+          userId: employeeData.userId || `user_${employeeData.employeeId || Date.now()}`,
         };
         
         // Validate the data using the import schema that handles string dates

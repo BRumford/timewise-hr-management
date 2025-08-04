@@ -1087,6 +1087,7 @@ export type InsertSystemOwnerAccessLog = typeof systemOwnerAccessLog.$inferInser
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   hireDate: z.coerce.date().optional(),
   certifications: z.array(z.string()).optional(),
+  userId: z.string().optional(), // Make userId optional for CSV import
 });
 
 export const insertDistrictWorkflowSchema = createInsertSchema(districtWorkflows).omit({ id: true, createdAt: true, updatedAt: true });

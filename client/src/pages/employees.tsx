@@ -359,8 +359,10 @@ export default function Employees() {
           }
         });
         
-        // Set required fields with defaults
-        employee.userId = employee.userId || `user_${employee.employeeId || Date.now()}`;
+        // Set required fields with defaults - server will handle userId if not provided
+        if (!employee.userId && employee.employeeId) {
+          employee.userId = `user_${employee.employeeId}`;
+        }
         employee.status = employee.status || 'active';
         
         return employee;
