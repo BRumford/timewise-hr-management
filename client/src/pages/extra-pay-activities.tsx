@@ -40,11 +40,11 @@ export default function ExtraPayActivities() {
 
   // Queries
   const { data: contracts = [], isLoading: contractsLoading } = useQuery<ExtraPayContract[]>({
-    queryKey: ['/api/extra-pay-contracts'],
+    queryKey: ['/api/extra-pay/contracts'],
   });
 
   const { data: requests = [], isLoading: requestsLoading } = useQuery<ExtraPayRequest[]>({
-    queryKey: ['/api/extra-pay-requests'],
+    queryKey: ['/api/extra-pay/requests'],
   });
 
   const { data: employees = [] } = useQuery<Employee[]>({
@@ -53,7 +53,7 @@ export default function ExtraPayActivities() {
 
   // Custom fields query
   const { data: customFields = [], isLoading: customFieldsLoading } = useQuery<ExtraPayCustomField[]>({
-    queryKey: ['/api/extra-pay-custom-fields'],
+    queryKey: ['/api/extra-pay/custom-fields'],
   });
 
   // Filter custom fields by section
@@ -137,10 +137,10 @@ export default function ExtraPayActivities() {
 
   // Mutations
   const createContractMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/extra-pay-contracts', 'POST', data),
+    mutationFn: (data: any) => apiRequest('/api/extra-pay/contracts', 'POST', data),
     onSuccess: () => {
       toast({ title: "Contract created successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/contracts'] });
       setIsContractDialogOpen(false);
       contractForm.reset();
     },
@@ -150,10 +150,10 @@ export default function ExtraPayActivities() {
   });
 
   const createRequestMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/extra-pay-requests', 'POST', data),
+    mutationFn: (data: any) => apiRequest('/api/extra-pay/requests', 'POST', data),
     onSuccess: () => {
       toast({ title: "Payment request created successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/requests'] });
       setIsRequestDialogOpen(false);
       requestForm.reset();
     },
@@ -164,10 +164,10 @@ export default function ExtraPayActivities() {
 
   const updateContractStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => 
-      apiRequest(`/api/extra-pay-contracts/${id}/status`, 'PATCH', { status }),
+      apiRequest(`/api/extra-pay/contracts/${id}`, 'PATCH', { status }),
     onSuccess: () => {
       toast({ title: "Contract status updated" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/contracts'] });
     },
     onError: (error) => {
       toast({ title: "Error updating status", description: error.message, variant: "destructive" });
@@ -176,10 +176,10 @@ export default function ExtraPayActivities() {
 
   const updateRequestStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => 
-      apiRequest(`/api/extra-pay-requests/${id}/status`, 'PATCH', { status }),
+      apiRequest(`/api/extra-pay/requests/${id}`, 'PATCH', { status }),
     onSuccess: () => {
       toast({ title: "Request status updated" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/requests'] });
     },
     onError: (error) => {
       toast({ title: "Error updating status", description: error.message, variant: "destructive" });
@@ -188,10 +188,10 @@ export default function ExtraPayActivities() {
 
   const updateContractMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
-      apiRequest(`/api/extra-pay-contracts/${id}`, 'PUT', data),
+      apiRequest(`/api/extra-pay/contracts/${id}`, 'PATCH', data),
     onSuccess: () => {
       toast({ title: "Contract updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/contracts'] });
       setIsEditDialogOpen(false);
       setEditingContract(null);
       editForm.reset();
@@ -203,10 +203,10 @@ export default function ExtraPayActivities() {
 
   // Custom field mutations
   const createCustomFieldMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/extra-pay-custom-fields', 'POST', data),
+    mutationFn: (data: any) => apiRequest('/api/extra-pay/custom-fields', 'POST', data),
     onSuccess: () => {
       toast({ title: "Custom field created successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/custom-fields'] });
       setIsCustomFieldsDialogOpen(false);
       customFieldForm.reset();
     },
@@ -217,10 +217,10 @@ export default function ExtraPayActivities() {
 
   const updateCustomFieldMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => 
-      apiRequest(`/api/extra-pay-custom-fields/${id}`, 'PUT', data),
+      apiRequest(`/api/extra-pay/custom-fields/${id}`, 'PATCH', data),
     onSuccess: () => {
       toast({ title: "Custom field updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/custom-fields'] });
       setEditingCustomField(null);
     },
     onError: (error) => {
@@ -229,24 +229,13 @@ export default function ExtraPayActivities() {
   });
 
   const deleteCustomFieldMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/extra-pay-custom-fields/${id}`, 'DELETE'),
+    mutationFn: (id: number) => apiRequest(`/api/extra-pay/custom-fields/${id}`, 'DELETE'),
     onSuccess: () => {
       toast({ title: "Custom field deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay/custom-fields'] });
     },
     onError: (error) => {
       toast({ title: "Error deleting custom field", description: error.message, variant: "destructive" });
-    }
-  });
-
-  const initializeCustomFieldsMutation = useMutation({
-    mutationFn: () => apiRequest('/api/extra-pay-custom-fields/initialize', 'POST'),
-    onSuccess: () => {
-      toast({ title: "Default custom fields initialized successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/extra-pay-custom-fields'] });
-    },
-    onError: (error) => {
-      toast({ title: "Error initializing custom fields", description: error.message, variant: "destructive" });
     }
   });
 

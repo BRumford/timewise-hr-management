@@ -596,17 +596,32 @@ export const activityLogs = pgTable("activity_logs", {
 // Extra Pay Activities - Contracts
 export const extraPayContracts = pgTable("extra_pay_contracts", {
   id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
   title: varchar("title").notNull(),
   description: text("description"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
-  status: varchar("status").notNull().default("active"), // active, inactive, expired
+  status: varchar("status").notNull().default("draft"), // draft, active, pending_signature, signed, inactive, expired
   contractType: varchar("contract_type").notNull(), // coaching, tutoring, after_school, etc.
   department: varchar("department"),
   requirements: text("requirements"),
   documentUrl: varchar("document_url"),
+  // Workflow management fields
+  workflowTemplateId: integer("workflow_template_id").references(() => extraPayWorkflowTemplates.id),
+  currentWorkflowStep: integer("current_workflow_step").default(1),
+  workflowStatus: varchar("workflow_status").default("pending"), // pending, in_progress, approved, rejected, completed
+  // E-signature fields
+  requiresSignature: boolean("requires_signature").default(true),
+  signatureRequestId: integer("signature_request_id").references(() => signatureRequests.id),
+  signedAt: timestamp("signed_at"),
+  signedBy: varchar("signed_by"),
+  signatureUrl: varchar("signature_url"),
+  // Assignment and tracking
+  assignedEmployeeId: integer("assigned_employee_id").references(() => employees.id),
   createdBy: varchar("created_by").notNull(),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -614,6 +629,7 @@ export const extraPayContracts = pgTable("extra_pay_contracts", {
 // Extra Pay Activities - Requests to Pay
 export const extraPayRequests = pgTable("extra_pay_requests", {
   id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
   contractId: integer("contract_id").references(() => extraPayContracts.id),
   employeeId: integer("employee_id").references(() => employees.id).notNull(),
   requestedBy: varchar("requested_by").notNull(),
@@ -622,12 +638,23 @@ export const extraPayRequests = pgTable("extra_pay_requests", {
   dateWorked: date("date_worked").notNull(),
   description: text("description").notNull(),
   status: varchar("status").notNull().default("pending"), // pending, approved, rejected, paid
+  // Workflow management fields
+  workflowTemplateId: integer("workflow_template_id").references(() => extraPayWorkflowTemplates.id),
+  currentWorkflowStep: integer("current_workflow_step").default(1),
+  workflowStatus: varchar("workflow_status").default("pending"), // pending, in_progress, approved, rejected, completed
+  // Approval tracking
   approvedBy: varchar("approved_by"),
   approvedAt: timestamp("approved_at"),
   rejectedBy: varchar("rejected_by"),
   rejectedAt: timestamp("rejected_at"),
   rejectionReason: text("rejection_reason"),
   paidAt: timestamp("paid_at"),
+  // E-signature fields
+  requiresSignature: boolean("requires_signature").default(false),
+  signatureRequestId: integer("signature_request_id").references(() => signatureRequests.id),
+  signedAt: timestamp("signed_at"),
+  signedBy: varchar("signed_by"),
+  signatureUrl: varchar("signature_url"),
   notes: text("notes"),
   supportingDocuments: text("supporting_documents").array(),
   customFieldsData: jsonb("custom_fields_data").default({}), // Store custom field values
@@ -638,6 +665,7 @@ export const extraPayRequests = pgTable("extra_pay_requests", {
 // Extra Pay Custom Fields Configuration
 export const extraPayCustomFields = pgTable("extra_pay_custom_fields", {
   id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
   fieldName: varchar("field_name").notNull(), // e.g., "specialEquipment", "overtimeRate"
   displayLabel: varchar("display_label").notNull(), // e.g., "Special Equipment Needed", "Overtime Rate"
   fieldType: varchar("field_type").notNull(), // text, number, date, select, checkbox, textarea
@@ -653,8 +681,59 @@ export const extraPayCustomFields = pgTable("extra_pay_custom_fields", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  uniqueFieldSection: uniqueIndex("unique_field_section").on(table.fieldName, table.section)
+  uniqueFieldSection: uniqueIndex("unique_field_section").on(table.districtId, table.fieldName, table.section)
 }));
+
+// Extra Pay Workflow Templates
+export const extraPayWorkflowTemplates = pgTable("extra_pay_workflow_templates", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  category: varchar("category").notNull(), // contracts, requests
+  isActive: boolean("is_active").default(true),
+  steps: jsonb("steps").notNull(), // Array of workflow steps with roles and requirements
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Extra Pay Workflow Executions
+export const extraPayWorkflowExecutions = pgTable("extra_pay_workflow_executions", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
+  templateId: integer("template_id").references(() => extraPayWorkflowTemplates.id).notNull(),
+  entityType: varchar("entity_type").notNull(), // contract, request
+  entityId: integer("entity_id").notNull(), // ID of contract or request
+  currentStep: integer("current_step").default(1),
+  status: varchar("status").default("pending"), // pending, in_progress, completed, rejected
+  stepHistory: jsonb("step_history").default([]), // Track step completion history
+  assignedTo: varchar("assigned_to"), // Current step assignee
+  completedSteps: jsonb("completed_steps").default([]), // Array of completed step details
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Extra Pay Timestamps for tracking all events
+export const extraPayTimestamps = pgTable("extra_pay_timestamps", {
+  id: serial("id").primaryKey(),
+  districtId: integer("district_id").references(() => districts.id).notNull(),
+  entityType: varchar("entity_type").notNull(), // contract, request
+  entityId: integer("entity_id").notNull(),
+  eventType: varchar("event_type").notNull(), // created, submitted, approved, rejected, signed, etc.
+  eventDescription: text("event_description").notNull(),
+  userId: varchar("user_id"),
+  userRole: varchar("user_role"),
+  fromStatus: varchar("from_status"),
+  toStatus: varchar("to_status"),
+  workflowStep: integer("workflow_step"),
+  metadata: jsonb("metadata"), // Additional event data
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
 
 // Letters table for automated document generation
 export const letters = pgTable("letters", {
@@ -1269,6 +1348,18 @@ export type InsertExtraPayRequest = z.infer<typeof insertExtraPayRequestSchema>;
 export type ExtraPayRequest = typeof extraPayRequests.$inferSelect;
 export type InsertExtraPayCustomField = z.infer<typeof insertExtraPayCustomFieldSchema>;
 export type ExtraPayCustomField = typeof extraPayCustomFields.$inferSelect;
+
+// Additional Extra Pay Types
+export const insertExtraPayWorkflowTemplateSchema = createInsertSchema(extraPayWorkflowTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExtraPayWorkflowExecutionSchema = createInsertSchema(extraPayWorkflowExecutions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExtraPayTimestampSchema = createInsertSchema(extraPayTimestamps).omit({ id: true, timestamp: true });
+
+export type InsertExtraPayWorkflowTemplate = z.infer<typeof insertExtraPayWorkflowTemplateSchema>;
+export type ExtraPayWorkflowTemplate = typeof extraPayWorkflowTemplates.$inferSelect;
+export type InsertExtraPayWorkflowExecution = z.infer<typeof insertExtraPayWorkflowExecutionSchema>;
+export type ExtraPayWorkflowExecution = typeof extraPayWorkflowExecutions.$inferSelect;
+export type InsertExtraPayTimestamp = z.infer<typeof insertExtraPayTimestampSchema>;
+export type ExtraPayTimestamp = typeof extraPayTimestamps.$inferSelect;
 export type InsertLetter = z.infer<typeof insertLetterSchema>;
 export type Letter = typeof letters.$inferSelect;
 export type InsertTimecardTemplate = z.infer<typeof insertTimecardTemplateSchema>;
@@ -2150,6 +2241,8 @@ export type InsertSecurityNotification = z.infer<typeof insertSecurityNotificati
 export type InsertSecurityUpdateApproval = z.infer<typeof insertSecurityUpdateApprovalSchema>;
 export type InsertSecurityPolicy = z.infer<typeof insertSecurityPolicySchema>;
 export type InsertVulnerabilityAssessment = z.infer<typeof insertVulnerabilityAssessmentSchema>;
+
+
 
 // Monthly timecard schemas
 export const insertMonthlyTimecardSchema = createInsertSchema(monthlyTimecards).omit({ id: true, createdAt: true, updatedAt: true });

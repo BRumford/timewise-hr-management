@@ -58,6 +58,7 @@ const mainMenuItems = [
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["hr", "payroll"] },
   { path: "/payroll-calendar", icon: Calendar, label: "Payroll Calendar", roles: ["hr", "payroll"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["hr", "payroll"] },
+  { path: "/extra-pay-workflow", icon: DollarSign, label: "Extra Pay Workflow Management", roles: ["hr", "payroll"] },
 
   // Shared features (HR and Payroll have full access)
   { path: "/letters", icon: Mail, label: "Letters", roles: ["hr", "payroll"] },

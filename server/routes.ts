@@ -55,6 +55,7 @@ import { dataIsolationRoutes } from './dataIsolationRoutes';
 import { timecardAutomationService } from './timecardAutomationService';
 import { aiAutomationService } from './aiAutomationService';
 import { pafTimestampService } from './pafTimestampService';
+import extraPayRoutes from './extraPayRoutes';
 
 // Welcome letter generation function
 function generateWelcomeLetter(employee: any): string {
@@ -4577,6 +4578,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Data isolation routes for system owners
   app.use('/api/data-isolation', dataIsolationRoutes);
+  
+  // Extra Pay routes
+  app.use('/api/extra-pay', isAuthenticated, extraPayRoutes);
 
 
   // Support Documentation routes
