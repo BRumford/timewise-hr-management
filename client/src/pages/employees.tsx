@@ -339,7 +339,8 @@ export default function Employees() {
           if (value && value !== '') {
             switch (header) {
               case 'hireDate':
-                employee[header] = new Date(value);
+                // Keep as string for server-side date parsing
+                employee[header] = value;
                 break;
               case 'salary':
                 // Convert to string as database expects decimal as string
@@ -359,7 +360,7 @@ export default function Employees() {
         });
         
         // Set required fields with defaults
-        employee.userId = employee.userId || 'imported_user';
+        employee.userId = employee.userId || `user_${employee.employeeId || Date.now()}`;
         employee.status = employee.status || 'active';
         
         return employee;
@@ -378,12 +379,29 @@ export default function Employees() {
       });
     },
     onError: (error: any) => {
-      const errorData = error.message.includes('Validation errors') ? JSON.parse(error.message.split('Validation errors found')[1]) : { errors: [] };
+      console.error('CSV Import Error:', error);
+      let errorData = { errors: [] };
+      
+      try {
+        if (error.message && error.message.includes('Validation errors found')) {
+          const jsonPart = error.message.split('Validation errors found')[1];
+          errorData = JSON.parse(jsonPart);
+        }
+      } catch (parseError) {
+        console.error('Error parsing validation errors:', parseError);
+        errorData = { 
+          errors: [{ 
+            row: 1, 
+            errors: [error.message || 'Unknown import error occurred'] 
+          }] 
+        };
+      }
+      
       setImportErrors(errorData.errors || []);
       setImportSuccess("");
       toast({
         title: "Import Error",
-        description: "Some employees could not be imported. Check the error details.",
+        description: `Failed to import ${errorData.errors?.length || 0} rows. Check the error details below.`,
         variant: "destructive",
       });
     },
