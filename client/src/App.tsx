@@ -47,6 +47,7 @@ import SystemOwnerPafOverview from "@/pages/system-owner-paf-overview";
 import TimecardAutomation from "@/pages/timecard-automation";
 import PayrollCalendar from "@/pages/payroll-calendar";
 import AIDashboard from "@/pages/ai-dashboard";
+import DataIsolationDashboard from "@/pages/data-isolation-dashboard";
 
 import DistrictSetup from "@/pages/district-setup";
 import Sidebar from "@/components/layout/sidebar";
@@ -64,6 +65,7 @@ function Router() {
       <Route path="/system-owner/dashboard" component={SystemOwnerDashboard} />
       <Route path="/system-owner/workflows" component={WorkflowManagement} />
       <Route path="/system-owner/paf-overview" component={SystemOwnerPafOverview} />
+      <Route path="/system-owner/data-isolation" component={DataIsolationDashboard} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       

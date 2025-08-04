@@ -51,6 +51,7 @@ import { getDistrictAuth } from './districtAuth';
 import { registerMultiTenantRoutes } from './multiTenantRoutes';
 import { registerSystemOwnerRoutes } from './systemOwnerRoutes';
 import { registerPafRoutes } from './pafRoutes';
+import { dataIsolationRoutes } from './dataIsolationRoutes';
 import { timecardAutomationService } from './timecardAutomationService';
 import { aiAutomationService } from './aiAutomationService';
 import { pafTimestampService } from './pafTimestampService';
@@ -4557,6 +4558,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register privacy compliance routes
   app.use('/api/privacy', isAuthenticated, privacyRoutes);
+  
+  // Data isolation routes for system owners
+  app.use('/api/data-isolation', dataIsolationRoutes);
 
 
   // Support Documentation routes
