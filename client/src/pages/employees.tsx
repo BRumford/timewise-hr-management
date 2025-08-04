@@ -382,19 +382,31 @@ export default function Employees() {
     },
     onError: (error: any) => {
       console.error('CSV Import Error:', error);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+      
       let errorData = { errors: [] };
       
       try {
-        if (error.message && error.message.includes('Validation errors found')) {
+        // Handle API response errors that contain validation details
+        if (error?.response?.data?.errors) {
+          errorData = { errors: error.response.data.errors };
+        } else if (error.message && error.message.includes('Validation errors found')) {
           const jsonPart = error.message.split('Validation errors found')[1];
           errorData = JSON.parse(jsonPart);
+        } else if (error.message) {
+          errorData = { 
+            errors: [{ 
+              row: 1, 
+              errors: [error.message] 
+            }] 
+          };
         }
       } catch (parseError) {
         console.error('Error parsing validation errors:', parseError);
         errorData = { 
           errors: [{ 
             row: 1, 
-            errors: [error.message || 'Unknown import error occurred'] 
+            errors: ['CSV import failed. Please check your file format and try again.'] 
           }] 
         };
       }
@@ -403,7 +415,7 @@ export default function Employees() {
       setImportSuccess("");
       toast({
         title: "Import Error",
-        description: `Failed to import ${errorData.errors?.length || 0} rows. Check the error details below.`,
+        description: `Failed to import CSV. ${errorData.errors?.length || 0} validation errors found.`,
         variant: "destructive",
       });
     },
