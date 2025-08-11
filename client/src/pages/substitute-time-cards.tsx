@@ -361,7 +361,7 @@ export default function SubstituteTimeCards() {
       case 'number':
         return (
           <Input
-            type="number"
+            type="text"
             value={value}
             onChange={(e) => handleFormFieldChange(field.fieldName, e.target.value)}
             disabled={isDisabled}
@@ -713,8 +713,7 @@ export default function SubstituteTimeCards() {
                           </td>
                           <td className="border border-gray-400 px-1 py-1">
                             <Input
-                              type="number"
-                              step="0.25"
+                              type="text"
                               value={entry.hours}
                               onChange={(e) => updateDailyEntry(index, 'hours', e.target.value)}
                               className="h-6 text-xs border-0 bg-transparent p-1"

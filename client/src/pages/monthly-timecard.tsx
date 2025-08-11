@@ -407,7 +407,7 @@ export default function MonthlyTimecard() {
       case 'number':
         return (
           <Input
-            type={field.fieldType}
+            type="text"
             value={value}
             onChange={(e) => updateFormField(field.fieldName, e.target.value)}
             placeholder={field.fieldLabel}
