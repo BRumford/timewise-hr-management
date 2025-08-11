@@ -307,12 +307,29 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 
-// Custom schema for importing employees that handles string dates
+// Custom schema for importing employees that handles string dates and optional integer fields
 const employeeImportSchema = insertEmployeeSchema.extend({
   hireDate: z.union([
     z.string().transform((str) => new Date(str)),
     z.date()
-  ])
+  ]).optional(),
+  supervisorId: z.union([
+    z.number(),
+    z.string().transform((str) => {
+      if (!str || str.trim() === '' || str === 'NaN' || str === 'undefined') {
+        return undefined;
+      }
+      const parsed = parseInt(str);
+      if (isNaN(parsed)) {
+        return undefined;
+      }
+      return parsed;
+    })
+  ]).optional(),
+  salary: z.union([
+    z.string(),
+    z.number().transform(n => n.toString())
+  ]).optional()
 });
 import { 
   processDocument, 

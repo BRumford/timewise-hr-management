@@ -514,6 +514,8 @@ export default function Employees() {
     onError: (error: any) => {
       console.error('CSV Import Error:', error);
       console.error('Full error object:', JSON.stringify(error, null, 2));
+      console.error('Error message:', error?.message);
+      console.error('Error response:', error?.response?.data);
       
       let errorData = { errors: [] };
       
@@ -521,6 +523,13 @@ export default function Employees() {
         // Handle API response errors that contain validation details
         if (error?.response?.data?.errors) {
           errorData = { errors: error.response.data.errors };
+        } else if (error?.response?.data?.message) {
+          errorData = { 
+            errors: [{ 
+              row: 1, 
+              errors: [error.response.data.message] 
+            }] 
+          };
         } else if (error.message && error.message.includes('Validation errors found')) {
           const jsonPart = error.message.split('Validation errors found')[1];
           errorData = JSON.parse(jsonPart);
@@ -529,6 +538,14 @@ export default function Employees() {
             errors: [{ 
               row: 1, 
               errors: [error.message] 
+            }] 
+          };
+        } else {
+          // Handle cases where error object is empty or malformed
+          errorData = { 
+            errors: [{ 
+              row: 1, 
+              errors: ['CSV import failed. Please check the server console for more details.'] 
             }] 
           };
         }
