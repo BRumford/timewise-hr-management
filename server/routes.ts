@@ -880,8 +880,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Employee routes - admin/hr only with district filtering
   app.get("/api/employees", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      // Secure district determination with fallback for demo mode
-      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      // CRITICAL SECURITY: Ensure district context exists - no fallbacks allowed for cross-district security
+      const districtId = req.district?.id || req.user?.districtId;
+      if (!districtId) {
+        return res.status(403).json({ message: "District context required for security isolation" });
+      }
       const employees = await storage.getEmployees(districtId);
       res.json(employees);
     } catch (error) {
@@ -2442,7 +2445,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Onboarding routes
   app.get("/api/onboarding", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const districtId = req.district?.id || req.user?.districtId || 1;
+      const districtId = req.district?.id || req.user?.districtId;
+      if (!districtId) {
+        return res.status(403).json({ message: "District context required for security isolation" });
+      }
       const workflows = await storage.getOnboardingWorkflows(districtId);
       res.json(workflows);
     } catch (error) {
@@ -5187,7 +5193,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/monthly-timecards', tenantMiddleware, isAuthenticated, async (req, res) => {
     try {
-      const districtId = req.district?.id || req.user?.districtId || 1;
+      const districtId = req.district?.id || req.user?.districtId;
+      if (!districtId) {
+        return res.status(403).json({ message: "District context required for security isolation" });
+      }
       const timecards = await storage.getAllMonthlyTimecards(districtId);
       res.json(timecards);
     } catch (error) {

@@ -39,7 +39,11 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
     next();
   } catch (error) {
     console.error("Tenant middleware error:", error);
-    next(); // Continue without district context rather than failing
+    // CRITICAL SECURITY: For user data access, district context is mandatory
+    if (req.path.includes('/api/employees') || req.path.includes('/api/onboarding') || req.path.includes('/api/monthly-timecards')) {
+      return res.status(403).json({ message: "District context required for secure data access" });
+    }
+    next(); // Continue without district context only for non-sensitive endpoints
   }
 };
 
