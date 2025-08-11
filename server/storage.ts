@@ -1548,7 +1548,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Onboarding workflows
-  async getOnboardingWorkflows(): Promise<OnboardingWorkflow[]> {
+  async getOnboardingWorkflows(districtId?: number): Promise<OnboardingWorkflow[]> {
+    if (districtId) {
+      return await db.select().from(onboardingWorkflows)
+        .innerJoin(employees, eq(onboardingWorkflows.employeeId, employees.id))
+        .where(eq(employees.districtId, districtId))
+        .orderBy(desc(onboardingWorkflows.createdAt));
+    }
     return await db.select().from(onboardingWorkflows).orderBy(desc(onboardingWorkflows.createdAt));
   }
 
@@ -1576,12 +1582,24 @@ export class DatabaseStorage implements IStorage {
     return workflow;
   }
 
-  async getOnboardingWorkflowsByEmployee(employeeId: number): Promise<OnboardingWorkflow[]> {
+  async getOnboardingWorkflowsByEmployee(employeeId: number, districtId?: number): Promise<OnboardingWorkflow[]> {
+    if (districtId) {
+      // Verify employee belongs to district first
+      const employee = await this.getEmployee(employeeId, districtId);
+      if (!employee) {
+        return []; // Return empty array if employee not in district
+      }
+    }
     return await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.employeeId, employeeId)).orderBy(desc(onboardingWorkflows.createdAt));
   }
 
   // Onboarding forms methods
-  async getOnboardingForms(): Promise<OnboardingForm[]> {
+  async getOnboardingForms(districtId?: number): Promise<OnboardingForm[]> {
+    if (districtId) {
+      return await db.select().from(onboardingForms)
+        .where(eq(onboardingForms.districtId, districtId))
+        .orderBy(onboardingForms.createdAt);
+    }
     return await db.select().from(onboardingForms).orderBy(onboardingForms.createdAt);
   }
 
@@ -1637,7 +1655,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(onboardingFormSubmissions).orderBy(onboardingFormSubmissions.createdAt);
   }
 
-  async getOnboardingFormSubmissionsByEmployee(employeeId: number): Promise<OnboardingFormSubmission[]> {
+  async getOnboardingFormSubmissionsByEmployee(employeeId: number, districtId?: number): Promise<OnboardingFormSubmission[]> {
+    if (districtId) {
+      // Verify employee belongs to district first
+      const employee = await this.getEmployee(employeeId, districtId);
+      if (!employee) {
+        return []; // Return empty array if employee not in district
+      }
+    }
     return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.employeeId, employeeId)).orderBy(desc(onboardingFormSubmissions.createdAt));
   }
 
@@ -3030,7 +3055,14 @@ export class DatabaseStorage implements IStorage {
     return timecard;
   }
 
-  async getAllMonthlyTimecards(): Promise<any[]> {
+  async getAllMonthlyTimecards(districtId?: number): Promise<any[]> {
+    if (districtId) {
+      const timecards = await db.select().from(monthlyTimecards)
+        .innerJoin(employees, eq(monthlyTimecards.employeeId, employees.id))
+        .where(eq(employees.districtId, districtId))
+        .orderBy(desc(monthlyTimecards.createdAt));
+      return timecards;
+    }
     const timecards = await db.select().from(monthlyTimecards)
       .orderBy(desc(monthlyTimecards.createdAt));
     return timecards;

@@ -2440,9 +2440,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Onboarding routes
-  app.get("/api/onboarding", requireRole(['admin', 'hr']), async (req, res) => {
+  app.get("/api/onboarding", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const workflows = await storage.getOnboardingWorkflows();
+      const districtId = req.district?.id || req.user?.districtId || 1;
+      const workflows = await storage.getOnboardingWorkflows(districtId);
       res.json(workflows);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch onboarding workflows", error: (error as Error).message });
@@ -2450,14 +2451,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get onboarding workflows by employee ID
-  app.get("/api/onboarding/workflows", requireRole(['admin', 'hr']), async (req, res) => {
+  app.get("/api/onboarding/workflows", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
+      const districtId = req.district?.id || req.user?.districtId || 1;
       const { employeeId } = req.query;
       if (employeeId) {
-        const workflows = await storage.getOnboardingWorkflowsByEmployee(parseInt(employeeId as string));
+        const workflows = await storage.getOnboardingWorkflowsByEmployee(parseInt(employeeId as string), districtId);
         res.json(workflows);
       } else {
-        const workflows = await storage.getOnboardingWorkflows();
+        const workflows = await storage.getOnboardingWorkflows(districtId);
         res.json(workflows);
       }
     } catch (error) {
@@ -2466,14 +2468,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get form submissions by employee ID  
-  app.get("/api/onboarding/form-submissions", requireRole(['admin', 'hr']), async (req, res) => {
+  app.get("/api/onboarding/form-submissions", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
+      const districtId = req.district?.id || req.user?.districtId || 1;
       const { employeeId } = req.query;
       if (employeeId) {
-        const submissions = await storage.getOnboardingFormSubmissionsByEmployee(parseInt(employeeId as string));
+        const submissions = await storage.getOnboardingFormSubmissionsByEmployee(parseInt(employeeId as string), districtId);
         res.json(submissions);
       } else {
-        const submissions = await storage.getOnboardingFormSubmissions();
+        const submissions = await storage.getOnboardingFormSubmissions(districtId);
         res.json(submissions);
       }
     } catch (error) {
@@ -2544,9 +2547,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Onboarding forms routes
-  app.get("/api/onboarding/forms", requireRole(['admin', 'hr']), async (req, res) => {
+  app.get("/api/onboarding/forms", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const forms = await storage.getOnboardingForms();
+      const districtId = req.district?.id || req.user?.districtId || 1;
+      const forms = await storage.getOnboardingForms(districtId);
       res.json(forms);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch onboarding forms", error: (error as Error).message });
@@ -5181,9 +5185,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/monthly-timecards', isAuthenticated, async (req, res) => {
+  app.get('/api/monthly-timecards', tenantMiddleware, isAuthenticated, async (req, res) => {
     try {
-      const timecards = await storage.getAllMonthlyTimecards();
+      const districtId = req.district?.id || req.user?.districtId || 1;
+      const timecards = await storage.getAllMonthlyTimecards(districtId);
       res.json(timecards);
     } catch (error) {
       console.error('Error fetching all monthly timecards:', error);
