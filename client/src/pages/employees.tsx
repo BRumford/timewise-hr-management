@@ -472,23 +472,33 @@ export default function Employees() {
           throw new Error(`Row ${index + 2}: Employee ID is required`);
         }
         
-        // Check if we have name information (either firstName/lastName or they were set from fullName)
-        if (!employee.firstName && !employee.lastName) {
-          throw new Error(`Row ${index + 2}: Name information is required (firstName, lastName, or full name column)`);
+        // For CSV uploads that only contain Employee ID and additional data (like Hourly Rate, Masters, Calendar),
+        // we don't require name information since these are updates to existing employees.
+        // The server will handle checking if the employee exists and whether name info is required.
+        
+        // Only apply name validation if we have other required fields that suggest this is a new employee
+        const hasNewEmployeeData = employee.department || employee.position || employee.email || employee.hireDate;
+        
+        if (hasNewEmployeeData && !employee.firstName && !employee.lastName) {
+          throw new Error(`Row ${index + 2}: Name information is required for new employees (firstName, lastName, or full name column)`);
         }
         
-        // If we only have firstName but no lastName, use firstName as lastName
-        if (employee.firstName && !employee.lastName) {
-          employee.lastName = employee.firstName;
+        // If we have name information, normalize it
+        if (employee.firstName || employee.lastName) {
+          // If we only have firstName but no lastName, use firstName as lastName
+          if (employee.firstName && !employee.lastName) {
+            employee.lastName = employee.firstName;
+          }
+          
+          // If we only have lastName but no firstName, use lastName as firstName
+          if (!employee.firstName && employee.lastName) {
+            employee.firstName = employee.lastName;
+          }
         }
         
-        // If we only have lastName but no firstName, use lastName as firstName
-        if (!employee.firstName && employee.lastName) {
-          employee.firstName = employee.lastName;
-        }
-        
-        if (!employee.employeeType) {
-          throw new Error(`Row ${index + 2}: Employee type is required`);
+        // Only require employee type for new employees
+        if (hasNewEmployeeData && !employee.employeeType) {
+          throw new Error(`Row ${index + 2}: Employee type is required for new employees`);
         }
         
         // Set required fields with defaults
@@ -502,12 +512,26 @@ export default function Employees() {
       return await apiRequest('/api/employees/import', 'POST', { employees });
     },
     onSuccess: (data: any) => {
-      setImportSuccess(`Successfully imported ${data.imported} employees`);
+      const importedCount = data.imported || 0;
+      const updatedCount = data.updated || 0;
+      
+      let successMessage = "";
+      if (importedCount > 0 && updatedCount > 0) {
+        successMessage = `Successfully imported ${importedCount} new employees and updated ${updatedCount} existing employees`;
+      } else if (importedCount > 0) {
+        successMessage = `Successfully imported ${importedCount} employees`;
+      } else if (updatedCount > 0) {
+        successMessage = `Successfully updated ${updatedCount} employees`;
+      } else {
+        successMessage = "CSV processed successfully";
+      }
+      
+      setImportSuccess(successMessage);
       setImportErrors([]);
       queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
       toast({
         title: "✅ Import Complete",
-        description: `Imported ${data.imported} employees with system-wide synchronization`,
+        description: successMessage,
         duration: 4000,
       });
     },
