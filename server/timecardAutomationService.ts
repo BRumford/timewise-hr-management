@@ -40,9 +40,15 @@ export class TimecardAutomationService {
   
   // Pay Date Configuration Management
   async createPayDateConfiguration(config: InsertPayDateConfiguration): Promise<PayDateConfiguration> {
+    // Ensure employeeTypes is properly formatted as an array for JSONB
+    const processedConfig = {
+      ...config,
+      employeeTypes: Array.isArray(config.employeeTypes) ? config.employeeTypes : []
+    };
+    
     const [created] = await db
       .insert(payDateConfigurations)
-      .values(config)
+      .values(processedConfig)
       .returning();
     return created;
   }

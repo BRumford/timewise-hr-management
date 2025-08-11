@@ -533,7 +533,7 @@ export default function TimecardAutomation() {
           </Card>
 
           {/* Recent Job Status */}
-          {generationJobs && generationJobs.length > 0 && (
+          {generationJobs.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Recent Generation Jobs</CardTitle>
@@ -577,7 +577,7 @@ export default function TimecardAutomation() {
               <CardDescription>Manage pay schedules and timecard generation timing</CardDescription>
             </CardHeader>
             <CardContent>
-              {payConfigurations && payConfigurations.length > 0 ? (
+              {payConfigurations.length > 0 ? (
                 <div className="space-y-4">
                   {payConfigurations.map((config: any) => (
                     <div key={config.id} className="border rounded-lg p-4">
@@ -628,7 +628,7 @@ export default function TimecardAutomation() {
               <CardDescription>Templates that define how timecards are automatically generated</CardDescription>
             </CardHeader>
             <CardContent>
-              {generationTemplates && generationTemplates.length > 0 ? (
+              {generationTemplates.length > 0 ? (
                 <div className="space-y-4">
                   {generationTemplates.map((template: any) => (
                     <div key={template.id} className="border rounded-lg p-4">
@@ -671,7 +671,7 @@ export default function TimecardAutomation() {
               <CardDescription>Complete history of automated timecard generation jobs</CardDescription>
             </CardHeader>
             <CardContent>
-              {generationJobs && generationJobs.length > 0 ? (
+              {generationJobs.length > 0 ? (
                 <div className="space-y-4">
                   {generationJobs.map((job: any) => (
                     <div key={job.id} className="border rounded-lg p-4">
