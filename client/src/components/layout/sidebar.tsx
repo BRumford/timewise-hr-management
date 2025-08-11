@@ -53,6 +53,7 @@ const mainMenuItems = [
   { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["hr", "payroll"] },
   { path: "/benefits", icon: FileSpreadsheet, label: "Benefits", roles: ["hr", "payroll"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["hr", "payroll"] },
+  { path: "/retirees", icon: Heart, label: "Retirees", roles: ["hr", "payroll"] },
   { path: "/letters", icon: Mail, label: "Letters", roles: ["hr", "payroll"] },
   { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["hr", "payroll"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["hr", "payroll"] },

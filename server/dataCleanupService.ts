@@ -48,7 +48,33 @@ export class DataCleanupService {
       `);
       recordsRemoved += vulnResult.rowCount || 0;
 
-      // Clean demo employees and related data
+      // Clean demo employees and related data (handle foreign key constraints)
+      // First delete dependent records
+      await db.execute(sql`
+        DELETE FROM letters 
+        WHERE employee_id IN (
+          SELECT id FROM employees 
+          WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
+        )
+      `);
+
+      await db.execute(sql`
+        DELETE FROM time_cards 
+        WHERE employee_id IN (
+          SELECT id FROM employees 
+          WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
+        )
+      `);
+
+      await db.execute(sql`
+        DELETE FROM payroll_records 
+        WHERE employee_id IN (
+          SELECT id FROM employees 
+          WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
+        )
+      `);
+
+      // Now delete the employees
       const employeeResult = await db.execute(sql`
         DELETE FROM employees 
         WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
@@ -69,19 +95,7 @@ export class DataCleanupService {
       `);
       recordsRemoved += leaveResult.rowCount || 0;
 
-      // Clean demo timecards
-      const timecardResult = await db.execute(sql`
-        DELETE FROM time_cards 
-        WHERE created_by = 'demo_user'
-      `);
-      recordsRemoved += timecardResult.rowCount || 0;
-
-      // Clean demo payroll records
-      const payrollResult = await db.execute(sql`
-        DELETE FROM payroll_records 
-        WHERE created_by = 'demo_user'
-      `);
-      recordsRemoved += payrollResult.rowCount || 0;
+      // Note: Demo timecards and payroll records are now cleaned above with employees to handle foreign keys
 
       console.log(`Data cleanup completed: ${recordsRemoved} records removed`);
 
