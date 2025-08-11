@@ -454,8 +454,8 @@ export default function MonthlyTimecard() {
 
   const groupedFields = groupFieldsBySection(templateFields);
 
-  // PayrollProcessingRowInline component for payroll processing section - memoized for performance
-  const PayrollProcessingRowInline = useCallback(({ lineNumber }: { lineNumber: number }) => {
+  // PayrollProcessingRowInline component render function - optimized to prevent re-renders
+  const renderPayrollRow = (lineNumber: number) => {
     const index = lineNumber - 1;
     const entry = payrollEntries[index] || {};
 
@@ -463,7 +463,7 @@ export default function MonthlyTimecard() {
     const total = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
 
     return (
-      <tr className="even:bg-gray-50">
+      <tr key={lineNumber} className="even:bg-gray-50">
         <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
           {lineNumber}
         </td>
@@ -522,7 +522,7 @@ export default function MonthlyTimecard() {
         </td>
       </tr>
     );
-  }, [payrollEntries, addonOptions, updatePayrollEntry]);
+  };
 
   // Calculate grand total for payroll processing
   const calculateGrandTotal = () => {
@@ -1015,9 +1015,9 @@ export default function MonthlyTimecard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Array.from({ length: 10 }, (_, index) => (
-                        <PayrollProcessingRowInline key={index} lineNumber={index + 1} />
-                      ))}
+                      {Array.from({ length: 10 }, (_, index) => 
+                        renderPayrollRow(index + 1)
+                      )}
                       {/* Grand Total Row */}
                       <tr className="bg-purple-100 border-t-2 border-purple-400">
                         <td className="border border-gray-400 px-2 py-2 text-center text-sm font-bold text-purple-800" colSpan={4}>
