@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -437,10 +437,14 @@ export default function SubstituteTimeCards() {
     return acc;
   }, {});
 
-  // PayrollProcessingRowInline component for payroll processing section
-  const PayrollProcessingRowInline = ({ lineNumber }: { lineNumber: number }) => {
+  // PayrollProcessingRowInline component for payroll processing section - memoized to prevent re-renders
+  const PayrollProcessingRowInline = memo(({ lineNumber, entry, addonOptions, updatePayrollEntry }: { 
+    lineNumber: number; 
+    entry: any; 
+    addonOptions: any[]; 
+    updatePayrollEntry: (index: number, field: string, value: any) => void; 
+  }) => {
     const index = lineNumber - 1;
-    const entry = payrollEntries[index] || {};
 
     // Calculate total automatically
     const total = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
@@ -507,7 +511,7 @@ export default function SubstituteTimeCards() {
         </td>
       </tr>
     );
-  };
+  });
 
   // Calculate grand total for payroll processing
   const calculateGrandTotal = () => {
@@ -895,7 +899,13 @@ export default function SubstituteTimeCards() {
                     </thead>
                     <tbody>
                       {Array.from({ length: 10 }, (_, index) => (
-                        <PayrollProcessingRowInline key={index} lineNumber={index + 1} />
+                        <PayrollProcessingRowInline 
+                          key={index} 
+                          lineNumber={index + 1} 
+                          entry={payrollEntries[index] || {}}
+                          addonOptions={addonOptions}
+                          updatePayrollEntry={updatePayrollEntry}
+                        />
                       ))}
                       {/* Grand Total Row */}
                       <tr className="bg-purple-100 border-t-2 border-purple-400">
