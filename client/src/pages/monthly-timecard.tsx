@@ -912,8 +912,7 @@ export default function MonthlyTimecard() {
                           </td>
                           <td className="border border-gray-400 px-1 py-1">
                             <Input
-                              type="number"
-                              step="0.25"
+                              type="text"
                               value={entry.hours}
                               onChange={(e) => updateDailyEntry(index, 'hours', e.target.value)}
                               className="h-6 text-xs border-0 bg-transparent p-1"
