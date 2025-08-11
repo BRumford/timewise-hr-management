@@ -1,3 +1,4 @@
-employeeId,firstName,lastName,email,phoneNumber,address,department,position,employeeType,hireDate,salary,status
-490003,Bob,Williams,bob.williams@school.edu,555-0125,789 Pine St,Science,Teacher,teacher,invalid-date,not-a-number,active
-490004,,Missing,missing.name@school.edu,555-0126,000 Test St,Math,Teacher,teacher,2024-01-01,45000,active
+employeeId,firstName,lastName,email,phoneNumber,address,department,position,employeeType,status
+490020,,Johnson,sarah.johnson@school.edu,555-0135,456 Oak St,Math,Teacher,teacher,active
+490021,Mike,,mike.davis@school.edu,555-0136,987 Pine Dr,,Teacher,teacher,active
+,Bob,Smith,bob.smith@school.edu,555-0137,123 Main St,Science,,teacher,active
