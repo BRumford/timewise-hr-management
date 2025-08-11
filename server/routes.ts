@@ -150,12 +150,18 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
     // Check if user is logged in via session
     let sessionUser = (req as any).session?.user;
     
-    // If no session user, fall back to demo mode for development
+    // If no session user, fall back to clean demo mode for development
     if (!sessionUser) {
-      // For demo, we'll simulate a logged-in user
+      // Import cleanup service
+      const { DataCleanupService } = await import('./dataCleanupService');
+      
+      // Ensure clean session for new demo user
+      await DataCleanupService.prepareCleanSession();
+      
+      // For demo, we'll simulate a logged-in user with fresh data
       const userId = "demo_user";
       
-      // Get or create demo user
+      // Get or create demo user (but ensure no persistent demo data)
       let user = await storage.getUser(userId);
       if (!user) {
         user = await storage.upsertUser({
@@ -4018,6 +4024,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get system health", error: (error as Error).message });
     }
   }));
+
+  // Data cleanup endpoint for fresh district setup
+  app.post('/api/system/cleanup-demo-data', isAuthenticated, async (req, res) => {
+    try {
+      const { DataCleanupService } = await import('./dataCleanupService');
+      const result = await DataCleanupService.cleanupDemoData();
+      
+      res.json({
+        success: result.success,
+        message: result.success 
+          ? `Successfully cleaned ${result.recordsRemoved} demo records`
+          : 'Cleanup failed',
+        recordsRemoved: result.recordsRemoved,
+        errors: result.errors
+      });
+    } catch (error) {
+      console.error('Cleanup endpoint error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Cleanup service error',
+        error: error.message 
+      });
+    }
+  });
+
+  // Data validation endpoint to check clean state
+  app.get('/api/system/validate-clean-state', isAuthenticated, async (req, res) => {
+    try {
+      const { DataCleanupService } = await import('./dataCleanupService');
+      const validation = await DataCleanupService.validateCleanState();
+      
+      res.json({
+        isClean: validation.isClean,
+        issues: validation.remainingIssues,
+        message: validation.isClean 
+          ? 'System is clean - no demo data found'
+          : `Found ${validation.remainingIssues.length} data isolation issues`
+      });
+    } catch (error) {
+      console.error('Validation endpoint error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Validation service error',
+        error: error.message 
+      });
+    }
+  });
 
   // Test error alert endpoint (admin only)
   app.post("/api/system/test-alert", requireRole(['admin']), asyncErrorHandler(async (req, res) => {

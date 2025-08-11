@@ -142,6 +142,7 @@ export async function initSupportTables() {
     `);
 
     // Insert sample data
+    // Only initialize support categories (these are global, not district-specific)
     await db.execute(sql`
       INSERT INTO support_categories (name, description, icon, color, is_active, sort_order) 
       VALUES 
@@ -152,41 +153,11 @@ export async function initSupportTables() {
       ON CONFLICT DO NOTHING
     `);
 
-    await db.execute(sql`
-      INSERT INTO support_documents (title, content, excerpt, category, tags, difficulty, is_published, author_id, slug)
-      VALUES 
-        ('Getting Started with Employee Management', 'This guide covers the basics of managing employees in the HR system...', 'Learn how to add, edit, and manage employee records', 'User Manual', '{"employees", "getting-started"}', 'beginner', true, 'demo_user', 'getting-started-employee-management'),
-        ('Setting Up Payroll Processing', 'Complete guide to configuring and running payroll...', 'Step-by-step payroll setup and processing', 'Admin Guide', '{"payroll", "setup"}', 'intermediate', true, 'demo_user', 'setting-up-payroll-processing'),
-        ('Troubleshooting Login Issues', 'Common login problems and their solutions...', 'Resolve common authentication problems', 'Troubleshooting', '{"login", "authentication"}', 'beginner', true, 'demo_user', 'troubleshooting-login-issues')
-      ON CONFLICT DO NOTHING
-    `);
+    // NOTE: Demo documents and notifications removed to prevent data persistence across districts
 
-    await db.execute(sql`
-      INSERT INTO security_updates (title, description, severity, category, affected_systems, status, requires_approval, released_by)
-      VALUES 
-        ('Critical Security Patch v2.1.5', 'Security update addressing authentication vulnerabilities', 'critical', 'security_patch', '{"Web Server", "Database", "Authentication System"}', 'pending', true, 'demo_user'),
-        ('Employee Data Encryption Update', 'Enhanced encryption for sensitive employee data', 'high', 'security_patch', '{"Database", "File Storage"}', 'approved', true, 'demo_user'),
-        ('Password Policy Enhancement', 'Updated password requirements and validation', 'medium', 'policy_update', '{"Authentication System"}', 'deployed', false, 'demo_user')
-      ON CONFLICT DO NOTHING
-    `);
+    // NOTE: Demo security updates removed to prevent data persistence across districts
 
-    await db.execute(sql`
-      INSERT INTO security_notifications (title, message, type, severity, target_audience, is_active, created_by)
-      VALUES 
-        ('System Maintenance Scheduled', 'Scheduled maintenance window this Sunday 2:00 AM - 4:00 AM EST', 'info', 'low', 'all', true, 'demo_user'),
-        ('Security Update Available', 'A critical security update is available for deployment', 'alert', 'high', 'admins', true, 'demo_user'),
-        ('Password Change Required', 'All users must update their passwords within 30 days', 'warning', 'medium', 'all', true, 'demo_user')
-      ON CONFLICT DO NOTHING
-    `);
-
-    await db.execute(sql`
-      INSERT INTO vulnerability_assessments (title, description, severity, cvss_score, affected_systems, status, risk_level, discovered_at)
-      VALUES 
-        ('SQL Injection Vulnerability', 'Potential SQL injection in employee search functionality', 'high', 7.5, '{"Web Server", "Database"}', 'investigating', 'High Risk', NOW() - INTERVAL '2 days'),
-        ('Cross-Site Scripting (XSS)', 'XSS vulnerability in document upload feature', 'medium', 6.1, '{"Web Server"}', 'patched', 'Medium Risk', NOW() - INTERVAL '1 week'),
-        ('Insecure Direct Object Reference', 'Users can access unauthorized employee records', 'critical', 9.1, '{"Web Server", "Database"}', 'open', 'Critical Risk', NOW() - INTERVAL '3 days')
-      ON CONFLICT DO NOTHING
-    `);
+    // NOTE: Demo security notifications and vulnerability assessments removed to prevent data persistence across districts
 
     console.log('Support and security tables initialized successfully');
   } catch (error) {
