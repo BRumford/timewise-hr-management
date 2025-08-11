@@ -721,7 +721,63 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteEmployee(id: number): Promise<void> {
-    await db.delete(employees).where(eq(employees.id, id));
+    console.log(`Starting deletion process for employee ID: ${id}`);
+    
+    try {
+      // Delete all related records first to avoid foreign key constraint violations
+      console.log("Deleting extra pay requests...");
+      await db.delete(extraPayRequests).where(eq(extraPayRequests.employeeId, id));
+      
+      console.log("Deleting employee accounts...");
+      await db.delete(employeeAccounts).where(eq(employeeAccounts.employeeId, id));
+      
+      console.log("Deleting leave requests...");
+      await db.delete(leaveRequests).where(eq(leaveRequests.employeeId, id));
+      
+      console.log("Deleting payroll records...");
+      await db.delete(payrollRecords).where(eq(payrollRecords.employeeId, id));
+      
+      console.log("Deleting employee benefit elections...");
+      await db.delete(employeeBenefitElections).where(eq(employeeBenefitElections.employeeId, id));
+      
+      console.log("Deleting employee tax withholdings...");
+      await db.delete(employeeTaxWithholdings).where(eq(employeeTaxWithholdings.employeeId, id));
+      
+      console.log("Deleting time cards...");
+      try {
+        await db.delete(timeCards).where(eq(timeCards.employeeId, id));
+      } catch (error) {
+        console.error("Error deleting time cards:", error);
+      }
+      
+      console.log("Deleting substitute time cards...");
+      try {
+        await db.delete(substituteTimeCards).where(eq(substituteTimeCards.substituteId, id));
+      } catch (error) {
+        console.error("Error deleting substitute time cards:", error);
+      }
+      
+      console.log("Deleting substitute assignments...");
+      await db.delete(substituteAssignments).where(eq(substituteAssignments.substituteEmployeeId, id));
+      
+      // Delete additional related records found in foreign key constraints
+      console.log("Deleting signature requests...");
+      await db.delete(signatureRequests).where(eq(signatureRequests.employeeId, id));
+      
+      console.log("Deleting open enrollment emails...");
+      await db.delete(openEnrollmentEmails).where(eq(openEnrollmentEmails.employeeId, id));
+      
+      console.log("Deleting PAF submissions...");
+      await db.delete(pafSubmissions).where(eq(pafSubmissions.employeeId, id));
+      
+      // Finally delete the employee record
+      console.log("Deleting employee record...");
+      await db.delete(employees).where(eq(employees.id, id));
+      console.log(`Successfully deleted employee ID: ${id}`);
+    } catch (error) {
+      console.error(`Error during employee deletion:`, error);
+      throw error;
+    }
   }
 
   async getEmployeesByDepartment(department: string): Promise<Employee[]> {
