@@ -474,7 +474,7 @@ export default function Reports() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="summary" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="summary">
                   <Receipt className="w-4 h-4 mr-2" />
                   Payroll Summary
@@ -486,6 +486,10 @@ export default function Reports() {
                 <TabsTrigger value="benefits">
                   <Heart className="w-4 h-4 mr-2" />
                   Benefits Report
+                </TabsTrigger>
+                <TabsTrigger value="csv-templates">
+                  <FileText className="w-4 h-4 mr-2" />
+                  CSV Templates
                 </TabsTrigger>
               </TabsList>
               
@@ -679,6 +683,186 @@ export default function Reports() {
                     Export Benefits Report
                   </Button>
                 </div>
+              </TabsContent>
+              
+              <TabsContent value="csv-templates" className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                        Employee Import Templates
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-gray-600 mb-4">
+                        Download these CSV templates to format your employee data for import. Use Employee ID matching to update existing employees.
+                      </p>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <h4 className="font-medium text-gray-900">Complete Employee Template</h4>
+                            <p className="text-sm text-gray-600">Includes all standard fields plus custom fields</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const csvContent = `Employee ID,First Name,Last Name,Email,Phone Number,Department,Position,Employee Type,Hire Date,Salary,Hourly Rate,Masters,Calendar
+490001,Jane,Smith,jane.smith@district.edu,555-0101,Kitchen,Head Cook,support_staff,2025-01-01,35000,18,No,49Cl194
+490002,Mark,Johnson,mark.johnson@district.edu,555-0102,Payroll,Payroll Manager,administrator,2025-01-01,60000,40,No,49CL261
+490003,Sarah,Wilson,sarah.wilson@district.edu,555-0103,Teaching,Head Teacher,teacher,2025-01-01,55000,54,Yes,49CE182`;
+                              
+                              const blob = new Blob([csvContent], { type: 'text/csv' });
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = 'Complete_Employee_Template.csv';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <h4 className="font-medium text-gray-900">Position Update Template</h4>
+                            <p className="text-sm text-gray-600">For weekly position and department changes</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const csvContent = `Employee ID,First Name,Last Name,Department,Position,Employee Type,Salary,Hourly Rate,Masters,Calendar
+490001,Jane,Smith,Administrative Office,Office Manager,administrator,42000,25,No,49Cl194
+490002,Mark,Johnson,Human Resources,HR Director,administrator,68000,45,Yes,49CL261
+490003,Sarah,Wilson,Science Department,Department Head,teacher,58000,54,Yes,49CE182`;
+                              
+                              const blob = new Blob([csvContent], { type: 'text/csv' });
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = 'Weekly_Position_Update_Template.csv';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <h4 className="font-medium text-gray-900">Basic Employee Template</h4>
+                            <p className="text-sm text-gray-600">Essential fields only for new employee imports</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const csvContent = `Employee ID,First Name,Last Name,Email,Phone Number,Department,Position,Employee Type,Hire Date,Salary
+490004,New,Employee,new.employee@district.edu,555-0104,Teaching,Teacher,teacher,2025-01-01,45000
+490005,Another,Employee,another.employee@district.edu,555-0105,Support,Assistant,support_staff,2025-01-01,30000`;
+                              
+                              const blob = new Blob([csvContent], { type: 'text/csv' });
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = 'Basic_Employee_Template.csv';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-green-600" />
+                        Import Guidelines
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <h4 className="font-medium text-blue-900 mb-2">Employee ID Matching</h4>
+                          <p className="text-sm text-blue-700">
+                            Use the Employee ID column to update existing employees. New Employee IDs will create new employee records.
+                          </p>
+                        </div>
+                        
+                        <div className="p-3 bg-green-50 rounded-lg">
+                          <h4 className="font-medium text-green-900 mb-2">Required Columns</h4>
+                          <ul className="text-sm text-green-700 space-y-1">
+                            <li>• Employee ID (for matching)</li>
+                            <li>• First Name and Last Name</li>
+                            <li>• Department and Position</li>
+                            <li>• Employee Type</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <h4 className="font-medium text-amber-900 mb-2">Employee Types</h4>
+                          <ul className="text-sm text-amber-700 space-y-1">
+                            <li>• <strong>teacher</strong> - Certificated staff</li>
+                            <li>• <strong>support_staff</strong> - Classified staff</li>
+                            <li>• <strong>administrator</strong> - Administrative staff</li>
+                            <li>• <strong>substitute</strong> - Substitute staff</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="p-3 bg-purple-50 rounded-lg">
+                          <h4 className="font-medium text-purple-900 mb-2">Custom Fields</h4>
+                          <p className="text-sm text-purple-700">
+                            Any columns not matching standard fields (like Hourly Rate, Masters, Calendar) will be stored as custom fields and appear in the employee management interface.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>How to Use CSV Import</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="flex flex-col items-center text-center p-4 border rounded-lg">
+                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold mb-2">1</div>
+                        <h4 className="font-medium mb-2">Download Template</h4>
+                        <p className="text-gray-600">Choose the appropriate CSV template above based on your needs.</p>
+                      </div>
+                      <div className="flex flex-col items-center text-center p-4 border rounded-lg">
+                        <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold mb-2">2</div>
+                        <h4 className="font-medium mb-2">Fill Your Data</h4>
+                        <p className="text-gray-600">Replace the sample data with your actual employee information.</p>
+                      </div>
+                      <div className="flex flex-col items-center text-center p-4 border rounded-lg">
+                        <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold mb-2">3</div>
+                        <h4 className="font-medium mb-2">Import via Employee Management</h4>
+                        <p className="text-gray-600">Go to Employee Management page and use the Import CSV button.</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </CardContent>
