@@ -204,7 +204,8 @@ export default function Retirees() {
     return matchesSearch && matchesFilter;
   });
 
-  const RetireeForm = () => (
+  // Render form directly to prevent React re-rendering focus issues
+  const renderRetireeForm = () => (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Tabs defaultValue="basic" className="w-full">
@@ -755,7 +756,7 @@ export default function Retirees() {
           <DialogHeader>
             <DialogTitle>Add New Retiree</DialogTitle>
           </DialogHeader>
-          <RetireeForm />
+          {renderRetireeForm()}
         </DialogContent>
       </Dialog>
 
@@ -765,7 +766,7 @@ export default function Retirees() {
           <DialogHeader>
             <DialogTitle>Edit Retiree</DialogTitle>
           </DialogHeader>
-          <RetireeForm />
+          {renderRetireeForm()}
         </DialogContent>
       </Dialog>
     </div>
