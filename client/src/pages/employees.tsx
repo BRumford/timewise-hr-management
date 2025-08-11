@@ -648,12 +648,33 @@ export default function Employees() {
     setImportErrors([]);
     setImportSuccess("");
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const csvData = e.target?.result as string;
-      importEmployeesMutation.mutate(csvData);
-    };
-    reader.readAsText(file);
+    // Create FormData and upload file directly
+    const formData = new FormData();
+    formData.append('csvFile', file);
+    
+    fetch('/api/employees/import-csv', {
+      method: 'POST',
+      body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.message) {
+        setImportSuccess(data.message);
+        queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      }
+      if (data.errors) {
+        setImportErrors(data.errors);
+      }
+    })
+    .catch(error => {
+      console.error('Import error:', error);
+      setImportErrors([{
+        row: 0,
+        type: 'system',
+        employeeId: '',
+        errors: ['Failed to import CSV file: ' + error.message]
+      }]);
+    });
   };
 
   const downloadTemplate = () => {

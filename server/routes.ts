@@ -331,44 +331,6 @@ const employeeImportSchema = insertEmployeeSchema.extend({
     z.number().transform(n => n.toString())
   ]).optional()
 });
-import { 
-  processDocument, 
-  generateOnboardingChecklist, 
-  analyzePayrollAnomalies,
-  generateSubstituteRecommendations 
-} from "./openai";
-import multer from "multer";
-import fs from "fs";
-import path from "path";
-
-// Configure multer for file uploads
-const uploadDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage_config = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage: storage_config,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
-    }
-  }
-});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize support and security tables
@@ -403,7 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // app.use(cdn.securityHeaders());
   
   // Serve uploaded files (before authentication middleware)
-  app.use('/uploads', express.static(uploadDir, {
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
     setHeaders: (res, filePath) => {
       if (path.extname(filePath) === '.pdf') {
         res.setHeader('Content-Type', 'application/pdf');
@@ -1101,7 +1063,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Employee import/export routes with update/merge capability
+  // CSV file upload for employee import
+  app.post('/api/employees/import-csv', tenantMiddleware, requireRole(['admin', 'hr']), personnelUpload.single('csvFile'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "CSV file is required" });
+      }
+
+      // Read and parse CSV file
+      const csvContent = fs.readFileSync(req.file.path, 'utf-8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        return res.status(400).json({ message: "CSV file must have headers and at least one data row" });
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const employees = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        if (values.length === headers.length) {
+          const employee = {};
+          headers.forEach((header, index) => {
+            employee[header] = values[index] || '';
+          });
+          employees.push(employee);
+        }
+      }
+
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
+
+      // Process the employees data using existing import logic
+      const user = (req as any).user;
+      let districtId = user?.districtId || 1;
+      
+      if (user?.id === 'demo_user') {
+        districtId = 1;
+      }
+
+      const existingEmployees = await storage.getEmployees();
+      const existingEmployeeMap = new Map(existingEmployees.map(emp => [emp.employeeId, emp]));
+
+      const newEmployees = [];
+      const updateEmployees = [];
+      const errors = [];
+
+      for (let i = 0; i < employees.length; i++) {
+        const employeeData = employees[i];
+        
+        const existingEmployee = existingEmployeeMap.get(employeeData.employeeId);
+        
+        if (existingEmployee) {
+          const standardFields = ['employeeId', 'firstName', 'lastName', 'email', 'phoneNumber', 'address', 'hireDate', 'position', 'department', 'salary', 'employeeType', 'status', 'supervisorId', 'certifications'];
+          const customFieldData = {};
+          const employeeUpdate = { districtId: districtId };
+          
+          for (const [key, value] of Object.entries(employeeData)) {
+            if (standardFields.includes(key)) {
+              employeeUpdate[key] = value;
+            } else if (key !== 'employeeId') {
+              customFieldData[key] = value;
+            }
+          }
+          
+          const validation = insertEmployeeSchema.partial().safeParse(employeeUpdate);
+          if (!validation.success) {
+            errors.push({
+              row: i + 1,
+              type: 'update',
+              employeeId: employeeData.employeeId,
+              errors: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+            });
+          } else {
+            updateEmployees.push({
+              id: existingEmployee.id,
+              data: validation.data,
+              customFields: customFieldData
+            });
+          }
+        } else {
+          if (!employeeData.firstName || !employeeData.lastName) {
+            errors.push({
+              row: i + 1,
+              type: 'new',
+              employeeId: employeeData.employeeId,
+              errors: ['Name information is required (firstName, lastName, or full name column)']
+            });
+            continue;
+          }
+          
+          const employeeWithDistrict = {
+            ...employeeData,
+            districtId: districtId,
+            userId: employeeData.userId || `user_${employeeData.employeeId || Date.now()}`,
+          };
+          
+          const validation = employeeImportSchema.safeParse(employeeWithDistrict);
+          if (!validation.success) {
+            errors.push({
+              row: i + 1,
+              type: 'new',
+              employeeId: employeeData.employeeId,
+              errors: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+            });
+          } else {
+            newEmployees.push(validation.data);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ 
+          message: "Validation errors found", 
+          errors: errors.slice(0, 10)
+        });
+      }
+
+      let importedEmployees = [];
+      let updatedEmployees = [];
+      
+      if (newEmployees.length > 0) {
+        importedEmployees = await storage.bulkImportEmployees(newEmployees);
+      }
+      
+      if (updateEmployees.length > 0) {
+        updatedEmployees = await storage.bulkUpdateEmployees(updateEmployees);
+      }
+      
+      res.json({
+        message: `Successfully processed ${newEmployees.length + updateEmployees.length} employees`,
+        imported: importedEmployees.length,
+        updated: updatedEmployees.length,
+        newEmployees: importedEmployees,
+        updatedEmployees: updatedEmployees
+      });
+
+    } catch (error) {
+      console.error('Error importing CSV:', error);
+      res.status(500).json({ message: "Failed to import CSV file", error: (error as Error).message });
+    }
+  });
+
+  // JSON-based employee import (existing functionality)
   app.post('/api/employees/import', tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { employees } = req.body;
@@ -2633,7 +2738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File upload endpoint for onboarding forms
-  app.post("/api/onboarding/forms/upload", requireRole(['admin', 'hr']), upload.single('file'), async (req, res) => {
+  app.post("/api/onboarding/forms/upload", requireRole(['admin', 'hr']), personnelUpload.single('file'), async (req, res) => {
     try {
       if (!req.body.formData) {
         return res.status(400).json({ message: "Form data is required" });
@@ -5890,7 +5995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/benefits/documents', requireRole(['admin', 'hr']), upload.single('file'), async (req, res) => {
+  app.post('/api/benefits/documents', requireRole(['admin', 'hr']), personnelUpload.single('file'), async (req, res) => {
     try {
       const user = (req as any).user;
       const file = req.file;
