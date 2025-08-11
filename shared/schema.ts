@@ -1240,8 +1240,6 @@ export const insertTimecardTemplateFieldSchema = createInsertSchema(timecardTemp
 export const insertDistrictSettingsSchema = createInsertSchema(districtSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPayPeriodSchema = createInsertSchema(payPeriods).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCustomFieldLabelSchema = createInsertSchema(customFieldLabels).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertCustomFieldLabel = z.infer<typeof insertCustomFieldLabelSchema>;
-export type CustomFieldLabel = typeof customFieldLabels.$inferSelect;
 
 export const insertDistrictFormConfigurationSchema = createInsertSchema(districtFormConfigurations).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertDistrictFormConfiguration = z.infer<typeof insertDistrictFormConfigurationSchema>;

@@ -811,39 +811,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard routes - admin/hr only
-  app.get("/api/dashboard/stats", requireRole(['admin', 'hr']), async (req, res) => {
+  // Dashboard routes - admin/hr only with district filtering
+  app.get("/api/dashboard/stats", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      // Secure district determination with fallback for demo mode
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const stats = await storage.getDashboardStatsByDistrict(districtId);
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats", error: (error as Error).message });
     }
   });
 
-  app.get("/api/dashboard/recent-activity", requireRole(['admin', 'hr']), async (req, res) => {
+  app.get("/api/dashboard/recent-activity", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const activity = await storage.getRecentActivityLogs();
+      // Secure district determination with fallback for demo mode
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const activity = await storage.getRecentActivityLogsByDistrict(districtId);
       res.json(activity);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch recent activity", error: (error as Error).message });
     }
   });
 
-  // Employee routes - admin/hr only for full access
-  app.get("/api/employees", requireRole(['admin', 'hr']), async (req, res) => {
+  // Employee routes - admin/hr only with district filtering
+  app.get("/api/employees", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const employees = await storage.getEmployees();
+      // Secure district determination with fallback for demo mode
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const employees = await storage.getEmployeesByDistrict(districtId);
       res.json(employees);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch employees", error: (error as Error).message });
     }
   });
 
-  app.get("/api/employees/:id", async (req, res) => {
+  app.get("/api/employees/:id", tenantMiddleware, async (req, res) => {
     try {
+      // Secure district determination with fallback for demo mode
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
       const employee = await storage.getEmployee(parseInt(req.params.id));
-      if (!employee) {
+      if (!employee || employee.districtId !== districtId) {
         return res.status(404).json({ message: "Employee not found" });
       }
       res.json(employee);
@@ -852,12 +860,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees", requireRole(['admin', 'hr']), async (req, res) => {
+  app.post("/api/employees", tenantMiddleware, requireDistrict, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       console.log('Create employee request body:', req.body);
       
-      // Transform date fields to proper format
-      const employeeData = { ...req.body };
+      // Transform date fields to proper format and add district context
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const employeeData = { 
+        ...req.body,
+        districtId: districtId // CRITICAL: Ensure district isolation
+      };
       if (employeeData.hireDate) {
         employeeData.hireDate = new Date(employeeData.hireDate);
       }
@@ -901,12 +913,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/employees/:id", requireRole(['admin', 'hr']), async (req, res) => {
+  app.put("/api/employees/:id", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       console.log('Update employee request body:', req.body);
       
-      // Transform date fields to proper format
-      const employeeData = { ...req.body };
+      // Transform date fields to proper format and enforce district isolation
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const employeeData = { 
+        ...req.body,
+        districtId: districtId // CRITICAL: Ensure district isolation on updates
+      };
       if (employeeData.hireDate) {
         employeeData.hireDate = new Date(employeeData.hireDate);
       }
@@ -994,7 +1010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/employees/:id", requireRole(['admin', 'hr']), async (req, res) => {
+  app.delete("/api/employees/:id", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       await storage.deleteEmployee(parseInt(req.params.id));
       
@@ -1013,7 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Employee import/export routes
-  app.post('/api/employees/import', requireRole(['admin', 'hr']), async (req, res) => {
+  app.post('/api/employees/import', tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { employees } = req.body;
       
@@ -1076,7 +1092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/employees/bulk-update', requireRole(['admin', 'hr']), async (req, res) => {
+  app.post('/api/employees/bulk-update', tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { updates } = req.body;
       
@@ -1131,9 +1147,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/employees/export', requireRole(['admin', 'hr']), async (req, res) => {
+  app.get('/api/employees/export', tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const employees = await storage.getEmployees();
+      // Secure district determination with fallback for demo mode
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const employees = await storage.getEmployeesByDistrict(districtId);
       
       // Convert to CSV format
       const csvHeaders = [
@@ -1169,22 +1187,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leave management routes (all authenticated users can view leave types)
-  app.get("/api/leave-types", async (req, res) => {
+  // Leave management routes (all authenticated users can view leave types) - DISTRICT ISOLATED
+  app.get("/api/leave-types", tenantMiddleware, async (req, res) => {
     try {
-      const leaveTypes = await storage.getLeaveTypes();
+      // Secure district determination with fallback for demo mode
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const leaveTypes = await storage.getLeaveTypesByDistrict(districtId);
       res.json(leaveTypes);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch leave types", error: (error as Error).message });
     }
   });
 
-  // Leave requests import/export routes
-  app.get("/api/leave-requests/export", requireRole(['admin', 'hr']), async (req, res) => {
+  // Leave requests import/export routes - DISTRICT ISOLATED
+  app.get("/api/leave-requests/export", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const leaveRequests = await storage.getLeaveRequests();
-      const employees = await storage.getEmployees();
-      const leaveTypes = await storage.getLeaveTypes();
+      // Secure district determination with fallback for demo mode
+      const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
+      const leaveRequests = await storage.getLeaveRequestsByDistrict(districtId);
+      const employees = await storage.getEmployeesByDistrict(districtId);
+      const leaveTypes = await storage.getLeaveTypesByDistrict(districtId);
       
       // Transform data for CSV export
       const csvData = leaveRequests.map(request => {

@@ -486,6 +486,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(employees).orderBy(desc(employees.createdAt));
   }
 
+  // CRITICAL: District-isolated employees
+  async getEmployeesByDistrict(districtId: number): Promise<Employee[]> {
+    return await db.select().from(employees).where(eq(employees.districtId, districtId)).orderBy(desc(employees.createdAt));
+  }
+
   async getEmployee(id: number): Promise<Employee | undefined> {
     const [employee] = await db.select().from(employees).where(eq(employees.id, id));
     return employee;
@@ -838,8 +843,18 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(leaveTypes);
   }
 
+  // CRITICAL: District-isolated leave types
+  async getLeaveTypesByDistrict(districtId: number): Promise<LeaveType[]> {
+    return await db.select().from(leaveTypes).where(eq(leaveTypes.districtId, districtId));
+  }
+
   async getLeaveRequests(): Promise<LeaveRequest[]> {
     return await db.select().from(leaveRequests).orderBy(desc(leaveRequests.createdAt));
+  }
+
+  // CRITICAL: District-isolated leave requests
+  async getLeaveRequestsByDistrict(districtId: number): Promise<LeaveRequest[]> {
+    return await db.select().from(leaveRequests).where(eq(leaveRequests.districtId, districtId)).orderBy(desc(leaveRequests.createdAt));
   }
 
   async getLeaveRequest(id: number): Promise<LeaveRequest | undefined> {
@@ -1658,6 +1673,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(10);
   }
 
+  // CRITICAL: District-isolated activity logs
+  async getRecentActivityLogsByDistrict(districtId: number): Promise<ActivityLog[]> {
+    return await db.select().from(activityLogs).where(eq(activityLogs.districtId, districtId)).orderBy(desc(activityLogs.createdAt)).limit(10);
+  }
+
   // Dashboard statistics
   async getDashboardStats(): Promise<any> {
     const [employeeStats] = await db
@@ -1685,6 +1705,46 @@ export class DatabaseStorage implements IStorage {
       .select({ count: count(substituteAssignments.id) })
       .from(substituteAssignments)
       .where(gte(substituteAssignments.assignedDate, new Date(new Date().setHours(0, 0, 0, 0))));
+
+    return {
+      ...employeeStats,
+      ...pendingStats,
+      todaySubstituteAssignments: todayAssignments[0].count,
+    };
+  }
+
+  // CRITICAL: District-isolated dashboard stats
+  async getDashboardStatsByDistrict(districtId: number): Promise<any> {
+    const [employeeStats] = await db
+      .select({
+        totalEmployees: count(employees.id),
+        teachers: sql<number>`sum(case when ${employees.employeeType} = 'teacher' then 1 else 0 end)`,
+        supportStaff: sql<number>`sum(case when ${employees.employeeType} = 'support_staff' then 1 else 0 end)`,
+        administrators: sql<number>`sum(case when ${employees.employeeType} = 'administrator' then 1 else 0 end)`,
+        substitutes: sql<number>`sum(case when ${employees.employeeType} = 'substitute' then 1 else 0 end)`,
+      })
+      .from(employees)
+      .where(and(eq(employees.status, "active"), eq(employees.districtId, districtId)));
+
+    const [pendingStats] = await db
+      .select({
+        pendingOnboarding: sql<number>`sum(case when ${onboardingWorkflows.status} != 'completed' then 1 else 0 end)`,
+        pendingLeaveRequests: sql<number>`sum(case when ${leaveRequests.status} = 'pending' then 1 else 0 end)`,
+        pendingDocuments: sql<number>`sum(case when ${documents.status} = 'pending' then 1 else 0 end)`,
+      })
+      .from(onboardingWorkflows)
+      .fullJoin(leaveRequests, sql`1=1`)
+      .fullJoin(documents, sql`1=1`)
+      .where(eq(onboardingWorkflows.districtId, districtId));
+
+    const todayAssignments = await db
+      .select({ count: count(substituteAssignments.id) })
+      .from(substituteAssignments)
+      .innerJoin(employees, eq(substituteAssignments.employeeId, employees.id))
+      .where(and(
+        gte(substituteAssignments.assignedDate, new Date(new Date().setHours(0, 0, 0, 0))),
+        eq(employees.districtId, districtId)
+      ));
 
     return {
       ...employeeStats,
