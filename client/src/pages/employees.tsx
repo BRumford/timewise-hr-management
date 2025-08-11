@@ -335,29 +335,54 @@ export default function Employees() {
       }
       
       const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-      console.log('CSV headers:', headers);
+      console.log('CSV headers found:', headers);
+      console.log('Header mapping will be:', headers.map(h => `"${h}" -> "${headerMap[h] || h}"`));
       
       // Create a mapping for common header variations
       const headerMap: { [key: string]: string } = {
         'Employee Name': 'fullName',
         'Employee ID': 'employeeId',
         'employeeId': 'employeeId',
+        'ID': 'employeeId',
         'firstName': 'firstName',
+        'First Name': 'firstName',
         'lastName': 'lastName',
+        'Last Name': 'lastName',
+        'Name': 'fullName',
+        'Full Name': 'fullName',
         'Phone Number': 'phoneNumber',
         'phoneNumber': 'phoneNumber',
+        'Phone': 'phoneNumber',
         'Hire Date': 'hireDate',
         'hireDate': 'hireDate',
+        'Date Hired': 'hireDate',
+        'Start Date': 'hireDate',
         'Employee Type': 'employeeType',
         'employeeType': 'employeeType',
+        'Type': 'employeeType',
+        'Role': 'employeeType',
         'department': 'department',
+        'Department': 'department',
         'position': 'position',
+        'Position': 'position',
+        'Title': 'position',
+        'Job Title': 'position',
         'salary': 'salary',
+        'Salary': 'salary',
+        'Pay': 'salary',
         'status': 'status',
+        'Status': 'status',
         'email': 'email',
+        'Email': 'email',
+        'Email Address': 'email',
         'address': 'address',
+        'Address': 'address',
         'supervisorId': 'supervisorId',
-        'certifications': 'certifications'
+        'Supervisor ID': 'supervisorId',
+        'Manager ID': 'supervisorId',
+        'certifications': 'certifications',
+        'Certifications': 'certifications',
+        'Certs': 'certifications'
       };
       
       const employees = lines.slice(1).map((line, index) => {
@@ -446,12 +471,22 @@ export default function Employees() {
         if (!employee.employeeId) {
           throw new Error(`Row ${index + 2}: Employee ID is required`);
         }
-        if (!employee.firstName) {
-          throw new Error(`Row ${index + 2}: First name is required (or full name)`);
+        
+        // Check if we have name information (either firstName/lastName or they were set from fullName)
+        if (!employee.firstName && !employee.lastName) {
+          throw new Error(`Row ${index + 2}: Name information is required (firstName, lastName, or full name column)`);
         }
-        if (!employee.lastName) {
-          throw new Error(`Row ${index + 2}: Last name is required (or full name)`);
+        
+        // If we only have firstName but no lastName, use firstName as lastName
+        if (employee.firstName && !employee.lastName) {
+          employee.lastName = employee.firstName;
         }
+        
+        // If we only have lastName but no firstName, use lastName as firstName
+        if (!employee.firstName && employee.lastName) {
+          employee.firstName = employee.lastName;
+        }
+        
         if (!employee.employeeType) {
           throw new Error(`Row ${index + 2}: Employee type is required`);
         }
