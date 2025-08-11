@@ -644,23 +644,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordHash
       });
 
-      // For now, we'll use the existing storage but in a real multi-tenant setup,
-      // you'd create a separate district and associate the user with it
-      const districtId = crypto.randomUUID();
+      // Create the actual district in the database for proper multi-tenant isolation
+      const district = await storage.createDistrict({
+        name: districtName,
+        slug: districtName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-'),
+        contactEmail: email.toLowerCase(), // Use admin email as district contact
+        subscriptionTier: 'basic',
+        subscriptionStatus: 'trial',
+        maxEmployees: 100,
+        maxAdmins: 3,
+        customBranding: false,
+        apiAccess: false,
+        supportLevel: 'standard',
+        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days trial
+      });
 
-      // Set user in session
-      (req as any).session.user = user;
+      // Update user with the district ID for proper isolation
+      const updatedUser = await storage.updateUserDistrict(user.id, district.id);
+
+      // Set user in session with district context
+      (req as any).session.user = { ...updatedUser, districtId: district.id };
 
       res.json({ 
         message: "District and admin account created successfully", 
-        userId: user.id,
-        districtId: districtId,
+        userId: updatedUser.id,
+        districtId: district.id,
+        district: {
+          id: district.id,
+          name: district.name,
+          slug: district.slug
+        },
         user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          firstName: user.firstName,
-          lastName: user.lastName
+          id: updatedUser.id,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          districtId: district.id
         }
       });
     } catch (error) {

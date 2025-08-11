@@ -116,6 +116,8 @@ import {
   type OpenEnrollmentEmail,
   type InsertOpenEnrollmentEmail,
   districts,
+  type District,
+  type InsertDistrict,
   districtWorkflows,
   workflowExecutions,
   systemOwnerAccessLog,
@@ -141,6 +143,12 @@ export interface IStorage {
   resetFailedLoginAttempts(userId: string): Promise<void>;
   updateLastLogin(userId: string): Promise<void>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserDistrict(userId: string, districtId: number): Promise<User>;
+  
+  // District operations
+  createDistrict(district: InsertDistrict): Promise<District>;
+  getDistrict(id: number): Promise<District | undefined>;
+  getAllDistricts(): Promise<District[]>;
   
   // Employee operations
   getEmployees(): Promise<Employee[]>;
@@ -480,6 +488,33 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateUserDistrict(userId: string, districtId: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        districtId: districtId,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  // District operations
+  async createDistrict(districtData: InsertDistrict): Promise<District> {
+    const [district] = await db.insert(districts).values(districtData).returning();
+    return district;
+  }
+
+  async getDistrict(id: number): Promise<District | undefined> {
+    const [district] = await db.select().from(districts).where(eq(districts.id, id));
+    return district;
+  }
+
+  async getAllDistricts(): Promise<District[]> {
+    return await db.select().from(districts).orderBy(districts.name);
   }
 
   // Employee operations
