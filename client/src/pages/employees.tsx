@@ -472,16 +472,8 @@ export default function Employees() {
           throw new Error(`Row ${index + 2}: Employee ID is required`);
         }
         
-        // For CSV uploads that only contain Employee ID and additional data (like Hourly Rate, Masters, Calendar),
-        // we don't require name information since these are updates to existing employees.
-        // The server will handle checking if the employee exists and whether name info is required.
-        
-        // Only apply name validation if we have other required fields that suggest this is a new employee
-        const hasNewEmployeeData = employee.department || employee.position || employee.email || employee.hireDate;
-        
-        if (hasNewEmployeeData && !employee.firstName && !employee.lastName) {
-          throw new Error(`Row ${index + 2}: Name information is required for new employees (firstName, lastName, or full name column)`);
-        }
+        // Let the server handle all validation logic for new vs existing employees
+        // The server will check if Employee ID exists and determine if name info is required
         
         // If we have name information, normalize it
         if (employee.firstName || employee.lastName) {
@@ -494,11 +486,6 @@ export default function Employees() {
           if (!employee.firstName && employee.lastName) {
             employee.firstName = employee.lastName;
           }
-        }
-        
-        // Only require employee type for new employees
-        if (hasNewEmployeeData && !employee.employeeType) {
-          throw new Error(`Row ${index + 2}: Employee type is required for new employees`);
         }
         
         // Set required fields with defaults
