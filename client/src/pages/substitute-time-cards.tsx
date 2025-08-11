@@ -178,16 +178,16 @@ export default function SubstituteTimeCards() {
     }));
   };
 
-  // Update payroll entry - simplified without useCallback to match working monthly-timecard.tsx
+  // Update payroll entry - completely simplified debugging version
   const updatePayrollEntry = (index: number, field: string, value: any) => {
-    setPayrollEntries(prev => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        [field]: value
-      };
-      return updated;
-    });
+    console.log(`Updating entry ${index}, field ${field}, value:`, value);
+    const newEntries = [...payrollEntries];
+    if (!newEntries[index]) {
+      newEntries[index] = {};
+    }
+    newEntries[index][field] = value;
+    console.log('New entries array:', newEntries);
+    setPayrollEntries(newEntries);
   };
 
   // Initialize daily entries for the current month
