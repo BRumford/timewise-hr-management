@@ -437,85 +437,7 @@ export default function SubstituteTimeCards() {
     return acc;
   }, {});
 
-  // Direct inline rendering with stable keys to prevent re-render issues
-  const renderPayrollRows = () => {
-    const rows = [];
-    
-    for (let lineNumber = 1; lineNumber <= 10; lineNumber++) {
-      const index = lineNumber - 1;
-      const entry = payrollEntries[index] || {};
-      const total = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
-      
-      rows.push(
-        <tr key={`payroll-row-${lineNumber}`} className="even:bg-gray-50">
-          <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
-            {lineNumber}
-          </td>
-          <td className="border border-gray-400 px-1 py-1">
-            <Select onValueChange={(value) => updatePayrollEntry(index, 'addon', value)} value={entry.addon || ''}>
-              <SelectTrigger className="h-8 text-sm border-0 bg-transparent p-1">
-                <SelectValue placeholder="Addon" />
-              </SelectTrigger>
-              <SelectContent>
-                {(addonOptions as any[]).map((option) => (
-                  <SelectItem key={option.id} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </td>
-          <td className="border border-gray-400 px-1 py-1">
-            <input
-              key={`units-${lineNumber}`}
-              type="number"
-              step="0.01"
-              value={entry.units || ''}
-              onChange={(e) => updatePayrollEntry(index, 'units', e.target.value)}
-              className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded"
-              placeholder="0"
-            />
-          </td>
-          <td className="border border-gray-400 px-1 py-1">
-            <input
-              key={`rate-${lineNumber}`}
-              type="number"
-              step="0.01"
-              value={entry.rate || ''}
-              onChange={(e) => updatePayrollEntry(index, 'rate', e.target.value)}
-              className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded"
-              placeholder="0.00"
-            />
-          </td>
-          <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
-            ${total.toFixed(2)}
-          </td>
-          <td className="border border-gray-400 px-1 py-1">
-            <input
-              key={`alias-${lineNumber}`}
-              type="text"
-              value={entry.alias || ''}
-              onChange={(e) => updatePayrollEntry(index, 'alias', e.target.value)}
-              className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded"
-              placeholder="Alias"
-            />
-          </td>
-          <td className="border border-gray-400 px-1 py-1">
-            <input
-              key={`notes-${lineNumber}`}
-              type="text"
-              value={entry.notes || ''}
-              onChange={(e) => updatePayrollEntry(index, 'notes', e.target.value)}
-              className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded"
-              placeholder="Notes"
-            />
-          </td>
-        </tr>
-      );
-    }
-    
-    return rows;
-  };
+
 
   // Calculate grand total for payroll processing
   const calculateGrandTotal = () => {
@@ -902,7 +824,96 @@ export default function SubstituteTimeCards() {
                       </tr>
                     </thead>
                     <tbody>
-                      {renderPayrollRows()}
+                      <tr className="even:bg-gray-50">
+                        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">1</td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <Select onValueChange={(value) => updatePayrollEntry(0, 'addon', value)} value={payrollEntries[0]?.addon || ''}>
+                            <SelectTrigger className="h-8 text-sm border-0 bg-transparent p-1">
+                              <SelectValue placeholder="Addon" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(addonOptions as any[]).map((option) => (
+                                <SelectItem key={option.id} value={option.value}>{option.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="number" step="0.01" value={payrollEntries[0]?.units || ''} onChange={(e) => updatePayrollEntry(0, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="number" step="0.01" value={payrollEntries[0]?.rate || ''} onChange={(e) => updatePayrollEntry(0, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
+                          ${((parseFloat(payrollEntries[0]?.units) || 0) * (parseFloat(payrollEntries[0]?.rate) || 0)).toFixed(2)}
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="text" value={payrollEntries[0]?.alias || ''} onChange={(e) => updatePayrollEntry(0, 'alias', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Alias" />
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="text" value={payrollEntries[0]?.notes || ''} onChange={(e) => updatePayrollEntry(0, 'notes', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Notes" />
+                        </td>
+                      </tr>
+                      <tr className="even:bg-gray-50">
+                        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">2</td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <Select onValueChange={(value) => updatePayrollEntry(1, 'addon', value)} value={payrollEntries[1]?.addon || ''}>
+                            <SelectTrigger className="h-8 text-sm border-0 bg-transparent p-1">
+                              <SelectValue placeholder="Addon" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(addonOptions as any[]).map((option) => (
+                                <SelectItem key={option.id} value={option.value}>{option.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="number" step="0.01" value={payrollEntries[1]?.units || ''} onChange={(e) => updatePayrollEntry(1, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="number" step="0.01" value={payrollEntries[1]?.rate || ''} onChange={(e) => updatePayrollEntry(1, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
+                          ${((parseFloat(payrollEntries[1]?.units) || 0) * (parseFloat(payrollEntries[1]?.rate) || 0)).toFixed(2)}
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="text" value={payrollEntries[1]?.alias || ''} onChange={(e) => updatePayrollEntry(1, 'alias', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Alias" />
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="text" value={payrollEntries[1]?.notes || ''} onChange={(e) => updatePayrollEntry(1, 'notes', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Notes" />
+                        </td>
+                      </tr>
+                      <tr className="even:bg-gray-50">
+                        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">3</td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <Select onValueChange={(value) => updatePayrollEntry(2, 'addon', value)} value={payrollEntries[2]?.addon || ''}>
+                            <SelectTrigger className="h-8 text-sm border-0 bg-transparent p-1">
+                              <SelectValue placeholder="Addon" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(addonOptions as any[]).map((option) => (
+                                <SelectItem key={option.id} value={option.value}>{option.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="number" step="0.01" value={payrollEntries[2]?.units || ''} onChange={(e) => updatePayrollEntry(2, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="number" step="0.01" value={payrollEntries[2]?.rate || ''} onChange={(e) => updatePayrollEntry(2, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
+                          ${((parseFloat(payrollEntries[2]?.units) || 0) * (parseFloat(payrollEntries[2]?.rate) || 0)).toFixed(2)}
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="text" value={payrollEntries[2]?.alias || ''} onChange={(e) => updatePayrollEntry(2, 'alias', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Alias" />
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <input type="text" value={payrollEntries[2]?.notes || ''} onChange={(e) => updatePayrollEntry(2, 'notes', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Notes" />
+                        </td>
+                      </tr>
                       {/* Grand Total Row */}
                       <tr className="bg-purple-100 border-t-2 border-purple-400">
                         <td className="border border-gray-400 px-2 py-2 text-center text-sm font-bold text-purple-800" colSpan={4}>
