@@ -480,8 +480,7 @@ export default function MonthlyTimecard() {
         </td>
         <td className="border border-gray-400 px-1 py-1">
           <Input
-            type="number"
-            step="0.01"
+            type="text"
             value={entry.units || ''}
             onChange={(e) => updatePayrollEntry(index, 'units', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
@@ -490,8 +489,7 @@ export default function MonthlyTimecard() {
         </td>
         <td className="border border-gray-400 px-1 py-1">
           <Input
-            type="number"
-            step="0.01"
+            type="text"
             value={entry.rate || ''}
             onChange={(e) => updatePayrollEntry(index, 'rate', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
