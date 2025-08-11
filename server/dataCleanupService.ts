@@ -20,84 +20,166 @@ export class DataCleanupService {
     let recordsRemoved = 0;
 
     try {
-      // Clean demo documents
-      const docResult = await db.execute(sql`
-        DELETE FROM support_documents 
-        WHERE author_id = 'demo_user'
-      `);
-      recordsRemoved += docResult.rowCount || 0;
+      // Clean all support tables if they exist
+      try {
+        const docResult = await db.execute(sql`DELETE FROM support_documents`);
+        recordsRemoved += docResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
 
-      // Clean demo security notifications
-      const notificationResult = await db.execute(sql`
-        DELETE FROM security_notifications 
-        WHERE created_by = 'demo_user'
-      `);
-      recordsRemoved += notificationResult.rowCount || 0;
+      try {
+        const notificationResult = await db.execute(sql`DELETE FROM security_notifications`);
+        recordsRemoved += notificationResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
 
-      // Clean demo security updates
-      const updateResult = await db.execute(sql`
-        DELETE FROM security_updates 
-        WHERE released_by = 'demo_user'
-      `);
-      recordsRemoved += updateResult.rowCount || 0;
+      try {
+        const updateResult = await db.execute(sql`DELETE FROM security_updates`);
+        recordsRemoved += updateResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
 
-      // Clean demo vulnerability assessments
-      const vulnResult = await db.execute(sql`
-        DELETE FROM vulnerability_assessments 
-        WHERE title LIKE '%demo%' OR title LIKE '%test%'
-      `);
-      recordsRemoved += vulnResult.rowCount || 0;
+      try {
+        const vulnResult = await db.execute(sql`DELETE FROM vulnerability_assessments`);
+        recordsRemoved += vulnResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
 
-      // Clean demo employees and related data (handle foreign key constraints)
-      // First delete dependent records
-      await db.execute(sql`
-        DELETE FROM letters 
-        WHERE employee_id IN (
-          SELECT id FROM employees 
-          WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
-        )
-      `);
+      // COMPLETE data cleanup for new district isolation
+      // Clean ALL dependent records first to handle foreign key constraints
+      
+      // Clean all letters
+      const lettersResult = await db.execute(sql`DELETE FROM letters`);
+      recordsRemoved += lettersResult.rowCount || 0;
 
-      await db.execute(sql`
-        DELETE FROM time_cards 
-        WHERE employee_id IN (
-          SELECT id FROM employees 
-          WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
-        )
-      `);
+      // Clean all time cards
+      const timeCardsResult = await db.execute(sql`DELETE FROM time_cards`);
+      recordsRemoved += timeCardsResult.rowCount || 0;
 
-      await db.execute(sql`
-        DELETE FROM payroll_records 
-        WHERE employee_id IN (
-          SELECT id FROM employees 
-          WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
-        )
-      `);
+      // Clean all substitute time cards
+      try {
+        const subTimeCardsResult = await db.execute(sql`DELETE FROM substitute_time_cards`);
+        recordsRemoved += subTimeCardsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
 
-      // Now delete the employees
-      const employeeResult = await db.execute(sql`
-        DELETE FROM employees 
-        WHERE email LIKE '%demo%' OR email LIKE '%test%' OR first_name = 'Demo'
-      `);
+      // Clean all payroll records
+      const payrollResult = await db.execute(sql`DELETE FROM payroll_records`);
+      recordsRemoved += payrollResult.rowCount || 0;
+
+      // Clean all extra pay requests
+      try {
+        const extraPayRequestsResult = await db.execute(sql`DELETE FROM extra_pay_requests`);
+        recordsRemoved += extraPayRequestsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all extra pay contracts
+      try {
+        const extraPayContractsResult = await db.execute(sql`DELETE FROM extra_pay_contracts`);
+        recordsRemoved += extraPayContractsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all substitute assignments
+      try {
+        const substituteAssignmentsResult = await db.execute(sql`DELETE FROM substitute_assignments`);
+        recordsRemoved += substituteAssignmentsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all documents
+      try {
+        const documentsResult = await db.execute(sql`DELETE FROM documents`);
+        recordsRemoved += documentsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all benefit elections
+      try {
+        const benefitElectionsResult = await db.execute(sql`DELETE FROM employee_benefit_elections`);
+        recordsRemoved += benefitElectionsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all tax withholdings
+      try {
+        const taxWithholdingsResult = await db.execute(sql`DELETE FROM employee_tax_withholdings`);
+        recordsRemoved += taxWithholdingsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all employee accounts
+      try {
+        const employeeAccountsResult = await db.execute(sql`DELETE FROM employee_accounts`);
+        recordsRemoved += employeeAccountsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all activity logs
+      try {
+        const activityLogsResult = await db.execute(sql`DELETE FROM activity_logs`);
+        recordsRemoved += activityLogsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all onboarding form submissions
+      try {
+        const onboardingSubmissionsResult = await db.execute(sql`DELETE FROM onboarding_form_submissions`);
+        recordsRemoved += onboardingSubmissionsResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean all signature requests (this was blocking employee deletion)
+      const signatureRequestsResult = await db.execute(sql`DELETE FROM signature_requests`);
+      recordsRemoved += signatureRequestsResult.rowCount || 0;
+
+      // NOW clean ALL employees (main table)
+      const employeeResult = await db.execute(sql`DELETE FROM employees`);
       recordsRemoved += employeeResult.rowCount || 0;
 
-      // Clean demo PAF submissions
-      const pafResult = await db.execute(sql`
-        DELETE FROM paf_submissions 
-        WHERE created_by = 'demo_user'
-      `);
-      recordsRemoved += pafResult.rowCount || 0;
+      // Clean all retirees
+      try {
+        const retireesResult = await db.execute(sql`DELETE FROM retirees`);
+        recordsRemoved += retireesResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
 
-      // Clean demo leave requests
-      const leaveResult = await db.execute(sql`
-        DELETE FROM leave_requests 
-        WHERE created_by = 'demo_user'
-      `);
+      // Clean ALL PAF submissions
+      try {
+        const pafResult = await db.execute(sql`DELETE FROM paf_submissions`);
+        recordsRemoved += pafResult.rowCount || 0;
+      } catch (e) {
+        // Table may not exist
+      }
+
+      // Clean ALL leave requests
+      const leaveResult = await db.execute(sql`DELETE FROM leave_requests`);
       recordsRemoved += leaveResult.rowCount || 0;
 
       // Note: Demo timecards and payroll records are now cleaned above with employees to handle foreign keys
 
       console.log(`Data cleanup completed: ${recordsRemoved} records removed`);
+      console.log('Verifying employee cleanup...');
+      
+      // Verify employees are actually cleaned
+      const remainingEmployees = await db.execute(sql`SELECT COUNT(*) as count FROM employees`);
+      console.log(`Remaining employees after cleanup: ${remainingEmployees.rows[0]?.count || 0}`);
 
       return {
         success: true,

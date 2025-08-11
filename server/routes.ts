@@ -4026,7 +4026,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Data cleanup endpoint for fresh district setup
-  app.post('/api/system/cleanup-demo-data', isAuthenticated, async (req, res) => {
+  app.post('/api/system/cleanup-all-data', isAuthenticated, async (req, res) => {
     try {
       const { DataCleanupService } = await import('./dataCleanupService');
       const result = await DataCleanupService.cleanupDemoData();
@@ -4034,8 +4034,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: result.success,
         message: result.success 
-          ? `Successfully cleaned ${result.recordsRemoved} demo records`
-          : 'Cleanup failed',
+          ? `Successfully cleaned ${result.recordsRemoved} records for fresh district setup`
+          : 'Data cleanup failed',
         recordsRemoved: result.recordsRemoved,
         errors: result.errors
       });
