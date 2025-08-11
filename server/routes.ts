@@ -5085,6 +5085,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dismiss (deactivate) a notification
+  app.patch('/api/security/notifications/:id/dismiss', isAuthenticated, async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      
+      const [updatedNotification] = await db.update(schema.securityNotifications)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(schema.securityNotifications.id, notificationId))
+        .returning();
+
+      if (!updatedNotification) {
+        return res.status(404).json({ message: 'Notification not found' });
+      }
+
+      res.json({ message: 'Notification dismissed successfully' });
+    } catch (error) {
+      console.error('Error dismissing notification:', error);
+      res.status(500).json({ message: 'Failed to dismiss notification' });
+    }
+  });
+
   app.get('/api/security/vulnerabilities', isAuthenticated, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const vulnerabilities = await db.select().from(schema.vulnerabilityAssessments)

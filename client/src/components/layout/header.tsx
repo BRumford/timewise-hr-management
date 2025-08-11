@@ -49,9 +49,9 @@ export default function Header() {
            (targetAudience === 'employees' && userRole === 'employee');
   });
 
-  // Mark notification as read (if we add that feature later)
-  const markAsReadMutation = useMutation({
-    mutationFn: (notificationId: number) => apiRequest(`/api/security/notifications/${notificationId}/read`, 'PATCH'),
+  // Dismiss notification mutation
+  const dismissNotificationMutation = useMutation({
+    mutationFn: (notificationId: number) => apiRequest(`/api/security/notifications/${notificationId}/dismiss`, 'PATCH'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/security/notifications'] });
     },
@@ -182,9 +182,9 @@ export default function Header() {
                                 size="sm"
                                 className="h-6 w-6 p-0 hover:bg-gray-200"
                                 onClick={() => {
-                                  // We could add dismiss functionality here
-                                  console.log('Dismiss notification', notification.id);
+                                  dismissNotificationMutation.mutate(notification.id);
                                 }}
+                                disabled={dismissNotificationMutation.isPending}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
