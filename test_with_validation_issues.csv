@@ -1,0 +1,3 @@
+employeeId,firstName,lastName,email,phoneNumber,address,department,position,employeeType,hireDate,salary,status
+490003,Bob,Williams,bob.williams@school.edu,555-0125,789 Pine St,Science,Teacher,teacher,invalid-date,not-a-number,active
+490004,,Missing,missing.name@school.edu,555-0126,000 Test St,Math,Teacher,teacher,2024-01-01,45000,active

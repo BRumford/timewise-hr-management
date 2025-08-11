@@ -656,11 +656,23 @@ export default function Employees() {
       method: 'POST',
       body: formData,
     })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(errorData => {
+          throw new Error(errorData.message || 'Upload failed');
+        });
+      }
+      return response.json();
+    })
     .then(data => {
-      if (data.message) {
+      if (data.message && data.message.includes('Successfully')) {
         setImportSuccess(data.message);
         queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+        // Clear the file input after successful upload
+        if (event.target) {
+          event.target.value = '';
+        }
+        setImportFile(null);
       }
       if (data.errors) {
         setImportErrors(data.errors);
@@ -668,11 +680,12 @@ export default function Employees() {
     })
     .catch(error => {
       console.error('Import error:', error);
+      setImportSuccess('');
       setImportErrors([{
         row: 0,
-        type: 'system',
+        type: 'system', 
         employeeId: '',
-        errors: ['Failed to import CSV file: ' + error.message]
+        errors: [error.message || 'Failed to import CSV file']
       }]);
     });
   };
