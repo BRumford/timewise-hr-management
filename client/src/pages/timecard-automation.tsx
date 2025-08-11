@@ -58,17 +58,17 @@ export default function TimecardAutomation() {
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
 
   // Fetch pay date configurations
-  const { data: payConfigurations, isLoading: configsLoading } = useQuery({
+  const { data: payConfigurations = [], isLoading: configsLoading } = useQuery({
     queryKey: ["/api/pay-date-configurations"],
   });
 
   // Fetch generation templates
-  const { data: generationTemplates, isLoading: templatesLoading } = useQuery({
+  const { data: generationTemplates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ["/api/timecard-generation-templates"],
   });
 
   // Fetch generation job history
-  const { data: generationJobs, isLoading: jobsLoading } = useQuery({
+  const { data: generationJobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ["/api/timecard-generation-jobs"],
   });
 
@@ -122,7 +122,7 @@ export default function TimecardAutomation() {
       setIsConfigDialogOpen(false);
       configForm.reset();
       toast({
-        title: "✅ Configuration Created",
+        title: "Configuration Created",
         description: "Pay date configuration created successfully",
         duration: 4000,
       });
