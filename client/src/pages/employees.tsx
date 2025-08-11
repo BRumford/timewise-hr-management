@@ -1070,7 +1070,7 @@ export default function Employees() {
                       !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status'].includes(label.originalFieldName || label.fieldName)
                     ).map((label: any) => {
                       const fieldKey = label.originalFieldName || label.fieldName;
-                      const fieldValue = employee[fieldKey] || employee.customFields?.[label.fieldName] || '';
+                      const fieldValue = employee[fieldKey] || employee.customFieldsData?.[label.fieldName] || '';
                       
                       return (
                         <td key={label.id} className="px-6 py-4 whitespace-nowrap">
@@ -1463,13 +1463,13 @@ export default function Employees() {
                     {label.fieldType === 'select' ? (
                       <select 
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        defaultValue={selectedEmployee?.customFields?.[label.fieldName] || ''}
+                        defaultValue={selectedEmployee?.customFieldsData?.[label.fieldName] || ''}
                         onChange={(e) => {
                           // Handle custom field updates here
                           const updatedEmployee = { 
                             ...selectedEmployee, 
-                            customFields: { 
-                              ...selectedEmployee?.customFields, 
+                            customFieldsData: { 
+                              ...selectedEmployee?.customFieldsData, 
                               [label.fieldName]: e.target.value 
                             } 
                           };
@@ -1488,13 +1488,13 @@ export default function Employees() {
                         type={label.fieldType === 'number' ? 'number' : 'text'}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder={label.placeholder || `Enter ${label.displayLabel.toLowerCase()}`}
-                        defaultValue={selectedEmployee?.customFields?.[label.fieldName] || ''}
+                        defaultValue={selectedEmployee?.customFieldsData?.[label.fieldName] || ''}
                         onChange={(e) => {
                           // Handle custom field updates here
                           const updatedEmployee = { 
                             ...selectedEmployee, 
-                            customFields: { 
-                              ...selectedEmployee?.customFields, 
+                            customFieldsData: { 
+                              ...selectedEmployee?.customFieldsData, 
                               [label.fieldName]: e.target.value 
                             } 
                           };
@@ -1790,7 +1790,7 @@ export default function Employees() {
                         defaultValue=""
                         onChange={(e) => {
                           // Store custom field value for form submission
-                          addForm.setValue(`customFields.${label.fieldName}` as any, e.target.value);
+                          addForm.setValue(`customFieldsData.${label.fieldName}` as any, e.target.value);
                         }}
                       >
                         <option value="">Select {label.displayLabel}</option>
@@ -1807,7 +1807,7 @@ export default function Employees() {
                         placeholder={label.placeholder || `Enter ${label.displayLabel.toLowerCase()}`}
                         onChange={(e) => {
                           // Store custom field value for form submission
-                          addForm.setValue(`customFields.${label.fieldName}` as any, e.target.value);
+                          addForm.setValue(`customFieldsData.${label.fieldName}` as any, e.target.value);
                         }}
                       />
                     )}
