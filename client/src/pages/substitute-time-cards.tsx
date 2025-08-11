@@ -839,15 +839,14 @@ export default function SubstituteTimeCards() {
                           </Select>
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="number" step="0.01" value={payrollEntries[0]?.units || ''} onChange={(e) => updatePayrollEntry(0, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
+                          <input type="text" value={payrollEntries[0]?.units || ''} onChange={(e) => updatePayrollEntry(0, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
                           <input 
-                            type="number" 
-                            step="0.01" 
+                            type="text" 
                             value={payrollEntries[0]?.rate || ''} 
                             onChange={(e) => {
-                              console.log('Input change:', e.target.value);
+                              console.log('Rate input change:', e.target.value);
                               updatePayrollEntry(0, 'rate', e.target.value);
                             }}
                             onFocus={() => console.log('Rate input focused')}
@@ -903,10 +902,10 @@ export default function SubstituteTimeCards() {
                           </Select>
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="number" step="0.01" value={payrollEntries[1]?.units || ''} onChange={(e) => updatePayrollEntry(1, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
+                          <input type="text" value={payrollEntries[1]?.units || ''} onChange={(e) => updatePayrollEntry(1, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="number" step="0.01" value={payrollEntries[1]?.rate || ''} onChange={(e) => updatePayrollEntry(1, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
+                          <input type="text" value={payrollEntries[1]?.rate || ''} onChange={(e) => updatePayrollEntry(1, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
                         </td>
                         <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
                           ${((parseFloat(payrollEntries[1]?.units) || 0) * (parseFloat(payrollEntries[1]?.rate) || 0)).toFixed(2)}
@@ -933,10 +932,10 @@ export default function SubstituteTimeCards() {
                           </Select>
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="number" step="0.01" value={payrollEntries[2]?.units || ''} onChange={(e) => updatePayrollEntry(2, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
+                          <input type="text" value={payrollEntries[2]?.units || ''} onChange={(e) => updatePayrollEntry(2, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="number" step="0.01" value={payrollEntries[2]?.rate || ''} onChange={(e) => updatePayrollEntry(2, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
+                          <input type="text" value={payrollEntries[2]?.rate || ''} onChange={(e) => updatePayrollEntry(2, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
                         </td>
                         <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
                           ${((parseFloat(payrollEntries[2]?.units) || 0) * (parseFloat(payrollEntries[2]?.rate) || 0)).toFixed(2)}
