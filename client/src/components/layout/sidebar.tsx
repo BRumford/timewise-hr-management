@@ -43,32 +43,28 @@ const mainMenuItems = [
   // Admin has very limited access - only timecard approval
   { path: "/time-cards", icon: Clock, label: "Administrator Timecard Approval", roles: ["admin"] },
   
-  // HR has full access to all HR and system functions
-  { path: "/district-management", icon: Building2, label: "District Management", roles: ["hr"] },
+  // Reordered per user request - exact order specified
+  { path: "/paf-management", icon: ClipboardList, label: "Personnel Action Forms", roles: ["hr", "payroll", "admin"] },
   { path: "/onboarding", icon: UserPlus, label: "Onboarding", roles: ["hr", "payroll"] },
   { path: "/employees", icon: Users, label: "Employee Management", roles: ["hr", "payroll"] },
-  { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["hr", "payroll"] },
-  { path: "/benefits", icon: FileSpreadsheet, label: "Benefits", roles: ["hr", "payroll"] },
-  { path: "/retirees", icon: Heart, label: "Retirees", roles: ["hr", "payroll"] },
-  { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["hr", "payroll"] },
-  
-  // Payroll-specific features (HR and Payroll both have full access)
   { path: "/monthly-timecard", icon: Calendar, label: "Monthly Timecard", roles: ["hr", "payroll"] },
   { path: "/substitute-time-cards", icon: UserCheck, label: "Substitute Time Cards", roles: ["hr", "payroll"] },
   { path: "/payroll", icon: Calculator, label: "Payroll", roles: ["hr", "payroll"] },
-  { path: "/payroll-calendar", icon: Calendar, label: "Payroll Calendar", roles: ["hr", "payroll"] },
+  { path: "/leave-management", icon: Calendar, label: "Leave Management", roles: ["hr", "payroll"] },
+  { path: "/benefits", icon: FileSpreadsheet, label: "Benefits", roles: ["hr", "payroll"] },
   { path: "/extra-pay-activities", icon: DollarSign, label: "Extra Pay Activities", roles: ["hr", "payroll"] },
-
-  // Shared features (HR and Payroll have full access)
   { path: "/letters", icon: Mail, label: "Letters", roles: ["hr", "payroll"] },
-  { path: "/paf-management", icon: ClipboardList, label: "Personnel Action Forms", roles: ["hr", "payroll", "admin"] },
-  { path: "/timecard-automation", icon: Clock, label: "Timecard Automation", roles: ["hr", "admin"] },
-  { path: "/ai-dashboard", icon: Bot, label: "AI Automation", roles: ["system_owner"], systemOwnerOnly: true },
+  { path: "/archived-employees", icon: Archive, label: "Archived Employees", roles: ["hr", "payroll"] },
   { path: "/reports", icon: BarChart3, label: "Reports", roles: ["hr", "payroll"] },
+  { path: "/district-management", icon: Building2, label: "District Management", roles: ["hr"] },
 ];
 
 // Administrative settings dropdown items
 const adminDropdownItems = [
+  // Moved per user request
+  { path: "/timecard-automation", icon: Clock, label: "Timecard Automation", roles: ["hr", "admin"] },
+  { path: "/ai-dashboard", icon: Bot, label: "AI Automation", roles: ["system_owner"] },
+  // Existing settings items
   { path: "/timecard-templates", icon: Layout, label: "Timecard Templates", roles: ["hr", "payroll", "system_owner"] },
   { path: "/documents", icon: FileText, label: "Documents", roles: ["hr", "payroll", "system_owner"] },
   { path: "/payroll-settings", icon: Settings, label: "Payroll Settings", roles: ["hr", "payroll", "system_owner"] },
@@ -116,14 +112,6 @@ export default function Sidebar() {
 
   // Filter main menu items based on user role and permissions
   const visibleMainMenuItems = mainMenuItems.filter(item => {
-    // Special handling for system owner only items (AI automation)
-    if (item.systemOwnerOnly) {
-      // For demo user, only show in HR role. For others, require system owner status
-      if (user?.id === 'demo_user') {
-        return user?.role === 'hr' || user?.role === 'system_owner';
-      }
-      return user?.isSystemOwner || user?.role === 'system_owner';
-    }
     return hasAccess(item.path);
   }).map(item => {
     // Customize the time-cards label based on user role
