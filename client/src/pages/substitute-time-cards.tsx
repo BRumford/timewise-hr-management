@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -178,8 +178,8 @@ export default function SubstituteTimeCards() {
     }));
   };
 
-  // Update payroll entry - optimized with useCallback to prevent re-renders
-  const updatePayrollEntry = useCallback((index: number, field: string, value: any) => {
+  // Update payroll entry - simplified without useCallback to match working monthly-timecard.tsx
+  const updatePayrollEntry = (index: number, field: string, value: any) => {
     setPayrollEntries(prev => {
       const updated = [...prev];
       updated[index] = {
@@ -188,7 +188,7 @@ export default function SubstituteTimeCards() {
       };
       return updated;
     });
-  }, []);
+  };
 
   // Initialize daily entries for the current month
   const initializeDailyEntries = () => {
