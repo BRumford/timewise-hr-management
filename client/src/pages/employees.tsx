@@ -334,11 +334,7 @@ export default function Employees() {
         throw new Error('CSV file must contain at least a header row and one data row');
       }
       
-      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-      console.log('CSV headers found:', headers);
-      console.log('Header mapping will be:', headers.map(h => `"${h}" -> "${headerMap[h] || h}"`));
-      
-      // Create a mapping for common header variations
+      // Create a mapping for common header variations - moved before usage
       const headerMap: { [key: string]: string } = {
         'Employee Name': 'fullName',
         'Employee ID': 'employeeId',
@@ -384,6 +380,10 @@ export default function Employees() {
         'Certifications': 'certifications',
         'Certs': 'certifications'
       };
+      
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      console.log('CSV headers found:', headers);
+      console.log('Header mapping will be:', headers.map(h => `"${h}" -> "${headerMap[h] || h}"`));
       
       const employees = lines.slice(1).map((line, index) => {
         const values = line.split(',').map(v => v.replace(/"/g, '').trim());
