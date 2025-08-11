@@ -1,0 +1,4 @@
+Employee ID,First Name,Last Name,Email,Phone Number,Department,Position,Employee Type,Hire Date,Salary,Hourly Rate,Masters,Calendar
+490001,Jane,Smith,jane.smith@district.edu,555-0101,Kitchen,Head Cook,support_staff,2025-01-01,35000,18,No,49Cl194
+490002,Mark,Johnson,mark.johnson@district.edu,555-0102,Payroll,Payroll Manager,administrator,2025-01-01,60000,40,No,49CL261
+490003,Sarah,Wilson,sarah.wilson@district.edu,555-0103,Teaching,Head Teacher,teacher,2025-01-01,55000,54,Yes,49CE182
