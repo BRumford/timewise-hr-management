@@ -257,9 +257,8 @@ export default function MonthlyTimecard() {
     });
   };
 
-  // Update payroll entry - with debugging
+  // Update payroll entry
   const updatePayrollEntry = (index: number, field: string, value: any) => {
-    console.log(`Monthly: Updating entry ${index}, field ${field}, value:`, value);
     setPayrollEntries(prev => {
       const updated = [...prev];
       if (!updated[index]) {
@@ -269,7 +268,6 @@ export default function MonthlyTimecard() {
         ...updated[index],
         [field]: value
       };
-      console.log('Monthly: New entries array:', updated);
       return updated;
     });
   };
@@ -487,12 +485,7 @@ export default function MonthlyTimecard() {
           <Input
             type="text"
             value={entry.units || ''}
-            onChange={(e) => {
-              console.log('Monthly Units input change:', e.target.value);
-              updatePayrollEntry(index, 'units', e.target.value);
-            }}
-            onFocus={() => console.log('Monthly Units input focused')}
-            onBlur={() => console.log('Monthly Units input blurred')}
+            onChange={(e) => updatePayrollEntry(index, 'units', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="0"
           />
@@ -501,12 +494,7 @@ export default function MonthlyTimecard() {
           <Input
             type="text"
             value={entry.rate || ''}
-            onChange={(e) => {
-              console.log('Monthly Rate input change:', e.target.value);
-              updatePayrollEntry(index, 'rate', e.target.value);
-            }}
-            onFocus={() => console.log('Monthly Rate input focused')}
-            onBlur={() => console.log('Monthly Rate input blurred')}
+            onChange={(e) => updatePayrollEntry(index, 'rate', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="0.00"
           />
@@ -518,12 +506,7 @@ export default function MonthlyTimecard() {
           <Input
             type="text"
             value={entry.alias || ''}
-            onChange={(e) => {
-              console.log('Monthly Alias input change:', e.target.value);
-              updatePayrollEntry(index, 'alias', e.target.value);
-            }}
-            onFocus={() => console.log('Monthly Alias input focused')}
-            onBlur={() => console.log('Monthly Alias input blurred')}
+            onChange={(e) => updatePayrollEntry(index, 'alias', e.target.value)}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="Alias"
           />
