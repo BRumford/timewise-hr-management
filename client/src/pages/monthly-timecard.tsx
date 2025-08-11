@@ -487,7 +487,12 @@ export default function MonthlyTimecard() {
           <Input
             type="text"
             value={entry.units || ''}
-            onChange={(e) => updatePayrollEntry(index, 'units', e.target.value)}
+            onChange={(e) => {
+              console.log('Monthly Units input change:', e.target.value);
+              updatePayrollEntry(index, 'units', e.target.value);
+            }}
+            onFocus={() => console.log('Monthly Units input focused')}
+            onBlur={() => console.log('Monthly Units input blurred')}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="0"
           />
@@ -513,7 +518,12 @@ export default function MonthlyTimecard() {
           <Input
             type="text"
             value={entry.alias || ''}
-            onChange={(e) => updatePayrollEntry(index, 'alias', e.target.value)}
+            onChange={(e) => {
+              console.log('Monthly Alias input change:', e.target.value);
+              updatePayrollEntry(index, 'alias', e.target.value);
+            }}
+            onFocus={() => console.log('Monthly Alias input focused')}
+            onBlur={() => console.log('Monthly Alias input blurred')}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="Alias"
           />
