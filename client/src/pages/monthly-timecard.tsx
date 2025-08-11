@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -257,8 +257,8 @@ export default function MonthlyTimecard() {
     });
   };
 
-  // Update payroll entry
-  const updatePayrollEntry = (index: number, field: string, value: any) => {
+  // Update payroll entry with useCallback for stability
+  const updatePayrollEntry = useCallback((index: number, field: string, value: any) => {
     setPayrollEntries(prev => {
       const updated = [...prev];
       if (!updated[index]) {
@@ -270,7 +270,7 @@ export default function MonthlyTimecard() {
       };
       return updated;
     });
-  };
+  }, []);
 
   // Save timecard mutation
   const saveTimecardMutation = useMutation({
@@ -454,8 +454,8 @@ export default function MonthlyTimecard() {
 
   const groupedFields = groupFieldsBySection(templateFields);
 
-  // PayrollProcessingRowInline component for payroll processing section
-  const PayrollProcessingRowInline = ({ lineNumber }: { lineNumber: number }) => {
+  // PayrollProcessingRowInline component for payroll processing section - memoized for performance
+  const PayrollProcessingRowInline = useCallback(({ lineNumber }: { lineNumber: number }) => {
     const index = lineNumber - 1;
     const entry = payrollEntries[index] || {};
 
@@ -522,7 +522,7 @@ export default function MonthlyTimecard() {
         </td>
       </tr>
     );
-  };
+  }, [payrollEntries, addonOptions, updatePayrollEntry]);
 
   // Calculate grand total for payroll processing
   const calculateGrandTotal = () => {
