@@ -116,10 +116,15 @@ export default function Header() {
         <div className="flex items-center space-x-4">
           <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="relative">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative z-10 hover:bg-gray-100 focus:bg-gray-100"
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              >
                 <Bell className="h-5 w-5" />
                 {userNotifications.length > 0 && (
-                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center pointer-events-none">
                     {userNotifications.length}
                   </Badge>
                 )}
