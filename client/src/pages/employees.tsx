@@ -990,7 +990,7 @@ export default function Employees() {
                   {(fieldLabels as any)?.filter((label: any) => {
                     const isVisible = label.isVisible && label.category === 'employee';
                     const isNotStandardField = !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status'].includes(label.originalFieldName || label.fieldName);
-                    console.log('Field filter check:', label.fieldName, 'visible:', isVisible, 'notStandard:', isNotStandardField);
+
                     return isVisible && isNotStandardField;
                   }).map((label: any) => (
                     <th key={label.id} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1073,7 +1073,7 @@ export default function Employees() {
                       const fieldKey = label.originalFieldName || label.fieldName;
                       const fieldValue = employee[fieldKey] || employee.customFieldsData?.[label.fieldName] || '';
                       
-                      console.log('Rendering field:', label.fieldName, 'fieldKey:', fieldKey, 'value:', fieldValue, 'customData:', employee.customFieldsData);
+
                       
                       return (
                         <td key={label.id} className="px-6 py-4 whitespace-nowrap">
