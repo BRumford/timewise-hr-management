@@ -1103,15 +1103,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      // Create header mapping for common variations
+      const headerMap: { [key: string]: string } = {
+        'Employee ID': 'employeeId',
+        'Employee Id': 'employeeId',
+        'ID': 'employeeId',
+        'First Name': 'firstName',
+        'FirstName': 'firstName',
+        'Last Name': 'lastName',
+        'LastName': 'lastName',
+        'Full Name': 'fullName',
+        'Name': 'fullName',
+        'Employee Name': 'fullName',
+        'Email': 'email',
+        'Email Address': 'email',
+        'Phone': 'phoneNumber',
+        'Phone Number': 'phoneNumber',
+        'Department': 'department',
+        'Position': 'position',
+        'Title': 'position',
+        'Job Title': 'position',
+        'Employee Type': 'employeeType',
+        'Type': 'employeeType',
+        'Hire Date': 'hireDate',
+        'Date Hired': 'hireDate',
+        'Start Date': 'hireDate',
+        'Salary': 'salary',
+        'Address': 'address',
+        'Status': 'status',
+        'Supervisor ID': 'supervisorId',
+        'Manager ID': 'supervisorId',
+        'Certifications': 'certifications',
+      };
+      
       const employees = [];
 
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
         if (values.length === headers.length) {
           const employee = {};
+          
           headers.forEach((header, index) => {
-            employee[header] = values[index] || '';
+            const mappedHeader = headerMap[header] || header.toLowerCase().replace(/\s+/g, '');
+            const value = values[index] || '';
+            
+            // Handle special cases
+            if (mappedHeader === 'fullName' && value) {
+              // Split full name into firstName and lastName
+              const nameParts = value.split(' ');
+              employee.firstName = nameParts[0] || '';
+              employee.lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
+            } else if (mappedHeader === 'employeeType' && value) {
+              // Normalize employee types
+              const typeMap: { [key: string]: string } = {
+                'Teacher': 'teacher',
+                'Support Staff': 'support_staff',
+                'Substitute': 'substitute',
+                'Administrator': 'administrator',
+                'Classified': 'support_staff',
+                'Certificated': 'teacher',
+                'Confidential': 'administrator'
+              };
+              employee[mappedHeader] = typeMap[value] || value.toLowerCase();
+            } else if (value) {
+              employee[mappedHeader] = value;
+            }
           });
+          
+          // Set defaults
+          if (!employee.status) {
+            employee.status = 'active';
+          }
           employees.push(employee);
         }
       }
