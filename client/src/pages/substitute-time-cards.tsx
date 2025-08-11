@@ -842,16 +842,50 @@ export default function SubstituteTimeCards() {
                           <input type="number" step="0.01" value={payrollEntries[0]?.units || ''} onChange={(e) => updatePayrollEntry(0, 'units', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0" />
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="number" step="0.01" value={payrollEntries[0]?.rate || ''} onChange={(e) => updatePayrollEntry(0, 'rate', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="0.00" />
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            value={payrollEntries[0]?.rate || ''} 
+                            onChange={(e) => {
+                              console.log('Input change:', e.target.value);
+                              updatePayrollEntry(0, 'rate', e.target.value);
+                            }}
+                            onFocus={() => console.log('Rate input focused')}
+                            onBlur={() => console.log('Rate input blurred')}
+                            className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" 
+                            placeholder="0.00" 
+                          />
                         </td>
                         <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
                           ${((parseFloat(payrollEntries[0]?.units) || 0) * (parseFloat(payrollEntries[0]?.rate) || 0)).toFixed(2)}
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="text" value={payrollEntries[0]?.alias || ''} onChange={(e) => updatePayrollEntry(0, 'alias', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Alias" />
+                          <input 
+                            type="text" 
+                            value={payrollEntries[0]?.alias || ''} 
+                            onChange={(e) => {
+                              console.log('Alias input change:', e.target.value);
+                              updatePayrollEntry(0, 'alias', e.target.value);
+                            }}
+                            onFocus={() => console.log('Alias input focused')}
+                            onBlur={() => console.log('Alias input blurred')}
+                            className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" 
+                            placeholder="Alias" 
+                          />
                         </td>
                         <td className="border border-gray-400 px-1 py-1">
-                          <input type="text" value={payrollEntries[0]?.notes || ''} onChange={(e) => updatePayrollEntry(0, 'notes', e.target.value)} className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" placeholder="Notes" />
+                          <input 
+                            type="text" 
+                            value={payrollEntries[0]?.notes || ''} 
+                            onChange={(e) => {
+                              console.log('Notes input change:', e.target.value);
+                              updatePayrollEntry(0, 'notes', e.target.value);
+                            }}
+                            onFocus={() => console.log('Notes input focused')}
+                            onBlur={() => console.log('Notes input blurred')}
+                            className="h-8 w-full text-sm border-0 bg-transparent p-1 rounded" 
+                            placeholder="Notes" 
+                          />
                         </td>
                       </tr>
                       <tr className="even:bg-gray-50">
