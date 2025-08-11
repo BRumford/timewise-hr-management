@@ -33,6 +33,7 @@ import {
   benefitsPlans,
   openEnrollmentCampaigns,
   openEnrollmentEmails,
+
   type User,
   type UpsertUser,
   type EmployeeAccount,
@@ -829,7 +830,7 @@ export class DatabaseStorage implements IStorage {
     return importedEmployees;
   }
 
-  async bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[]): Promise<Employee[]> {
+  async bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee>; customFields?: Record<string, any> }[]): Promise<Employee[]> {
     const updatedEmployees = [];
     console.log(`[BULK_SYNC] Starting bulk update for ${updates.length} employees`);
     
@@ -842,10 +843,76 @@ export class DatabaseStorage implements IStorage {
           continue;
         }
 
+        // Update standard employee fields
         const [updated] = await db.update(employees).set({
           ...update.data,
           updatedAt: new Date(),
         }).where(eq(employees.id, update.id)).returning();
+        
+        // Handle custom field updates if provided
+        if (update.customFields && Object.keys(update.customFields).length > 0) {
+          console.log(`[CUSTOM_FIELDS] Updating custom fields for employee ${update.id}:`, update.customFields);
+          
+          // Get current custom fields data from the employee record
+          const currentCustomFields = updated.customFieldsData || {};
+          
+          // Merge new custom fields with existing ones
+          const mergedCustomFields = {
+            ...currentCustomFields,
+            ...update.customFields
+          };
+          
+          // Update the employee record with merged custom fields
+          const [updatedWithCustomFields] = await db.update(employees)
+            .set({
+              customFieldsData: mergedCustomFields,
+              updatedAt: new Date(),
+            })
+            .where(eq(employees.id, update.id))
+            .returning();
+          
+          console.log(`[CUSTOM_FIELDS] Updated custom fields for employee ${update.id}:`, mergedCustomFields);
+          
+          // Ensure custom field labels exist for district
+          for (const [fieldName, fieldValue] of Object.entries(update.customFields)) {
+            try {
+              // Check if custom field label exists
+              const [existingLabel] = await db.select()
+                .from(customFieldLabels)
+                .where(
+                  and(
+                    eq(customFieldLabels.districtId, updated.districtId),
+                    eq(customFieldLabels.fieldName, fieldName)
+                  )
+                );
+              
+              if (!existingLabel) {
+                // Create custom field label if it doesn't exist
+                await db.insert(customFieldLabels).values({
+                  districtId: updated.districtId,
+                  module: 'employee',
+                  fieldName: fieldName,
+                  fieldLabel: fieldName,
+                  fieldType: 'text',
+                  isRequired: false,
+                  isVisible: true,
+                  helpText: `Imported field: ${fieldName}`,
+                  validationRules: null,
+                  defaultValue: null,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                });
+                console.log(`[CUSTOM_FIELDS] Created label configuration for field: ${fieldName}`);
+              }
+              
+            } catch (fieldError) {
+              console.error(`[CUSTOM_FIELDS] Error creating label for field ${fieldName}:`, fieldError);
+            }
+          }
+          
+          // Update the employee object to reflect the custom fields change
+          updated.customFieldsData = mergedCustomFields;
+        }
         
         updatedEmployees.push(updated);
         

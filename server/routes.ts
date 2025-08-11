@@ -1086,13 +1086,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (existingEmployee) {
           // This is an update - merge new data with existing record
-          const updateData = {
-            ...employeeData,
-            districtId: districtId,
-          };
+          // Separate standard employee fields from custom fields
+          const standardFields = ['employeeId', 'firstName', 'lastName', 'email', 'phoneNumber', 'address', 'hireDate', 'position', 'department', 'salary', 'employeeType', 'status', 'supervisorId', 'certifications'];
+          const customFieldData = {};
+          const employeeUpdate = { districtId: districtId };
+          
+          // Separate standard fields from custom fields
+          for (const [key, value] of Object.entries(employeeData)) {
+            if (standardFields.includes(key)) {
+              employeeUpdate[key] = value;
+            } else if (key !== 'employeeId') { // Don't include employeeId in custom fields
+              customFieldData[key] = value;
+            }
+          }
           
           // Validate update data (allow partial updates)
-          const validation = insertEmployeeSchema.partial().safeParse(updateData);
+          const validation = insertEmployeeSchema.partial().safeParse(employeeUpdate);
           if (!validation.success) {
             errors.push({
               row: i + 1,
@@ -1103,7 +1112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             updateEmployees.push({
               id: existingEmployee.id,
-              data: validation.data
+              data: validation.data,
+              customFields: customFieldData
             });
           }
         } else {
