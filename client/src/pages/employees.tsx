@@ -1455,8 +1455,8 @@ export default function Employees() {
                 {(fieldLabels as any)?.filter((label: any) => 
                   label.isVisible && 
                   label.category === 'employee' &&
-                  !label.originalFieldName && // These are completely new fields
-                  !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status', 'email', 'phoneNumber', 'address', 'hireDate', 'salary', 'payGrade', 'educationLevel', 'certifications', 'supervisorId'].includes(label.fieldName)
+                   // These are completely new fields
+                  !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status', 'email', 'phoneNumber', 'address', 'hireDate', 'salary', 'payGrade', 'educationLevel', 'certifications', 'supervisorId'].includes(label.originalFieldName || label.fieldName)
                 ).map((label: any) => (
                   <div key={label.id} className="custom-field-input">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
