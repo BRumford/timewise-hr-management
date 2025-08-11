@@ -890,15 +890,21 @@ export class DatabaseStorage implements IStorage {
                 // Create custom field label if it doesn't exist
                 await db.insert(customFieldLabels).values({
                   districtId: updated.districtId,
-                  module: 'employee',
                   fieldName: fieldName,
-                  fieldLabel: fieldName,
-                  fieldType: 'text',
+                  originalFieldName: fieldName,
+                  displayLabel: fieldName, // This is the required field
+                  description: `Imported custom field: ${fieldName}`,
+                  helpText: `Imported field: ${fieldName}`,
                   isRequired: false,
                   isVisible: true,
-                  helpText: `Imported field: ${fieldName}`,
-                  validationRules: null,
+                  isEditable: true,
+                  category: 'employee',
+                  section: 'main',
+                  fieldType: 'text',
+                  validationRules: {},
+                  options: [],
                   defaultValue: null,
+                  createdBy: 'system',
                   createdAt: new Date(),
                   updatedAt: new Date(),
                 });
