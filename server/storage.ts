@@ -160,7 +160,7 @@ export interface IStorage {
   getEmployeesByDepartment(department: string, districtId: number): Promise<Employee[]>;
   getEmployeesByType(type: string, districtId: number): Promise<Employee[]>;
   bulkImportEmployees(employees: InsertEmployee[]): Promise<Employee[]>;
-  bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[], districtId: number): Promise<Employee[]>;
+  bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee>; customFields?: Record<string, any> }[]): Promise<Employee[]>;
   getEmployeesWithoutUserAccounts(districtId: number): Promise<Employee[]>;
   updateEmployeeUserId(employeeId: number, userId: string): Promise<void>;
   

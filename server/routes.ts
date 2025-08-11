@@ -1191,7 +1191,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const existingEmployees = await storage.getEmployees();
-      const existingEmployeeMap = new Map(existingEmployees.map(emp => [emp.employeeId, emp]));
+      const districtEmployees = existingEmployees.filter(emp => emp.districtId === districtId);
+      const existingEmployeeMap = new Map(districtEmployees.map(emp => [String(emp.employeeId), emp]));
 
       const newEmployees = [];
       const updateEmployees = [];
@@ -1200,7 +1201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let i = 0; i < employees.length; i++) {
         const employeeData = employees[i];
         
-        const existingEmployee = existingEmployeeMap.get(employeeData.employeeId);
+        // Ensure employee ID is treated as string for consistent lookup
+        const employeeId = String(employeeData.employeeId);
+        const existingEmployee = existingEmployeeMap.get(employeeId);
         
         if (existingEmployee) {
           const standardFields = ['employeeId', 'firstName', 'lastName', 'email', 'phoneNumber', 'address', 'hireDate', 'position', 'department', 'salary', 'employeeType', 'status', 'supervisorId', 'certifications'];
@@ -1312,8 +1315,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         message: `Successfully processed ${newEmployees.length + updateEmployees.length} employees`,
-        imported: importedEmployees.length,
-        updated: updatedEmployees.length,
+        imported: newEmployees.length,
+        updated: updateEmployees.length,
         newEmployees: importedEmployees,
         updatedEmployees: updatedEmployees
       });
@@ -1344,7 +1347,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get existing employees to check for updates vs new records
       const existingEmployees = await storage.getEmployees();
-      const existingEmployeeMap = new Map(existingEmployees.map(emp => [emp.employeeId, emp]));
+      const districtEmployees = existingEmployees.filter(emp => emp.districtId === districtId);
+      const existingEmployeeMap = new Map(districtEmployees.map(emp => [String(emp.employeeId), emp]));
 
       // Separate new employees from updates
       const newEmployees = [];
@@ -1354,8 +1358,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let i = 0; i < employees.length; i++) {
         const employeeData = employees[i];
         
-        // Check if employee exists by employeeId
-        const existingEmployee = existingEmployeeMap.get(employeeData.employeeId);
+        // Check if employee exists by employeeId (ensure string comparison)
+        const employeeId = String(employeeData.employeeId);
+        const existingEmployee = existingEmployeeMap.get(employeeId);
         
         if (existingEmployee) {
           // This is an update - merge new data with existing record
@@ -1414,8 +1419,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         message: `Successfully processed ${newEmployees.length + updateEmployees.length} employees`,
-        imported: importedEmployees.length,
-        updated: updatedEmployees.length,
+        imported: newEmployees.length,
+        updated: updateEmployees.length,
         newEmployees: importedEmployees,
         updatedEmployees: updatedEmployees
       });
