@@ -1184,7 +1184,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: employeeData.userId || `user_${employeeData.employeeId || Date.now()}`,
           };
           
-          const validation = employeeImportSchema.safeParse(employeeWithDistrict);
+          // Create a more flexible schema for CSV imports
+          const csvEmployeeSchema = insertEmployeeSchema.extend({
+            districtId: z.number(),
+            userId: z.string(),
+            hireDate: z.string().optional(),
+            salary: z.union([z.string(), z.number()]).optional(),
+            supervisorId: z.union([z.string(), z.number()]).optional().nullable(),
+          });
+          
+          const validation = csvEmployeeSchema.safeParse(employeeWithDistrict);
           if (!validation.success) {
             errors.push({
               row: i + 1,
@@ -1314,8 +1323,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: employeeData.userId || `user_${employeeData.employeeId || Date.now()}`,
           };
           
-          // Validate the data using the import schema that handles string dates
-          const validation = employeeImportSchema.safeParse(employeeWithDistrict);
+          // Create a more flexible schema for CSV imports
+          const csvEmployeeSchema = insertEmployeeSchema.extend({
+            districtId: z.number(),
+            userId: z.string(),
+            hireDate: z.string().optional(),
+            salary: z.union([z.string(), z.number()]).optional(),
+            supervisorId: z.union([z.string(), z.number()]).optional().nullable(),
+          });
+          
+          // Validate the data using the flexible CSV schema
+          const validation = csvEmployeeSchema.safeParse(employeeWithDistrict);
           if (!validation.success) {
             errors.push({
               row: i + 1,
