@@ -155,6 +155,7 @@ export const employees = pgTable("employees", {
   certifications: text("certifications").array(),
   status: varchar("status").notNull().default("active"), // active, inactive, on_leave, terminated
   supervisorId: integer("supervisor_id"),
+  customFieldsData: jsonb("custom_fields_data").default({}), // Store custom field values
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
