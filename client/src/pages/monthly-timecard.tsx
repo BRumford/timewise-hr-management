@@ -257,14 +257,19 @@ export default function MonthlyTimecard() {
     });
   };
 
-  // Update payroll entry
+  // Update payroll entry - with debugging
   const updatePayrollEntry = (index: number, field: string, value: any) => {
+    console.log(`Monthly: Updating entry ${index}, field ${field}, value:`, value);
     setPayrollEntries(prev => {
       const updated = [...prev];
+      if (!updated[index]) {
+        updated[index] = {};
+      }
       updated[index] = {
         ...updated[index],
         [field]: value
       };
+      console.log('Monthly: New entries array:', updated);
       return updated;
     });
   };
@@ -491,7 +496,12 @@ export default function MonthlyTimecard() {
           <Input
             type="text"
             value={entry.rate || ''}
-            onChange={(e) => updatePayrollEntry(index, 'rate', e.target.value)}
+            onChange={(e) => {
+              console.log('Monthly Rate input change:', e.target.value);
+              updatePayrollEntry(index, 'rate', e.target.value);
+            }}
+            onFocus={() => console.log('Monthly Rate input focused')}
+            onBlur={() => console.log('Monthly Rate input blurred')}
             className="h-8 text-sm border-0 bg-transparent p-1"
             placeholder="0.00"
           />
