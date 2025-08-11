@@ -1051,7 +1051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Employee import/export routes
+  // Employee import/export routes with update/merge capability
   app.post('/api/employees/import', tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
       const { employees } = req.body;
@@ -1069,29 +1069,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         districtId = 1;
       }
 
-      // Validate each employee record
-      const validatedEmployees = [];
+      // Get existing employees to check for updates vs new records
+      const existingEmployees = await storage.getEmployees();
+      const existingEmployeeMap = new Map(existingEmployees.map(emp => [emp.employeeId, emp]));
+
+      // Separate new employees from updates
+      const newEmployees = [];
+      const updateEmployees = [];
       const errors = [];
 
       for (let i = 0; i < employees.length; i++) {
         const employeeData = employees[i];
         
-        // Add district context and ensure required fields
-        const employeeWithDistrict = {
-          ...employeeData,
-          districtId: districtId,
-          userId: employeeData.userId || `user_${employeeData.employeeId || Date.now()}`,
-        };
+        // Check if employee exists by employeeId
+        const existingEmployee = existingEmployeeMap.get(employeeData.employeeId);
         
-        // Validate the data using the import schema that handles string dates
-        const validation = employeeImportSchema.safeParse(employeeWithDistrict);
-        if (!validation.success) {
-          errors.push({
-            row: i + 1,
-            errors: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-          });
+        if (existingEmployee) {
+          // This is an update - merge new data with existing record
+          const updateData = {
+            ...employeeData,
+            districtId: districtId,
+          };
+          
+          // Validate update data (allow partial updates)
+          const validation = insertEmployeeSchema.partial().safeParse(updateData);
+          if (!validation.success) {
+            errors.push({
+              row: i + 1,
+              type: 'update',
+              employeeId: employeeData.employeeId,
+              errors: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+            });
+          } else {
+            updateEmployees.push({
+              id: existingEmployee.id,
+              data: validation.data
+            });
+          }
         } else {
-          validatedEmployees.push(validation.data);
+          // This is a new employee - require name information
+          if (!employeeData.firstName || !employeeData.lastName) {
+            errors.push({
+              row: i + 1,
+              type: 'new',
+              employeeId: employeeData.employeeId,
+              errors: ['Name information is required (firstName, lastName, or full name column)']
+            });
+            continue;
+          }
+          
+          // Add district context and ensure required fields for new employee
+          const employeeWithDistrict = {
+            ...employeeData,
+            districtId: districtId,
+            userId: employeeData.userId || `user_${employeeData.employeeId || Date.now()}`,
+          };
+          
+          // Validate the data using the import schema that handles string dates
+          const validation = employeeImportSchema.safeParse(employeeWithDistrict);
+          if (!validation.success) {
+            errors.push({
+              row: i + 1,
+              type: 'new',
+              employeeId: employeeData.employeeId,
+              errors: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+            });
+          } else {
+            newEmployees.push(validation.data);
+          }
         }
       }
 
@@ -1102,12 +1147,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const importedEmployees = await storage.bulkImportEmployees(validatedEmployees);
+      let importedEmployees = [];
+      let updatedEmployees = [];
+      
+      // Process new employees
+      if (newEmployees.length > 0) {
+        importedEmployees = await storage.bulkImportEmployees(newEmployees);
+      }
+      
+      // Process employee updates
+      if (updateEmployees.length > 0) {
+        updatedEmployees = await storage.bulkUpdateEmployees(updateEmployees);
+      }
       
       res.json({
-        message: "Employees imported successfully",
+        message: `Successfully processed ${newEmployees.length + updateEmployees.length} employees`,
         imported: importedEmployees.length,
-        employees: importedEmployees
+        updated: updatedEmployees.length,
+        newEmployees: importedEmployees,
+        updatedEmployees: updatedEmployees
       });
     } catch (error) {
       console.error('Error importing employees:', error);

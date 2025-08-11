@@ -1169,6 +1169,31 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: tru
   userId: z.string().optional(), // Make userId optional for CSV import
 });
 
+// Special schema for CSV imports that handles string dates and flexible validation
+export const employeeImportSchema = createInsertSchema(employees).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  // Handle string dates from CSV
+  hireDate: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    return new Date(val);
+  }),
+  // Make salary handle both string and number inputs
+  salary: z.union([
+    z.string().transform((val) => val === '' ? undefined : val),
+    z.number().optional()
+  ]).optional(),
+  // Handle various integer fields that might come as strings
+  districtId: z.union([
+    z.string().transform((val) => val === '' ? undefined : parseInt(val) || undefined),
+    z.number().optional()
+  ]).optional(),
+  // Allow all other fields to be optional for flexible imports
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  email: z.string().email().optional(),
+  certifications: z.array(z.string()).optional(),
+  userId: z.string().optional(),
+}).passthrough(); // Allow extra fields for custom data
+
 export const insertDistrictWorkflowSchema = createInsertSchema(districtWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWorkflowExecutionSchema = createInsertSchema(workflowExecutions).omit({ id: true, startedAt: true, completedAt: true });
 export const insertLeaveRequestSchema = z.object({
