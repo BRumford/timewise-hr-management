@@ -331,10 +331,14 @@ export default function Employees() {
   });
 
   const importEmployeesMutation = useMutation({
-    mutationFn: async (csvData: string) => {
-      console.log('Raw CSV data:', csvData);
+    mutationFn: async (file: File) => {
+      console.log('Uploading file:', file.name);
       
-      const lines = csvData.split('\n').filter(line => line.trim());
+      // Read file content for logging purposes only
+      const csvText = await file.text();
+      const lines = csvText.split('\n').filter(line => line.trim());
+      console.log('CSV lines found:', lines.length);
+      
       if (lines.length < 2) {
         throw new Error('CSV file must contain at least a header row and one data row');
       }
@@ -500,8 +504,31 @@ export default function Employees() {
         return employee;
       });
 
-      console.log('Final employees array:', employees);
-      return await apiRequest('/api/employees/import', 'POST', { employees });
+      console.log('Final employees array processed, sending file to server...');
+      
+      const formData = new FormData();
+      formData.append('csvFile', file);
+      
+      const response = await fetch('/api/employees/import-csv', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Don't set Content-Type, let browser set it with boundary for FormData
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        let parsedError;
+        try {
+          parsedError = JSON.parse(errorText);
+        } catch {
+          parsedError = { message: errorText };
+        }
+        throw parsedError;
+      }
+      
+      return await response.json();
     },
     onSuccess: (data: any) => {
       const importedCount = data.imported || 0;
@@ -533,28 +560,36 @@ export default function Employees() {
       console.error('Error message:', error?.message);
       console.error('Error response:', error?.response?.data);
       
-      let errorData = { errors: [] };
+      let errorData: { errors: any[] } = { errors: [] };
       
       try {
-        // Handle API response errors that contain validation details
-        if (error?.response?.data?.errors) {
+        // Handle direct error object from fetch (has errors array from server)
+        if (error?.errors && Array.isArray(error.errors)) {
+          errorData = { errors: error.errors };
+        } else if (error?.message && error.message.includes('Validation errors found')) {
+          // Handle string-based error messages that might have JSON
+          const jsonMatch = error.message.match(/\{.*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.errors) {
+              errorData = { errors: parsed.errors };
+            }
+          }
+        } else if (error?.response?.data?.errors) {
           errorData = { errors: error.response.data.errors };
         } else if (error?.response?.data?.message) {
           errorData = { 
             errors: [{ 
               row: 1, 
               errors: [error.response.data.message] 
-            }] 
+            } as any] 
           };
-        } else if (error.message && error.message.includes('Validation errors found')) {
-          const jsonPart = error.message.split('Validation errors found')[1];
-          errorData = JSON.parse(jsonPart);
         } else if (error.message) {
           errorData = { 
             errors: [{ 
               row: 1, 
               errors: [error.message] 
-            }] 
+            } as any] 
           };
         } else {
           // Handle cases where error object is empty or malformed
@@ -562,7 +597,7 @@ export default function Employees() {
             errors: [{ 
               row: 1, 
               errors: ['CSV import failed. Please check the server console for more details.'] 
-            }] 
+            } as any] 
           };
         }
       } catch (parseError) {
@@ -571,7 +606,7 @@ export default function Employees() {
           errors: [{ 
             row: 1, 
             errors: ['CSV import failed. Please check your file format and try again.'] 
-          }] 
+          } as any] 
         };
       }
       
@@ -653,46 +688,8 @@ export default function Employees() {
     setImportErrors([]);
     setImportSuccess("");
 
-    // Create FormData and upload file directly
-    const formData = new FormData();
-    formData.append('csvFile', file);
-    
-    fetch('/api/employees/import-csv', {
-      method: 'POST',
-      body: formData,
-    })
-    .then(response => {
-      if (!response.ok) {
-        return response.json().then(errorData => {
-          throw new Error(errorData.message || 'Upload failed');
-        });
-      }
-      return response.json();
-    })
-    .then(data => {
-      if (data.message && data.message.includes('Successfully')) {
-        setImportSuccess(data.message);
-        queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
-        // Clear the file input after successful upload
-        if (event.target) {
-          event.target.value = '';
-        }
-        setImportFile(null);
-      }
-      if (data.errors) {
-        setImportErrors(data.errors);
-      }
-    })
-    .catch(error => {
-      console.error('Import error:', error);
-      setImportSuccess('');
-      setImportErrors([{
-        row: 0,
-        type: 'system', 
-        employeeId: '',
-        errors: [error.message || 'Failed to import CSV file']
-      }]);
-    });
+    // Use the mutation instead of direct fetch
+    importEmployeesMutation.mutate(file);
   };
 
   const downloadTemplate = () => {
