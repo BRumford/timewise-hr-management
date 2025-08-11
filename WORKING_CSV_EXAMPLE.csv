@@ -1,0 +1,4 @@
+Employee ID,First Name,Last Name,Email,Phone Number,Department,Position,Employee Type,Hire Date,Salary
+490001,Jane WORKS,Smith WORKS,jane.works@test.com,555-1111,Kitchen Updated,Cook Updated,support_staff,2025-08-01,40000
+490002,Mark WORKS,Johnson WORKS,mark.works@test.com,555-2222,Payroll Updated,Manager Updated,administrator,2025-08-01,65000
+490003,Sarah WORKS,Wilson WORKS,sarah.works@test.com,555-3333,Teaching Updated,Teacher Updated,teacher,2025-08-01,50000

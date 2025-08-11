@@ -1297,8 +1297,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (errors.length > 0) {
         return res.status(400).json({ 
-          message: "Validation errors found", 
-          errors: errors.slice(0, 10)
+          message: "CSV validation failed", 
+          errors: errors.slice(0, 10),
+          expectedHeaders: "Employee ID, First Name, Last Name, Email, Phone Number, Department, Position, Employee Type, Hire Date, Salary",
+          detectedHeaders: headers,
+          helpText: "Make sure your CSV has the correct column headers. The system detected these headers: " + headers.join(", ")
         });
       }
 
