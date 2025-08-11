@@ -882,7 +882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Secure district determination with fallback for demo mode
       const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
-      const employees = await storage.getEmployeesByDistrict(districtId);
+      const employees = await storage.getEmployees(districtId);
       res.json(employees);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch employees", error: (error as Error).message });
@@ -893,8 +893,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Secure district determination with fallback for demo mode
       const districtId = req.district?.id || req.user?.districtId || 1; // DEFAULT to district 1 for security isolation
-      const employee = await storage.getEmployee(parseInt(req.params.id));
-      if (!employee || employee.districtId !== districtId) {
+      const employee = await storage.getEmployee(parseInt(req.params.id), districtId);
+      if (!employee) {
         return res.status(404).json({ message: "Employee not found" });
       }
       res.json(employee);
@@ -974,8 +974,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertEmployeeSchema.partial().parse(employeeData);
       console.log('Validated employee data:', validatedData);
       
-      // Update employee with system-wide synchronization
-      const employee = await storage.updateEmployee(parseInt(req.params.id), validatedData);
+      // Update employee with system-wide synchronization and district isolation
+      const employee = await storage.updateEmployee(parseInt(req.params.id), validatedData, districtId);
       
       // Create user activity log
       await storage.createActivityLog({
@@ -1055,14 +1055,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/employees/:id", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      await storage.deleteEmployee(parseInt(req.params.id));
+      // Secure district determination for deletion
+      const districtId = req.district?.id || req.user?.districtId || 1;
+      await storage.deleteEmployee(parseInt(req.params.id), districtId);
       
       await storage.createActivityLog({
         userId: req.body.userId || "system",
         action: "delete_employee",
         entityType: "employee",
         entityId: parseInt(req.params.id),
-        description: `Deleted employee`,
+        description: `Deleted employee from district ${districtId}`,
       });
 
       res.status(204).send();

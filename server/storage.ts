@@ -150,18 +150,18 @@ export interface IStorage {
   getDistrict(id: number): Promise<District | undefined>;
   getAllDistricts(): Promise<District[]>;
   
-  // Employee operations
-  getEmployees(): Promise<Employee[]>;
-  getEmployee(id: number): Promise<Employee | undefined>;
-  getEmployeeByUserId(userId: string): Promise<Employee | undefined>;
+  // Employee operations - ALL MUST FILTER BY DISTRICT FOR SECURITY
+  getEmployees(districtId: number): Promise<Employee[]>;
+  getEmployee(id: number, districtId: number): Promise<Employee | undefined>;
+  getEmployeeByUserId(userId: string, districtId: number): Promise<Employee | undefined>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
-  updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee>;
-  deleteEmployee(id: number): Promise<void>;
-  getEmployeesByDepartment(department: string): Promise<Employee[]>;
-  getEmployeesByType(type: string): Promise<Employee[]>;
+  updateEmployee(id: number, employee: Partial<InsertEmployee>, districtId: number): Promise<Employee>;
+  deleteEmployee(id: number, districtId: number): Promise<void>;
+  getEmployeesByDepartment(department: string, districtId: number): Promise<Employee[]>;
+  getEmployeesByType(type: string, districtId: number): Promise<Employee[]>;
   bulkImportEmployees(employees: InsertEmployee[]): Promise<Employee[]>;
-  bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[]): Promise<Employee[]>;
-  getEmployeesWithoutUserAccounts(): Promise<Employee[]>;
+  bulkUpdateEmployees(updates: { id: number; data: Partial<InsertEmployee> }[], districtId: number): Promise<Employee[]>;
+  getEmployeesWithoutUserAccounts(districtId: number): Promise<Employee[]>;
   updateEmployeeUserId(employeeId: number, userId: string): Promise<void>;
   
   // Leave management
@@ -517,23 +517,20 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(districts).orderBy(districts.name);
   }
 
-  // Employee operations
-  async getEmployees(): Promise<Employee[]> {
-    return await db.select().from(employees).orderBy(desc(employees.createdAt));
-  }
-
-  // CRITICAL: District-isolated employees
-  async getEmployeesByDistrict(districtId: number): Promise<Employee[]> {
+  // Employee operations - CRITICAL: All methods now enforce district isolation
+  async getEmployees(districtId: number): Promise<Employee[]> {
     return await db.select().from(employees).where(eq(employees.districtId, districtId)).orderBy(desc(employees.createdAt));
   }
 
-  async getEmployee(id: number): Promise<Employee | undefined> {
-    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
+
+
+  async getEmployee(id: number, districtId: number): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(and(eq(employees.id, id), eq(employees.districtId, districtId)));
     return employee;
   }
 
-  async getEmployeeByUserId(userId: string): Promise<Employee | undefined> {
-    const [employee] = await db.select().from(employees).where(eq(employees.userId, userId));
+  async getEmployeeByUserId(userId: string, districtId: number): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(and(eq(employees.userId, userId), eq(employees.districtId, districtId)));
     return employee;
   }
 
@@ -589,23 +586,21 @@ export class DatabaseStorage implements IStorage {
 
 
 
-  async updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee> {
-    // Clean employee data and add districtId if missing
+  async updateEmployee(id: number, employee: Partial<InsertEmployee>, districtId: number): Promise<Employee> {
+    // Clean employee data and ensure proper district assignment
     const cleanedEmployee = { ...employee };
-    if (!cleanedEmployee.districtId) {
-      cleanedEmployee.districtId = 1; // Default district
-    }
+    cleanedEmployee.districtId = districtId; // Enforce district isolation
     
-    // Get the original employee data before update for comparison
-    const originalEmployee = await this.getEmployee(id);
+    // Get the original employee data before update for comparison (with district filtering)
+    const originalEmployee = await this.getEmployee(id, districtId);
     if (!originalEmployee) {
-      throw new Error(`Employee with id ${id} not found`);
+      throw new Error(`Employee with id ${id} not found in district ${districtId}`);
     }
     
     const [updatedEmployee] = await db
       .update(employees)
       .set({ ...cleanedEmployee, updatedAt: new Date() })
-      .where(eq(employees.id, id))
+      .where(and(eq(employees.id, id), eq(employees.districtId, districtId)))
       .returning();
     
     // Trigger system-wide synchronization
@@ -756,8 +751,14 @@ export class DatabaseStorage implements IStorage {
     return changes;
   }
 
-  async deleteEmployee(id: number): Promise<void> {
-    console.log(`Starting deletion process for employee ID: ${id}`);
+  async deleteEmployee(id: number, districtId: number): Promise<void> {
+    console.log(`Starting deletion process for employee ID: ${id} in district ${districtId}`);
+    
+    // First verify the employee belongs to this district
+    const employee = await this.getEmployee(id, districtId);
+    if (!employee) {
+      throw new Error(`Employee with id ${id} not found in district ${districtId}`);
+    }
     
     try {
       // Delete all related records first to avoid foreign key constraint violations
@@ -806,22 +807,22 @@ export class DatabaseStorage implements IStorage {
       console.log("Deleting PAF submissions...");
       await db.delete(pafSubmissions).where(eq(pafSubmissions.employeeId, id));
       
-      // Finally delete the employee record
+      // Finally delete the employee record with district verification
       console.log("Deleting employee record...");
-      await db.delete(employees).where(eq(employees.id, id));
-      console.log(`Successfully deleted employee ID: ${id}`);
+      await db.delete(employees).where(and(eq(employees.id, id), eq(employees.districtId, districtId)));
+      console.log(`Successfully deleted employee ID: ${id} from district ${districtId}`);
     } catch (error) {
       console.error(`Error during employee deletion:`, error);
       throw error;
     }
   }
 
-  async getEmployeesByDepartment(department: string): Promise<Employee[]> {
-    return await db.select().from(employees).where(eq(employees.department, department));
+  async getEmployeesByDepartment(department: string, districtId: number): Promise<Employee[]> {
+    return await db.select().from(employees).where(and(eq(employees.department, department), eq(employees.districtId, districtId)));
   }
 
-  async getEmployeesByType(type: string): Promise<Employee[]> {
-    return await db.select().from(employees).where(eq(employees.employeeType, type));
+  async getEmployeesByType(type: string, districtId: number): Promise<Employee[]> {
+    return await db.select().from(employees).where(and(eq(employees.employeeType, type), eq(employees.districtId, districtId)));
   }
 
   async bulkImportEmployees(employeeDataList: InsertEmployee[]): Promise<Employee[]> {
@@ -985,11 +986,14 @@ export class DatabaseStorage implements IStorage {
     return updatedEmployees;
   }
 
-  async getEmployeesWithoutUserAccounts(): Promise<Employee[]> {
+  async getEmployeesWithoutUserAccounts(districtId: number): Promise<Employee[]> {
     const result = await db.select().from(employees).where(
-      or(
-        eq(employees.userId, ''),
-        sql`${employees.userId} IS NULL`
+      and(
+        eq(employees.districtId, districtId),
+        or(
+          eq(employees.userId, ''),
+          sql`${employees.userId} IS NULL`
+        )
       )
     );
     return result.filter(emp => emp.email); // Only return employees with email addresses
