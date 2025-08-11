@@ -1627,7 +1627,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Onboarding form submissions methods
-  async getOnboardingFormSubmissions(): Promise<OnboardingFormSubmission[]> {
+  async getOnboardingFormSubmissions(districtId?: number): Promise<OnboardingFormSubmission[]> {
+    if (districtId) {
+      return await db.select().from(onboardingFormSubmissions)
+        .innerJoin(employees, eq(onboardingFormSubmissions.employeeId, employees.id))
+        .where(eq(employees.districtId, districtId))
+        .orderBy(onboardingFormSubmissions.createdAt);
+    }
     return await db.select().from(onboardingFormSubmissions).orderBy(onboardingFormSubmissions.createdAt);
   }
 
@@ -1666,7 +1672,15 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.workflowId, workflowId));
   }
 
-  async getPendingOnboardingFormSubmissions(): Promise<OnboardingFormSubmission[]> {
+  async getPendingOnboardingFormSubmissions(districtId?: number): Promise<OnboardingFormSubmission[]> {
+    if (districtId) {
+      return await db.select().from(onboardingFormSubmissions)
+        .innerJoin(employees, eq(onboardingFormSubmissions.employeeId, employees.id))
+        .where(and(
+          eq(onboardingFormSubmissions.status, "pending"),
+          eq(employees.districtId, districtId)
+        ));
+    }
     return await db.select().from(onboardingFormSubmissions).where(eq(onboardingFormSubmissions.status, "pending"));
   }
 
@@ -1775,7 +1789,23 @@ export class DatabaseStorage implements IStorage {
     return updatedTimeCard;
   }
 
-  async approveTimeCardByAdmin(id: number, adminId: number, notes?: string): Promise<TimeCard> {
+  async approveTimeCardByAdmin(id: number, adminId: number, notes?: string, districtId?: number): Promise<TimeCard> {
+    let whereClause = eq(timeCards.id, id);
+    
+    // If district verification is needed, ensure the timecard belongs to an employee in the correct district
+    if (districtId) {
+      // First verify the timecard belongs to the district
+      const timeCard = await db.select({ employeeId: timeCards.employeeId })
+        .from(timeCards)
+        .innerJoin(employees, eq(timeCards.employeeId, employees.id))
+        .where(and(eq(timeCards.id, id), eq(employees.districtId, districtId)))
+        .limit(1);
+      
+      if (!timeCard.length) {
+        throw new Error(`Time card ${id} not found in district ${districtId}`);
+      }
+    }
+    
     const [updatedTimeCard] = await db
       .update(timeCards)
       .set({
@@ -1786,7 +1816,7 @@ export class DatabaseStorage implements IStorage {
         adminNotes: notes,
         updatedAt: new Date(),
       })
-      .where(eq(timeCards.id, id))
+      .where(whereClause)
       .returning();
     return updatedTimeCard;
   }
@@ -2870,7 +2900,15 @@ export class DatabaseStorage implements IStorage {
     return timecard || null;
   }
 
-  async getMonthlyTimecardsByEmployee(employeeId: number): Promise<any[]> {
+  async getMonthlyTimecardsByEmployee(employeeId: number, districtId?: number): Promise<any[]> {
+    if (districtId) {
+      // Verify employee belongs to district first
+      const employee = await this.getEmployee(employeeId, districtId);
+      if (!employee) {
+        return []; // Return empty array if employee not in district
+      }
+    }
+    
     const timecards = await db.select().from(monthlyTimecards)
       .where(eq(monthlyTimecards.employeeId, employeeId))
       .orderBy(desc(monthlyTimecards.year), desc(monthlyTimecards.month));
@@ -2878,7 +2916,14 @@ export class DatabaseStorage implements IStorage {
     return timecards;
   }
 
-  async getMonthlyTimecardsBySite(site: string): Promise<any[]> {
+  async getMonthlyTimecardsBySite(site: string, districtId?: number): Promise<any[]> {
+    let whereClause = eq(employees.department, site);
+    
+    // Add district filtering if provided
+    if (districtId) {
+      whereClause = and(whereClause, eq(employees.districtId, districtId));
+    }
+    
     const timecards = await db.select({
       id: monthlyTimecards.id,
       employeeId: monthlyTimecards.employeeId,
@@ -2907,7 +2952,7 @@ export class DatabaseStorage implements IStorage {
     })
     .from(monthlyTimecards)
     .innerJoin(employees, eq(monthlyTimecards.employeeId, employees.id))
-    .where(eq(employees.department, site))
+    .where(whereClause)
     .orderBy(desc(monthlyTimecards.year), desc(monthlyTimecards.month), employees.lastName, employees.firstName);
     
     return timecards;

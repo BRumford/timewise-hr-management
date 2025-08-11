@@ -2689,18 +2689,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Onboarding form submissions routes
-  app.get("/api/onboarding/submissions", async (req, res) => {
+  app.get("/api/onboarding/submissions", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const submissions = await storage.getOnboardingFormSubmissions();
+      const districtId = req.district?.id || req.user?.districtId || 1;
+      const submissions = await storage.getOnboardingFormSubmissions(districtId);
       res.json(submissions);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch form submissions", error: (error as Error).message });
     }
   });
 
-  app.get("/api/onboarding/submissions/pending", async (req, res) => {
+  app.get("/api/onboarding/submissions/pending", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
-      const submissions = await storage.getPendingOnboardingFormSubmissions();
+      const districtId = req.district?.id || req.user?.districtId || 1;
+      const submissions = await storage.getPendingOnboardingFormSubmissions(districtId);
       res.json(submissions);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch pending submissions", error: (error as Error).message });
@@ -3100,10 +3102,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/time-cards/:id/approve-admin", async (req, res) => {
+  app.post("/api/time-cards/:id/approve-admin", tenantMiddleware, requireRole(['admin', 'hr']), async (req, res) => {
     try {
+      const districtId = req.district?.id || req.user?.districtId || 1;
       const { adminId, notes } = req.body;
-      const timeCard = await storage.approveTimeCardByAdmin(parseInt(req.params.id), adminId, notes);
+      const timeCard = await storage.approveTimeCardByAdmin(parseInt(req.params.id), adminId, notes, districtId);
       res.json(timeCard);
     } catch (error) {
       res.status(500).json({ message: "Failed to approve time card by admin", error: (error as Error).message });
@@ -5154,10 +5157,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Monthly Timecards Routes
-  app.get('/api/monthly-timecards/:employeeId', isAuthenticated, async (req, res) => {
+  app.get('/api/monthly-timecards/:employeeId', tenantMiddleware, isAuthenticated, async (req, res) => {
     try {
+      const districtId = req.district?.id || req.user?.districtId || 1;
       const employeeId = parseInt(req.params.employeeId);
-      const timecards = await storage.getMonthlyTimecardsByEmployee(employeeId);
+      const timecards = await storage.getMonthlyTimecardsByEmployee(employeeId, districtId);
       res.json(timecards);
     } catch (error) {
       console.error('Error fetching monthly timecards:', error);
@@ -5165,10 +5169,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/monthly-timecards/site/:site', isAuthenticated, async (req, res) => {
+  app.get('/api/monthly-timecards/site/:site', tenantMiddleware, isAuthenticated, async (req, res) => {
     try {
+      const districtId = req.district?.id || req.user?.districtId || 1;
       const site = req.params.site;
-      const timecards = await storage.getMonthlyTimecardsBySite(site);
+      const timecards = await storage.getMonthlyTimecardsBySite(site, districtId);
       res.json(timecards);
     } catch (error) {
       console.error('Error fetching monthly timecards by site:', error);
