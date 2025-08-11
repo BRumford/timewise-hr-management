@@ -437,20 +437,16 @@ export default function SubstituteTimeCards() {
     return acc;
   }, {});
 
-  // PayrollProcessingRowInline component for payroll processing section - memoized to prevent re-renders
-  const PayrollProcessingRowInline = memo(({ lineNumber, entry, addonOptions, updatePayrollEntry }: { 
-    lineNumber: number; 
-    entry: any; 
-    addonOptions: any[]; 
-    updatePayrollEntry: (index: number, field: string, value: any) => void; 
-  }) => {
+  // Memoized render function to prevent re-creation
+  const renderPayrollRow = useCallback((lineNumber: number) => {
     const index = lineNumber - 1;
+    const entry = payrollEntries[index] || {};
 
     // Calculate total automatically
     const total = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
 
     return (
-      <tr className="even:bg-gray-50">
+      <tr key={`payroll-row-${lineNumber}`} className="even:bg-gray-50">
         <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
           {lineNumber}
         </td>
@@ -460,7 +456,7 @@ export default function SubstituteTimeCards() {
               <SelectValue placeholder="Addon" />
             </SelectTrigger>
             <SelectContent>
-              {addonOptions.map((option) => (
+              {(addonOptions as any[]).map((option) => (
                 <SelectItem key={option.id} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -511,7 +507,7 @@ export default function SubstituteTimeCards() {
         </td>
       </tr>
     );
-  });
+  }, [payrollEntries, updatePayrollEntry, addonOptions]);
 
   // Calculate grand total for payroll processing
   const calculateGrandTotal = () => {
@@ -898,15 +894,9 @@ export default function SubstituteTimeCards() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Array.from({ length: 10 }, (_, index) => (
-                        <PayrollProcessingRowInline 
-                          key={index} 
-                          lineNumber={index + 1} 
-                          entry={payrollEntries[index] || {}}
-                          addonOptions={addonOptions}
-                          updatePayrollEntry={updatePayrollEntry}
-                        />
-                      ))}
+                      {Array.from({ length: 10 }, (_, index) => 
+                        renderPayrollRow(index + 1)
+                      )}
                       {/* Grand Total Row */}
                       <tr className="bg-purple-100 border-t-2 border-purple-400">
                         <td className="border border-gray-400 px-2 py-2 text-center text-sm font-bold text-purple-800" colSpan={4}>
