@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -178,8 +178,8 @@ export default function SubstituteTimeCards() {
     }));
   };
 
-  // Update payroll entry
-  const updatePayrollEntry = (index: number, field: string, value: any) => {
+  // Update payroll entry - optimized with useCallback to prevent re-renders
+  const updatePayrollEntry = useCallback((index: number, field: string, value: any) => {
     setPayrollEntries(prev => {
       const updated = [...prev];
       updated[index] = {
@@ -188,7 +188,7 @@ export default function SubstituteTimeCards() {
       };
       return updated;
     });
-  };
+  }, []);
 
   // Initialize daily entries for the current month
   const initializeDailyEntries = () => {
@@ -216,12 +216,12 @@ export default function SubstituteTimeCards() {
     setDailyEntries(entries);
   };
 
-  // Update daily entry
-  const updateDailyEntry = (index: number, field: string, value: string) => {
+  // Update daily entry - optimized with useCallback to prevent re-renders
+  const updateDailyEntry = useCallback((index: number, field: string, value: string) => {
     setDailyEntries(prev => prev.map((entry, i) => 
       i === index ? { ...entry, [field]: value } : entry
     ));
-  };
+  }, []);
 
   // Save timecard mutation
   const saveTimecard = useMutation({

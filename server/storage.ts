@@ -1726,16 +1726,31 @@ export class DatabaseStorage implements IStorage {
       .from(employees)
       .where(and(eq(employees.status, "active"), eq(employees.districtId, districtId)));
 
-    const [pendingStats] = await db
-      .select({
-        pendingOnboarding: sql<number>`sum(case when ${onboardingWorkflows.status} != 'completed' then 1 else 0 end)`,
-        pendingLeaveRequests: sql<number>`sum(case when ${leaveRequests.status} = 'pending' then 1 else 0 end)`,
-        pendingDocuments: sql<number>`sum(case when ${documents.status} = 'pending' then 1 else 0 end)`,
-      })
+    // Get pending stats with separate queries to avoid join issues
+    const pendingOnboarding = await db
+      .select({ count: count(onboardingWorkflows.id) })
       .from(onboardingWorkflows)
-      .fullJoin(leaveRequests, sql`1=1`)
-      .fullJoin(documents, sql`1=1`)
-      .where(eq(onboardingWorkflows.districtId, districtId));
+      .where(and(
+        ne(onboardingWorkflows.status, 'completed'),
+        eq(onboardingWorkflows.districtId, districtId)
+      ));
+
+    const pendingLeaveRequests = await db
+      .select({ count: count(leaveRequests.id) })
+      .from(leaveRequests)
+      .innerJoin(employees, eq(leaveRequests.employeeId, employees.id))
+      .where(and(
+        eq(leaveRequests.status, 'pending'),
+        eq(employees.districtId, districtId)
+      ));
+
+    const pendingDocuments = await db
+      .select({ count: count(documents.id) })
+      .from(documents)
+      .where(and(
+        eq(documents.status, 'pending'),
+        eq(documents.districtId, districtId)
+      ));
 
     const todayAssignments = await db
       .select({ count: count(substituteAssignments.id) })
@@ -1748,7 +1763,9 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...employeeStats,
-      ...pendingStats,
+      pendingOnboarding: pendingOnboarding[0].count,
+      pendingLeaveRequests: pendingLeaveRequests[0].count,
+      pendingDocuments: pendingDocuments[0].count,
       todaySubstituteAssignments: todayAssignments[0].count,
     };
   }
