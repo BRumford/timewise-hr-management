@@ -1,0 +1,4 @@
+Employee ID,First Name,Last Name,Email,Department,Position,Employee Type,Salary
+490001,Jane,Smith,jane.smith@test.com,Kitchen,Cook,support_staff,30000
+490002,Mark,Johnson,mark.johnson@test.com,Payroll,Manager,administrator,50000
+490003,Sarah,Wilson,sarah.wilson@test.com,Teaching,Teacher,teacher,45000

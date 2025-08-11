@@ -1,0 +1,4 @@
+Employee ID,First Name,Last Name,Email,Phone Number,Department,Position,Employee Type,Hire Date,Salary
+490001,Jane Updated,Doe Updated,jane.updated@test.com,555-0101,Updated Kitchen,Updated Head Cook,support_staff,2025-08-01,35000
+490002,Mark Updated,Twain Updated,mark.updated@test.com,555-0102,Updated Payroll,Updated Payroll Manager,administrator,2025-08-01,60000
+490003,Brad Updated,Pitt Updated,brad.updated@test.com,555-0103,Updated Teaching,Updated Head Teacher,teacher,2025-08-01,55000
