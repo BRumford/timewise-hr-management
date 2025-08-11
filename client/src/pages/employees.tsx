@@ -923,6 +923,16 @@ export default function Employees() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  {/* Custom fields as table columns */}
+                  {(fieldLabels as any)?.filter((label: any) => 
+                    label.isVisible && 
+                    label.category === 'employee' &&
+                    !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status'].includes(label.originalFieldName || label.fieldName)
+                  ).map((label: any) => (
+                    <th key={label.id} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {label.displayLabel}
+                    </th>
+                  ))}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -990,6 +1000,32 @@ export default function Employees() {
                         className="min-w-24"
                       />
                     </td>
+                    {/* Custom field columns */}
+                    {(fieldLabels as any)?.filter((label: any) => 
+                      label.isVisible && 
+                      label.category === 'employee' &&
+                      !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status'].includes(label.originalFieldName || label.fieldName)
+                    ).map((label: any) => {
+                      const fieldKey = label.originalFieldName || label.fieldName;
+                      const fieldValue = employee[fieldKey] || employee.customFields?.[label.fieldName] || '';
+                      
+                      return (
+                        <td key={label.id} className="px-6 py-4 whitespace-nowrap">
+                          <DropdownEdit
+                            value={fieldValue}
+                            onSave={(value) => updateEmployeeFieldMutation.mutate({ 
+                              employeeId: employee.id, 
+                              field: fieldKey, 
+                              value 
+                            })}
+                            type={label.fieldType === 'select' ? 'select' : 'text'}
+                            options={label.fieldType === 'select' ? label.options : undefined}
+                            placeholder={label.placeholder || `Enter ${label.displayLabel.toLowerCase()}`}
+                            className="min-w-32"
+                          />
+                        </td>
+                      );
+                    })}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
                         <Button 
@@ -1347,6 +1383,69 @@ export default function Employees() {
                   </FormItem>
                 )}
               />
+              
+              {/* Additional custom fields that don't exist in database schema */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(fieldLabels as any)?.filter((label: any) => 
+                  label.isVisible && 
+                  label.category === 'employee' &&
+                  !label.originalFieldName && // These are completely new fields
+                  !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status', 'email', 'phoneNumber', 'address', 'hireDate', 'salary', 'payGrade', 'educationLevel', 'certifications', 'supervisorId'].includes(label.fieldName)
+                ).map((label: any) => (
+                  <div key={label.id} className="custom-field-input">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {label.displayLabel}
+                      {label.isRequired && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {label.fieldType === 'select' ? (
+                      <select 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        defaultValue={selectedEmployee?.customFields?.[label.fieldName] || ''}
+                        onChange={(e) => {
+                          // Handle custom field updates here
+                          const updatedEmployee = { 
+                            ...selectedEmployee, 
+                            customFields: { 
+                              ...selectedEmployee?.customFields, 
+                              [label.fieldName]: e.target.value 
+                            } 
+                          };
+                          setSelectedEmployee(updatedEmployee);
+                        }}
+                      >
+                        <option value="">Select {label.displayLabel}</option>
+                        {label.options?.map((option: any) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={label.fieldType === 'number' ? 'number' : 'text'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder={label.placeholder || `Enter ${label.displayLabel.toLowerCase()}`}
+                        defaultValue={selectedEmployee?.customFields?.[label.fieldName] || ''}
+                        onChange={(e) => {
+                          // Handle custom field updates here
+                          const updatedEmployee = { 
+                            ...selectedEmployee, 
+                            customFields: { 
+                              ...selectedEmployee?.customFields, 
+                              [label.fieldName]: e.target.value 
+                            } 
+                          };
+                          setSelectedEmployee(updatedEmployee);
+                        }}
+                      />
+                    )}
+                    {label.helpText && (
+                      <p className="text-xs text-gray-500 mt-1">{label.helpText}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               <div className="flex justify-end space-x-2">
                 <Button 
                   type="button" 
@@ -1608,6 +1707,54 @@ export default function Employees() {
                   </FormItem>
                 )}
               />
+              
+              {/* Additional custom fields that don't exist in database schema */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(fieldLabels as any)?.filter((label: any) => 
+                  label.isVisible && 
+                  label.category === 'employee' &&
+                  !label.originalFieldName && // These are completely new fields
+                  !['firstName', 'lastName', 'position', 'department', 'employeeType', 'status', 'email', 'phoneNumber', 'address', 'hireDate', 'salary', 'payGrade', 'educationLevel', 'certifications', 'supervisorId'].includes(label.fieldName)
+                ).map((label: any) => (
+                  <div key={label.id} className="custom-field-input">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {label.displayLabel}
+                      {label.isRequired && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {label.fieldType === 'select' ? (
+                      <select 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        defaultValue=""
+                        onChange={(e) => {
+                          // Store custom field value for form submission
+                          addForm.setValue(`customFields.${label.fieldName}` as any, e.target.value);
+                        }}
+                      >
+                        <option value="">Select {label.displayLabel}</option>
+                        {label.options?.map((option: any) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={label.fieldType === 'number' ? 'number' : 'text'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder={label.placeholder || `Enter ${label.displayLabel.toLowerCase()}`}
+                        onChange={(e) => {
+                          // Store custom field value for form submission
+                          addForm.setValue(`customFields.${label.fieldName}` as any, e.target.value);
+                        }}
+                      />
+                    )}
+                    {label.helpText && (
+                      <p className="text-xs text-gray-500 mt-1">{label.helpText}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               <div className="flex justify-end space-x-2">
                 <Button 
                   type="button" 
