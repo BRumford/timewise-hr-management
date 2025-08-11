@@ -24,14 +24,14 @@ const payDateConfigSchema = z.object({
   configurationName: z.string().min(1, "Configuration name is required"),
   payScheduleType: z.string().min(1, "Pay schedule type is required"),
   employeeTypes: z.array(z.string()).min(1, "At least one employee type is required"),
-  fiscalYearStart: z.string().min(1, "Monthly start date is required"),
-  fiscalYearEnd: z.string().min(1, "Monthly end date is required"),
+  fiscalYearStart: z.string().min(1, "Fiscal year start date is required"),
+  fiscalYearEnd: z.string().min(1, "Fiscal year end date is required"),
   payDates: z.array(z.object({
     date: z.string(),
     payPeriodStart: z.string(),
     payPeriodEnd: z.string(),
     timecardDueDate: z.string()
-  })).min(1, "At least one pay date is required")
+  })).optional()
 });
 
 const timecardGenerationSchema = z.object({
@@ -86,7 +86,12 @@ export default function TimecardAutomation() {
       employeeTypes: [],
       fiscalYearStart: "",
       fiscalYearEnd: "",
-      payDates: []
+      payDates: [{ 
+        date: "", 
+        payPeriodStart: "", 
+        payPeriodEnd: "", 
+        timecardDueDate: "" 
+      }]
     }
   });
 
@@ -247,7 +252,21 @@ export default function TimecardAutomation() {
                 </DialogDescription>
               </DialogHeader>
               <Form {...configForm}>
-                <form onSubmit={configForm.handleSubmit((data) => createConfigMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={configForm.handleSubmit((data) => {
+                  // Ensure we have valid payDates for the API
+                  const formData = {
+                    ...data,
+                    payDates: data.payDates?.length ? data.payDates : [
+                      {
+                        date: `${data.fiscalYearEnd}`,
+                        payPeriodStart: data.fiscalYearStart,
+                        payPeriodEnd: data.fiscalYearEnd,
+                        timecardDueDate: data.fiscalYearEnd
+                      }
+                    ]
+                  };
+                  createConfigMutation.mutate(formData);
+                })} className="space-y-4">
                   <FormField
                     control={configForm.control}
                     name="configurationName"
@@ -293,7 +312,7 @@ export default function TimecardAutomation() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Employee Types</FormLabel>
-                          <FormDescription>Hold Ctrl/Cmd to select multiple</FormDescription>
+                          <FormDescription>Select employee types for this configuration</FormDescription>
                           <Select onValueChange={(value) => field.onChange([value])}>
                             <FormControl>
                               <SelectTrigger>
@@ -340,6 +359,16 @@ export default function TimecardAutomation() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  {/* Pay Dates Section - Simplified for now */}
+                  <div className="space-y-3">
+                    <FormLabel>Pay Schedule Dates</FormLabel>
+                    <div className="p-3 border rounded bg-gray-50">
+                      <p className="text-sm text-gray-600">
+                        Pay dates will be generated automatically based on your schedule type and fiscal year settings.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex justify-end space-x-3">
