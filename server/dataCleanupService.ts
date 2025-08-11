@@ -201,19 +201,14 @@ export class DataCleanupService {
   }
 
   /**
-   * Ensures a fresh session for new users
+   * Ensures a fresh session for new users - DISABLED to prevent data loss
+   * Only clean session when explicitly requested via system cleanup
    */
   static async prepareCleanSession(): Promise<boolean> {
     try {
-      // Run cleanup
-      const cleanupResult = await this.cleanupDemoData();
-      
-      if (!cleanupResult.success) {
-        console.error('Session preparation failed:', cleanupResult.errors);
-        return false;
-      }
-
-      console.log('Clean session prepared successfully');
+      // DO NOT automatically clean all data on session preparation
+      // This was causing imported employees to be deleted immediately
+      console.log('Session preparation - skipping automatic cleanup to preserve user data');
       return true;
     } catch (error) {
       console.error('Session preparation error:', error);
