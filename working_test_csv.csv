@@ -1,0 +1,3 @@
+employeeId,firstName,lastName,email,phoneNumber,address,department,position,employeeType,hireDate,salary,status,Masters,Calendar,Hourly Rate
+490005,Sarah,Davis,sarah.davis@school.edu,555-0127,321 Oak St,English,Teacher,teacher,2024-03-15,52000,active,Yes,49CL195,22
+490006,Mike,Johnson,mike.johnson@school.edu,555-0128,654 Pine Ave,PE,Coach,teacher,2024-01-10,48000,active,No,49CL196,20

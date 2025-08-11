@@ -188,7 +188,12 @@ export default function Employees() {
   const [filterType, setFilterType] = useState("all");
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importErrors, setImportErrors] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<Array<{
+    row: number;
+    type: string;
+    employeeId: string;
+    errors: string[];
+  }>>([]);
   const [importSuccess, setImportSuccess] = useState<string>("");
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
