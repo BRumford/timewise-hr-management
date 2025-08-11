@@ -541,15 +541,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 12);
 
-      // Create user account with HR role
+      // CRITICAL SECURITY FIX: Create a new district for HR registration with proper isolation
+      const district = await storage.createDistrict({
+        name: organizationName,
+        slug: organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-'),
+        contactEmail: email.toLowerCase(),
+        subscriptionTier: 'basic',
+        subscriptionStatus: 'trial',
+        maxEmployees: 100,
+        maxAdmins: 3,
+        customBranding: false,
+        apiAccess: false,
+        supportLevel: 'standard',
+        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days trial
+      });
+
+      // Create user account with HR role and proper district assignment
       const user = await storage.upsertUser({
         id: crypto.randomUUID(),
         email: email.toLowerCase(),
         firstName,
         lastName,
         role: 'hr',
-        passwordHash
+        passwordHash,
+        districtId: district.id // CRITICAL: Assign proper district for security isolation
       });
+
+      // Set user in session with district context
+      (req as any).session.user = { ...user, districtId: district.id };
 
       res.json({ 
         message: "HR account created successfully. You now have access to employee management and HR functions.", 
@@ -558,7 +577,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           role: user.role,
           firstName: user.firstName,
-          lastName: user.lastName
+          lastName: user.lastName,
+          districtId: district.id
+        },
+        district: {
+          id: district.id,
+          name: district.name,
+          slug: district.slug
         }
       });
     } catch (error) {
