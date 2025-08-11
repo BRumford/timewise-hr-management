@@ -139,7 +139,31 @@ const personnelUpload = multer({
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type'));
+      cb(new Error('Invalid file type. Allowed: PDF, DOC, DOCX, and images'));
+    }
+  }
+});
+
+// Separate CSV upload handler
+const csvUpload = multer({ 
+  storage: multerStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'text/csv',
+      'application/csv',
+      'text/plain',
+      'application/vnd.ms-excel'
+    ];
+    
+    const isCSVFile = allowedTypes.includes(file.mimetype) || 
+                     file.originalname.toLowerCase().endsWith('.csv');
+    
+    if (isCSVFile) {
+      cb(null, true);
+    } else {
+      console.log(`Rejected file: ${file.originalname}, MIME type: ${file.mimetype}`);
+      cb(new Error(`Invalid file type for CSV upload. File: ${file.originalname}, MIME type: ${file.mimetype}`));
     }
   }
 });
@@ -1064,7 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // CSV file upload for employee import
-  app.post('/api/employees/import-csv', tenantMiddleware, requireRole(['admin', 'hr']), personnelUpload.single('csvFile'), async (req, res) => {
+  app.post('/api/employees/import-csv', tenantMiddleware, requireRole(['admin', 'hr']), csvUpload.single('csvFile'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "CSV file is required" });
