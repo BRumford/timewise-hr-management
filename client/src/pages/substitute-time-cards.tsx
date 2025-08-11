@@ -437,8 +437,8 @@ export default function SubstituteTimeCards() {
     return acc;
   }, {});
 
-  // Memoized render function to prevent re-creation
-  const renderPayrollRow = useCallback((lineNumber: number) => {
+  // PayrollProcessingRowInline component for payroll processing section (copied from working monthly-timecard.tsx)
+  const PayrollProcessingRowInline = ({ lineNumber }: { lineNumber: number }) => {
     const index = lineNumber - 1;
     const entry = payrollEntries[index] || {};
 
@@ -446,7 +446,7 @@ export default function SubstituteTimeCards() {
     const total = (parseFloat(entry.units) || 0) * (parseFloat(entry.rate) || 0);
 
     return (
-      <tr key={`payroll-row-${lineNumber}`} className="even:bg-gray-50">
+      <tr className="even:bg-gray-50">
         <td className="border border-gray-400 px-2 py-1 text-center text-sm font-medium text-purple-600">
           {lineNumber}
         </td>
@@ -507,7 +507,7 @@ export default function SubstituteTimeCards() {
         </td>
       </tr>
     );
-  }, [payrollEntries, updatePayrollEntry, addonOptions]);
+  };
 
   // Calculate grand total for payroll processing
   const calculateGrandTotal = () => {
@@ -894,9 +894,9 @@ export default function SubstituteTimeCards() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Array.from({ length: 10 }, (_, index) => 
-                        renderPayrollRow(index + 1)
-                      )}
+                      {Array.from({ length: 10 }, (_, index) => (
+                        <PayrollProcessingRowInline key={index} lineNumber={index + 1} />
+                      ))}
                       {/* Grand Total Row */}
                       <tr className="bg-purple-100 border-t-2 border-purple-400">
                         <td className="border border-gray-400 px-2 py-2 text-center text-sm font-bold text-purple-800" colSpan={4}>
