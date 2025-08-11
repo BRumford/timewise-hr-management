@@ -1,0 +1,3 @@
+employeeId,firstName,lastName,email,phoneNumber,address,department,position,employeeType,status
+490015,Sarah,Johnson,sarah.johnson@school.edu,555-0135,456 Oak St,Math,Teacher,teacher,active
+490016,Mike,Davis,mike.davis@school.edu,555-0136,987 Pine Dr,English,Teacher,teacher,active
